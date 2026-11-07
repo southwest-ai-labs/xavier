@@ -303,6 +303,89 @@ impl<'a> Pathfinder<'a> {
 
         result
     }
+
+    /// Computes Personalized PageRank (PPR) with restart vector u focused on seed_nodes.
+    /// Follows the power iteration: p_{k+1} = (1 - d) u + d * M * p_k
+    /// where d is the damping factor (typically 0.85).
+    pub fn personalized_pagerank(
+        &self,
+        seed_nodes: &[String],
+        damping_factor: f32,
+        max_iterations: usize,
+        tolerance: f32,
+    ) -> HashMap<String, f32> {
+        let mut ranks: HashMap<String, f32> = HashMap::new();
+        let valid_seeds: Vec<String> = seed_nodes
+            .iter()
+            .filter(|s| self.adjacency_map.contains_key(*s) || self.degrees.contains_key(*s))
+            .cloned()
+            .collect();
+
+        if valid_seeds.is_empty() {
+            return ranks;
+        }
+
+        // Initialize uniform restart vector u over seed nodes
+        let seed_prob = 1.0 / (valid_seeds.len() as f32);
+        let mut restart_vector: HashMap<String, f32> = HashMap::new();
+        for seed in &valid_seeds {
+            restart_vector.insert(seed.clone(), seed_prob);
+            ranks.insert(seed.clone(), seed_prob);
+        }
+
+        let d = damping_factor.clamp(0.01, 0.99);
+
+        for _ in 0..max_iterations {
+            let mut next_ranks: HashMap<String, f32> = HashMap::new();
+
+            // Distribute probability through outgoing edges
+            for (node, &prob) in &ranks {
+                if prob <= 0.0 {
+                    continue;
+                }
+                if let Some(edges) = self.adjacency_map.get(node) {
+                    if !edges.is_empty() {
+                        let out_share = (prob * d) / (edges.len() as f32);
+                        for edge in edges {
+                            *next_ranks.entry(edge.target.clone()).or_insert(0.0) += out_share;
+                        }
+                    } else {
+                        // Dangling node: redirect to restart vector
+                        for (seed, &u_prob) in &restart_vector {
+                            *next_ranks.entry(seed.clone()).or_insert(0.0) += prob * d * u_prob;
+                        }
+                    }
+                } else {
+                    for (seed, &u_prob) in &restart_vector {
+                        *next_ranks.entry(seed.clone()).or_insert(0.0) += prob * d * u_prob;
+                    }
+                }
+            }
+
+            // Add restart teleportation component: (1 - d) * u
+            for (seed, &u_prob) in &restart_vector {
+                *next_ranks.entry(seed.clone()).or_insert(0.0) += (1.0 - d) * u_prob;
+            }
+
+            // Check convergence
+            let mut max_diff: f32 = 0.0;
+            let all_keys: HashSet<String> =
+                ranks.keys().chain(next_ranks.keys()).cloned().collect();
+            for key in all_keys {
+                let p_old = ranks.get(&key).copied().unwrap_or(0.0);
+                let p_new = next_ranks.get(&key).copied().unwrap_or(0.0);
+                max_diff = max_diff.max((p_new - p_old).abs());
+            }
+
+            ranks = next_ranks;
+
+            if max_diff < tolerance {
+                break;
+            }
+        }
+
+        ranks
+    }
 }
 
 #[cfg(test)]
@@ -415,5 +498,87 @@ mod tests {
         assert!(results.iter().any(|r| r.edge.target == "b"));
         assert!(results[0].edge.target == "b");
         assert!(results[0].policy_score > 0.5);
+    }
+
+    #[tokio::test]
+    async fn test_personalized_pagerank_empty_seeds_returns_empty() {
+        let graph = BeliefGraph::new();
+        let pathfinder = Pathfinder::new(&graph);
+        let ranks = pathfinder.personalized_pagerank(&[], 0.85, 100, 1e-4);
+        assert!(ranks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_personalized_pagerank_propagates_to_neighbors() {
+        let graph = BeliefGraph::new();
+        graph.add_node("A".to_string(), 1.0, None);
+        graph.add_node("B".to_string(), 1.0, None);
+        graph.add_node("C".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "A".to_string(),
+                "B".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        graph
+            .add_relation(
+                "B".to_string(),
+                "C".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let seeds = vec!["A".to_string()];
+        let ranks = pathfinder.personalized_pagerank(&seeds, 0.85, 100, 1e-4);
+
+        let rank_a = *ranks.get("A").unwrap_or(&0.0);
+        let rank_b = *ranks.get("B").unwrap_or(&0.0);
+        let rank_c = *ranks.get("C").unwrap_or(&0.0);
+
+        assert!(rank_a > rank_b, "A should have higher rank than B");
+        assert!(rank_b > rank_c, "B should have higher rank than C");
+        assert!(rank_c > 0.0, "C should have non-zero rank");
+    }
+
+    #[tokio::test]
+    async fn test_personalized_pagerank_damping_boundary() {
+        let graph = BeliefGraph::new();
+        graph.add_node("A".to_string(), 1.0, None);
+        graph.add_node("B".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "A".to_string(),
+                "B".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let seeds = vec!["A".to_string()];
+
+        // Pass out-of-bounds damping factor (1.5)
+        let ranks = pathfinder.personalized_pagerank(&seeds, 1.5, 100, 1e-4);
+
+        let sum: f32 = ranks.values().sum();
+        // The power iteration should still converge and sum to roughly 1.0
+        // because 1.5 is clamped to 0.99 internally.
+        assert!(
+            (sum - 1.0).abs() < 0.05,
+            "Probabilities should sum to approximately 1.0, got {}",
+            sum
+        );
     }
 }
