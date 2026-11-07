@@ -347,6 +347,40 @@ pub fn merge_ranked_candidates(
 
 /// The single place that orders fused candidates: sort by `fused` desc,
 /// then `relevance` desc, then `doc.path` asc (deterministic); cap at
+pub fn compute_dynamic_decay_multiplier(
+    doc: &MemoryDocument,
+    now: chrono::DateTime<chrono::Utc>,
+) -> f32 {
+    let timestamp_str = doc
+        .metadata
+        .get("last_modified")
+        .or_else(|| doc.metadata.get("updated_at"))
+        .or_else(|| doc.metadata.get("created_at"))
+        .and_then(|v| v.as_str());
+
+    let age_days = if let Some(ts) = timestamp_str {
+        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(ts) {
+            (now - parsed.with_timezone(&chrono::Utc))
+                .num_seconds()
+                .max(0) as f32
+                / 86400.0
+        } else {
+            30.0
+        }
+    } else {
+        30.0
+    };
+
+    // Recency boost: items touched in the last 24h-72h get up to +50% boost
+    let recency_boost = (1.0 / (1.0 + age_days / 3.0)).clamp(0.0, 1.0);
+
+    // Age penalty: items idle for >30 days get dampening
+    let age_penalty = (age_days / 60.0).clamp(0.0, 1.0);
+
+    // Dynamic multiplier bounded between 0.3x (hard floor) and 1.5x (ceiling)
+    (1.0 + 0.5 * recency_boost - 0.7 * age_penalty).clamp(0.3, 1.5)
+}
+
 /// `MAX_RERANK_CANDIDATES`; drop anything below the relevance floor unless
 /// the floor would empty a non-empty list (then it is not applied).
 ///
@@ -354,6 +388,11 @@ pub fn merge_ranked_candidates(
 /// document whenever it is not among the first values of a HashMap
 /// iteration.
 pub fn rank_candidates(mut candidates: Vec<ScoredCandidate>, limit: usize) -> Vec<ScoredCandidate> {
+    let now = chrono::Utc::now();
+    for candidate in candidates.iter_mut() {
+        let decay = compute_dynamic_decay_multiplier(&candidate.doc, now);
+        candidate.fused *= decay;
+    }
     candidates.sort_by(|left, right| {
         right
             .fused
@@ -393,7 +432,7 @@ pub async fn query_with_hybrid_search(
     let mut scores: HashMap<String, ScoredCandidate> = HashMap::new();
 
     let keyword_hits = memory
-        .search_with_cache_filtered(query_text, limit, None)
+        .search_with_cache_filtered(query_text, limit * 3, None)
         .await?;
     for (rank, doc) in keyword_hits.documents.into_iter().enumerate() {
         let key = doc
@@ -415,7 +454,7 @@ pub async fn query_with_hybrid_search(
             });
     }
 
-    let vector_hits = vsearch(memory, query_vector, limit).await?;
+    let vector_hits = vsearch(memory, query_vector, limit * 3).await?;
     for doc in vector_hits.into_iter() {
         let key = doc
             .id
@@ -447,6 +486,11 @@ pub async fn query_with_hybrid_search(
     // relevance (max 1/(RRF_K+1)) can never clear it, so flooring would
     // discard genuine direct matches whenever any vector hit survives.
     let mut fused: Vec<ScoredCandidate> = scores.into_values().collect();
+    let now = chrono::Utc::now();
+    for candidate in fused.iter_mut() {
+        let decay = compute_dynamic_decay_multiplier(&candidate.doc, now);
+        candidate.fused *= decay;
+    }
     fused.sort_by(|left, right| {
         right
             .fused
@@ -698,6 +742,85 @@ mod tests {
             metadata: serde_json::json!({}),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn test_dynamic_decay_multiplier_fresh_vs_stale() {
+        let now = chrono::Utc::now();
+        let fresh_ts = now.to_rfc3339();
+        let stale_ts = (now - chrono::Duration::days(180)).to_rfc3339();
+
+        let mut fresh_doc = test_doc("fresh.md", "fresh");
+        fresh_doc.metadata = serde_json::json!({ "updated_at": fresh_ts });
+
+        let mut stale_doc = test_doc("stale.md", "stale");
+        stale_doc.metadata = serde_json::json!({ "updated_at": stale_ts });
+
+        let m_fresh = compute_dynamic_decay_multiplier(&fresh_doc, now);
+        let m_stale = compute_dynamic_decay_multiplier(&stale_doc, now);
+
+        assert!(
+            (m_fresh - 1.5).abs() < 0.01,
+            "Fresh document should hit the ceiling (1.5), got {}",
+            m_fresh
+        );
+        assert!(
+            (m_stale - 0.3).abs() < 0.01,
+            "Stale document should hit the floor (0.3), got {}",
+            m_stale
+        );
+    }
+
+    #[test]
+    fn test_dynamic_decay_reranking_orders_fresh_ahead_of_stale() {
+        let now = chrono::Utc::now();
+        let fresh_ts = now.to_rfc3339();
+        let stale_ts = (now - chrono::Duration::days(180)).to_rfc3339();
+
+        let mut fresh_doc = test_doc("fresh.md", "a");
+        fresh_doc.metadata = serde_json::json!({ "updated_at": fresh_ts });
+
+        let mut stale_doc = test_doc("stale.md", "b");
+        stale_doc.metadata = serde_json::json!({ "updated_at": stale_ts });
+
+        let candidates = vec![
+            ScoredCandidate {
+                fused: 1.0,
+                relevance: 0.5,
+                doc: stale_doc,
+            },
+            ScoredCandidate {
+                fused: 1.0,
+                relevance: 0.5,
+                doc: fresh_doc,
+            },
+        ];
+
+        // Ensure rank_candidates orders the fresh doc first despite having the same initial score
+        let reranked = rank_candidates(candidates, 5);
+        assert_eq!(reranked.len(), 2);
+        assert_eq!(reranked[0].doc.path, "fresh.md");
+        assert_eq!(reranked[1].doc.path, "stale.md");
+
+        assert!(reranked[0].fused > reranked[1].fused);
+    }
+
+    #[test]
+    fn test_dynamic_decay_preserves_floor_at_0_3() {
+        let now = chrono::Utc::now();
+        let old_ts = (now - chrono::Duration::days(3650)).to_rfc3339(); // 10 years ago
+
+        let mut old_doc = test_doc("old.md", "old");
+        old_doc.metadata = serde_json::json!({ "updated_at": old_ts });
+
+        let m_old = compute_dynamic_decay_multiplier(&old_doc, now);
+
+        assert!(
+            (m_old - 0.3).abs() < 0.01,
+            "Document from 10 years ago should clamp at 0.3, got {}",
+            m_old
+        );
+        assert!(m_old > 0.0);
     }
 
     /// Minimal HTTP stub: fast on every route except POST /api/embed, which
