@@ -846,6 +846,8 @@ pub enum PruneBlockReason {
     },
     /// The record is not observable and must never be a prune candidate.
     RecordNotObservable,
+    /// The record belongs to a protected context zone (Atomic, Global) or codebase source.
+    ZoneProtected,
 }
 
 /// Evaluate the observation window.
@@ -903,6 +905,18 @@ pub async fn prune_precondition(
     record: &MemoryRecord,
     now: DateTime<Utc>,
 ) -> Result<PruneBlockReason> {
+    // 1. Guard protected sources and context zones
+    if let Some(source) = record.metadata.get("source").and_then(|v| v.as_str()) {
+        if source == "codebase" || source == "foundational" || source == "spec" {
+            return Ok(PruneBlockReason::ZoneProtected);
+        }
+    }
+    if let Some(zone) = record.metadata.get("zone").and_then(|v| v.as_str()) {
+        if zone.eq_ignore_ascii_case("atomic") || zone.eq_ignore_ascii_case("global") {
+            return Ok(PruneBlockReason::ZoneProtected);
+        }
+    }
+
     if !record_is_observable(record) {
         return Ok(PruneBlockReason::RecordNotObservable);
     }
@@ -992,5 +1006,32 @@ mod flush_scope_tests {
             .is_empty());
         assert_eq!(RECORDER.pending_count(), 0, "orphaned entries are dropped");
         RECORDER.reset();
+    }
+}
+
+#[cfg(test)]
+mod prune_zone_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_prune_precondition_blocks_codebase_source() {
+        let store = crate::memory::fallback_store::FallbackStore::new(vec![]);
+        let mut record = MemoryRecord::default();
+        record.metadata = serde_json::json!({ "source": "codebase" });
+        let res = prune_precondition(&store, &record, Utc::now())
+            .await
+            .unwrap();
+        assert_eq!(res, PruneBlockReason::ZoneProtected);
+    }
+
+    #[tokio::test]
+    async fn test_prune_precondition_blocks_atomic_zone() {
+        let store = crate::memory::fallback_store::FallbackStore::new(vec![]);
+        let mut record = MemoryRecord::default();
+        record.metadata = serde_json::json!({ "zone": "atomic" });
+        let res = prune_precondition(&store, &record, Utc::now())
+            .await
+            .unwrap();
+        assert_eq!(res, PruneBlockReason::ZoneProtected);
     }
 }
