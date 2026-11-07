@@ -1,38 +1,63 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
-test.describe("Desktop Offline Fallback", () => {
-  test("displays offline screen when health check fails in Tauri environment", async ({ page }) => {
-    // 1. Mock the /health check to simulate connection refused (abort).
-    await page.route("**/health", async (route) => {
-      await route.abort("failed");
-    });
+// Ported from #3879 (targets main) and extended for integration/core-100.
+// App.tsx shows the "Xavier Node Connection" screen only inside the desktop shell
+// (`__TAURI_INTERNALS__` present) when GET /health fails; browsers fall back to "ok".
 
-    // 2. Inject __TAURI_INTERNALS__ so that the app believes it's in the desktop app.
-    await page.addInitScript(() => {
-      // By putting this in the global scope before the app loads,
-      // `typeof window !== "undefined" && "__TAURI_INTERNALS__" in window`
-      // will evaluate to true.
-      (window as any).__TAURI_INTERNALS__ = {};
-    });
+async function simulateDesktopShell(page: Page) {
+  await page.addInitScript(() => {
+    (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+  });
+}
 
-    // 3. Load the app
+const heading = (page: Page) => page.getByRole("heading", { name: "Xavier Node Connection" });
+
+test.describe("Desktop offline fallback", () => {
+  test("shows the connection screen when the daemon is unreachable in the desktop shell", async ({ page }, testInfo) => {
+    await page.route("**/health", (route) => route.abort("connectionrefused"));
+    await simulateDesktopShell(page);
+
     await page.goto("/");
 
-    // 4. Assert that the offline UI elements render
-    // Wait for the "Xavier Node Connection" header
-    const header = page.locator("h1:has-text('Xavier Node Connection')");
-    await expect(header).toBeVisible({ timeout: 10000 });
+    await expect(heading(page)).toBeVisible();
+    await expect(
+      page.getByText("Connect to your local daemon (:8006), pair a remote SWAL node, or explore the memory console in browser mode."),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Retry Local Connection (:8006)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Enter Browser Sandbox Mode" })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath("offline_fallback.png"), fullPage: true });
+  });
 
-    // Assert the text about connecting to local daemon / pairing remote / sandbox mode
-    const description = page.locator("text=Connect to your local daemon (:8006), pair a remote SWAL node, or explore the memory console in browser mode.");
-    await expect(description).toBeVisible();
+  test("retry reconnects once the daemon is back", async ({ page }) => {
+    let daemonUp = false;
+    await page.route("**/health", (route) =>
+      daemonUp ? route.fulfill({ json: { status: "ok" } }) : route.abort("connectionrefused"),
+    );
+    await simulateDesktopShell(page);
 
-    // Assert the "Retry Local Connection" button exists
-    const retryButton = page.locator("button:has-text('Retry Local Connection (:8006)')");
-    await expect(retryButton).toBeVisible();
+    await page.goto("/");
+    await expect(heading(page)).toBeVisible();
 
-    // Assert the "Enter Browser Sandbox Mode" button exists
-    const sandboxButton = page.locator("button:has-text('Enter Browser Sandbox Mode')");
-    await expect(sandboxButton).toBeVisible();
+    daemonUp = true;
+    await page.getByRole("button", { name: "Retry Local Connection (:8006)" }).click();
+    await expect(heading(page)).toHaveCount(0);
+  });
+
+  test("sandbox mode leaves the connection screen", async ({ page }) => {
+    await page.route("**/health", (route) => route.abort("connectionrefused"));
+    await simulateDesktopShell(page);
+
+    await page.goto("/");
+    await page.getByRole("button", { name: "Enter Browser Sandbox Mode" }).click();
+    await expect(heading(page)).toHaveCount(0);
+  });
+
+  test("a plain browser does not show the desktop connection screen", async ({ page }) => {
+    await page.route("**/health", (route) => route.abort("connectionrefused"));
+
+    await page.goto("/");
+    // The browser path resolves health to "ok" and continues to the normal entry flow.
+    await expect(page.locator("#root")).not.toBeEmpty();
+    await expect(heading(page)).toHaveCount(0);
   });
 });

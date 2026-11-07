@@ -20,33 +20,29 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiClient } from "../../api/client";
+import useTelecomRooms, { TelecomRoom, TelecomMessage } from "../../hooks/useTelecomRooms";
+import { MeshPeer } from "../../types";
+import PeerDiscoveryCard from "./PeerDiscoveryCard";
+import VoiceNotePlayer from "./VoiceNotePlayer";
 import TopStatusBar from "../TopStatusBar";
 
 export type TelecomTab = "direct" | "groups" | "peers";
 
-export interface TelecomRoom {
-  id: string;
-  name: string;
-  category: TelecomTab;
-  avatar?: string;
-  peerNodeId?: string;
-  lastMessage?: string;
-  lastMessageTime?: string;
-  unreadCount?: number;
-  isOnline?: boolean;
-  isEncrypted?: boolean;
-  securityClassification?: string;
-}
+/** A peer counts as online when the daemon saw it within this window (seconds). */
+export const PEER_ONLINE_WINDOW_S = 300;
 
-export interface TelecomMessage {
-  id: string;
-  roomId: string;
-  sender: string;
-  text: string;
-  time: string;
-  isSelf: boolean;
-  isEphemeral?: boolean;
+/**
+ * `last_seen_at` comes from the daemon as unix SECONDS (src/api/mesh.rs uses
+ * `chrono::Utc::now().timestamp()`), so compare against seconds, not milliseconds.
+ */
+export function isPeerRecentlySeen(
+  lastSeenAt: number | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  if (typeof lastSeenAt !== "number") return false;
+  return nowMs / 1000 - lastSeenAt <= PEER_ONLINE_WINDOW_S;
 }
 
 export interface TelecomHubViewProps {
@@ -55,165 +51,15 @@ export interface TelecomHubViewProps {
   initialTab?: TelecomTab;
 }
 
-const MOCK_ROOMS: TelecomRoom[] = [
-  {
-    id: "dir-1",
-    name: "node_alpha_8f (Primary Gateway)",
-    category: "direct",
-    peerNodeId: "node_alpha_8f",
-    lastMessage: "Encrypted Noise handshake complete.",
-    lastMessageTime: "11:02 AM",
-    unreadCount: 2,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-  {
-    id: "dir-2",
-    name: "node_beta_3a (Storage Relay)",
-    category: "direct",
-    peerNodeId: "node_beta_3a",
-    lastMessage: "WAL checkpoint synced successfully.",
-    lastMessageTime: "10:45 AM",
-    unreadCount: 0,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-  {
-    id: "dir-3",
-    name: "node_gamma_7c (Worker Edge)",
-    category: "direct",
-    peerNodeId: "node_gamma_7c",
-    lastMessage: "Session ephemeral key rotated.",
-    lastMessageTime: "09:30 AM",
-    unreadCount: 0,
-    isOnline: false,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-  {
-    id: "grp-1",
-    name: "Sovereign Mesh Operators",
-    category: "groups",
-    lastMessage: "Quorum consensus approved proposal #102.",
-    lastMessageTime: "11:10 AM",
-    unreadCount: 5,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "SECRET",
-  },
-  {
-    id: "grp-2",
-    name: "Crypto Telecom Developers",
-    category: "groups",
-    lastMessage: "X25519 DH key exchange benchmark complete.",
-    lastMessageTime: "08:15 AM",
-    unreadCount: 0,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-  {
-    id: "grp-3",
-    name: "Security & Clearance Gate",
-    category: "groups",
-    lastMessage: "TopSecret clearance audit logged.",
-    lastMessageTime: "Yesterday",
-    unreadCount: 0,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "TOPSECRET",
-  },
-  {
-    id: "peer-1",
-    name: "node_delta_9e (Edge Gateway)",
-    category: "peers",
-    peerNodeId: "node_delta_9e",
-    lastMessage: "Latency: 12ms · Protocol v2.4",
-    lastMessageTime: "Just now",
-    unreadCount: 0,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-  {
-    id: "peer-2",
-    name: "node_epsilon_4b (Backup Storage)",
-    category: "peers",
-    peerNodeId: "node_epsilon_4b",
-    lastMessage: "Sync Lag: 0.2s · Active",
-    lastMessageTime: "5m ago",
-    unreadCount: 0,
-    isOnline: true,
-    isEncrypted: true,
-    securityClassification: "INTERNAL",
-  },
-];
-
-const INITIAL_MESSAGES: Record<string, TelecomMessage[]> = {
-  "dir-1": [
-    {
-      id: "m-1",
-      roomId: "dir-1",
-      sender: "node_alpha_8f",
-      text: "Establishing P2P Noise Protocol channel...",
-      time: "11:00 AM",
-      isSelf: false,
-    },
-    {
-      id: "m-2",
-      roomId: "dir-1",
-      sender: "node_alpha_8f",
-      text: "Encrypted Noise handshake complete.",
-      time: "11:02 AM",
-      isSelf: false,
-    },
-  ],
-  "grp-1": [
-    {
-      id: "m-3",
-      roomId: "grp-1",
-      sender: "Primary Gateway",
-      text: "Operator quorum activated for Wave 27 deployment.",
-      time: "11:05 AM",
-      isSelf: false,
-    },
-    {
-      id: "m-4",
-      roomId: "grp-1",
-      sender: "Storage Relay",
-      text: "Quorum consensus approved proposal #102.",
-      time: "11:10 AM",
-      isSelf: false,
-    },
-  ],
-  "peer-1": [
-    {
-      id: "m-5",
-      roomId: "peer-1",
-      sender: "node_delta_9e",
-      text: "Peer node delta connected via WebRTC fallback transport.",
-      time: "11:12 AM",
-      isSelf: false,
-    },
-  ],
-};
-
-/**
- * ⚡ Bolt Performance Optimization
- *
- * 💡 What: Extracted room list row into TelecomRoomListItem and wrapped in React.memo()
- * 🎯 Why: Prevents re-rendering all room list items when typing in message composer or switching state.
- * 📊 Impact: Prevents O(N) re-renders during high-frequency chat interactions.
- */
 const TelecomRoomListItem = React.memo(function TelecomRoomListItem({
   room,
   isSelected,
+  lastMessage,
   onSelect,
 }: {
   room: TelecomRoom;
   isSelected: boolean;
+  lastMessage?: string;
   onSelect: (id: string) => void;
 }) {
   const handleClick = useCallback(() => {
@@ -227,28 +73,28 @@ const TelecomRoomListItem = React.memo(function TelecomRoomListItem({
       aria-selected={isSelected}
       className={`w-full text-left p-3 rounded-xl transition-all flex items-start gap-3 border ${
         isSelected
-          ? "bg-[#39ff14]/10 border-[#39ff14]/40 text-white shadow-[0_0_12px_rgba(57,255,20,0.1)]"
-          : "bg-white/[0.02] border-white/5 hover:bg-white/5 text-white/80 hover:text-white"
+          ? "bg-[#39ff14]/10 border-[#39ff14]/40 text-[var(--foreground)] shadow-[0_0_12px_rgba(57,255,20,0.1)]"
+          : "bg-[var(--foreground)]/[0.02] border-[var(--border-subtle)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)]/80 hover:text-[var(--foreground)]"
       }`}
     >
       <div className="relative shrink-0 mt-0.5">
         <div
           className={`w-9 h-9 rounded-lg flex items-center justify-center border ${
-            room.category === "direct"
+            (room.category || "direct") === "direct"
               ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
-              : room.category === "groups"
+              : (room.category || "direct") === "groups"
                 ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
                 : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
           }`}
         >
-          {room.category === "direct" && <User className="w-4 h-4" aria-hidden="true" />}
-          {room.category === "groups" && <Users className="w-4 h-4" aria-hidden="true" />}
-          {room.category === "peers" && <Network className="w-4 h-4" aria-hidden="true" />}
+          {(room.category || "direct") === "direct" && <User className="w-4 h-4" aria-hidden="true" />}
+          {(room.category || "direct") === "groups" && <Users className="w-4 h-4" aria-hidden="true" />}
+          {(room.category || "direct") === "peers" && <Network className="w-4 h-4" aria-hidden="true" />}
         </div>
-        {room.isOnline !== undefined && (
+        {room.online !== undefined && (
           <span
             className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${
-              room.isOnline ? "bg-emerald-400" : "bg-slate-500"
+              room.online ? "bg-emerald-400" : "bg-slate-500"
             }`}
           />
         )}
@@ -256,19 +102,19 @@ const TelecomRoomListItem = React.memo(function TelecomRoomListItem({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1">
-          <span className="text-xs font-medium truncate text-white">
+          <span className="text-xs font-medium truncate text-[var(--foreground)]">
             {room.name}
           </span>
-          {room.lastMessageTime && (
-            <span className="text-[10px] font-mono text-white/40 shrink-0">
-              {room.lastMessageTime}
+          {room.lastActiveTimestamp && (
+            <span className="text-[10px] font-mono text-[var(--foreground)]/40 shrink-0">
+              {room.lastActiveTimestamp}
             </span>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2 mt-1">
-          <p className="text-[11px] text-white/50 truncate font-mono">
-            {room.lastMessage || "No messages yet"}
+          <p className="text-[11px] text-[var(--foreground)]/50 truncate font-mono">
+            {lastMessage || "No messages yet"}
           </p>
           {(room.unreadCount ?? 0) > 0 && (
             <span className="shrink-0 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full bg-[#39ff14] text-black">
@@ -293,28 +139,34 @@ const TelecomMessageItem = React.memo(function TelecomMessageItem({
 }: {
   message: TelecomMessage;
 }) {
+
   return (
     <div
       className={`p-3 rounded-xl max-w-lg space-y-1 ${
         message.isSelf
-          ? "ml-auto bg-[#39ff14]/10 border border-[#39ff14]/30 text-white"
-          : "bg-white/5 border border-white/10 text-white/90"
+          ? "ml-auto bg-[#39ff14]/10 border border-[#39ff14]/30 text-[var(--foreground)]"
+          : "bg-[var(--foreground)]/5 border border-[var(--border-subtle)] text-[var(--foreground)]/90"
       }`}
     >
-      <div className="flex items-center justify-between gap-4 text-[10px] font-mono text-white/40">
+      <div className="flex items-center justify-between gap-4 text-[10px] font-mono text-[var(--foreground)]/40">
         <span className={`font-semibold ${message.isSelf ? "text-[#39ff14]" : "text-cyan-400"}`}>
-          {message.sender}
+          {(message.senderAlias || message.senderNodeId)}
         </span>
         <div className="flex items-center gap-1.5">
           {message.isEphemeral && (
-            <span className="text-amber-400 text-[9px] uppercase px-1 rounded bg-amber-500/10 border border-amber-500/20">
+            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase tracking-wide">
               Ephemeral
             </span>
           )}
-          <span>{message.time}</span>
+          <span>{message.timestamp}</span>
         </div>
       </div>
-      <p className="text-xs leading-relaxed font-sans">{message.text}</p>
+      <p className="text-xs leading-relaxed font-sans">{message.content}</p>
+      {message.attachment && message.attachment.type?.startsWith("audio/") && (
+        <div className="mt-2">
+          <VoiceNotePlayer src={message.attachment.url || ""} />
+        </div>
+      )}
     </div>
   );
 });
@@ -332,11 +184,11 @@ const TelecomPeerCard = React.memo(function TelecomPeerCard({
   room: TelecomRoom;
 }) {
   return (
-    <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+    <div className="p-4 rounded-xl bg-[var(--foreground)]/[0.02] border border-[var(--border-subtle)] space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-mono font-medium text-white">
+          <span className="text-xs font-mono font-medium text-[var(--foreground)]">
             {room.peerNodeId || room.id}
           </span>
         </div>
@@ -345,13 +197,13 @@ const TelecomPeerCard = React.memo(function TelecomPeerCard({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-white/60">
-        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
-          <span className="text-white/40 block uppercase">Protocol</span>
-          <span className="text-white">v2.4 (Double Ratchet)</span>
+      <div className="grid grid-cols-2 gap-2 text-[10px] font-mono text-[var(--foreground)]/60">
+        <div className="p-2 rounded-lg bg-[var(--surface-card)] border border-[var(--border-subtle)]">
+          <span className="text-[var(--foreground)]/40 block uppercase">Protocol</span>
+          <span className="text-[var(--foreground)]">v2.4 (Double Ratchet)</span>
         </div>
-        <div className="p-2 rounded-lg bg-black/30 border border-white/5">
-          <span className="text-white/40 block uppercase">Classification</span>
+        <div className="p-2 rounded-lg bg-[var(--surface-card)] border border-[var(--border-subtle)]">
+          <span className="text-[var(--foreground)]/40 block uppercase">Classification</span>
           <span className="text-[#39ff14]">{room.securityClassification || "INTERNAL"}</span>
         </div>
       </div>
@@ -365,27 +217,58 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
   initialTab = "direct",
 }) => {
   const [activeTab, setActiveTab] = useState<TelecomTab>(initialTab);
-  const [rooms, setRooms] = useState<TelecomRoom[]>(MOCK_ROOMS);
-  const [messages, setMessages] = useState<Record<string, TelecomMessage[]>>(INITIAL_MESSAGES);
+  const { rooms, messages, sendMessageOptimistic, markRoomAsRead } = useTelecomRooms();
   const [selectedRoomId, setSelectedRoomId] = useState<string>("dir-1");
   const [searchQuery, setSearchQuery] = useState("");
   const [inputMessage, setInputMessage] = useState("");
   const [isEphemeral, setIsEphemeral] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  // Peers State
+  const [meshPeers, setMeshPeers] = useState<MeshPeer[]>([]);
+  const [isLoadingPeers, setIsLoadingPeers] = useState(false);
+  const [peersError, setPeersError] = useState<string | null>(null);
+
+
+  useEffect(() => {
+    if (activeTab === "peers" && token) {
+      let isMounted = true;
+      const fetchPeers = async () => {
+        try {
+          setIsLoadingPeers(true);
+          const client = new ApiClient(token || "");
+          const status = await client.getMeshStatus();
+          if (isMounted) {
+            setMeshPeers(status?.peers ?? []);
+            setPeersError(null);
+          }
+        } catch (err) {
+          if (isMounted) {
+            setPeersError("Failed to fetch network peers.");
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoadingPeers(false);
+          }
+        }
+      };
+      fetchPeers();
+      return () => { isMounted = false; };
+    }
+  }, [activeTab, token]);
+
+
   // Handle multi-channel room selection
   const handleSelectRoom = useCallback((roomId: string) => {
     setSelectedRoomId(roomId);
-    setRooms((prevRooms) =>
-      prevRooms.map((r) => (r.id === roomId ? { ...r, unreadCount: 0 } : r)),
-    );
-  }, []);
+    markRoomAsRead(roomId);
+  }, [markRoomAsRead]);
 
   // Filtered rooms for active tab and search query
   const filteredRooms = useMemo(() => {
     return rooms.filter(
       (room) =>
-        room.category === activeTab &&
+        (room.category || "direct") === activeTab &&
         room.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
   }, [rooms, activeTab, searchQuery]);
@@ -415,56 +298,33 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
       if (!inputMessage.trim() || isSending) return;
 
       setIsSending(true);
-      const now = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-      const newMsg: TelecomMessage = {
-        id: `msg-${Date.now()}`,
-        roomId: selectedRoomId,
-        sender: "Local Node (You)",
-        text: inputMessage.trim(),
-        time: now,
-        isSelf: true,
+      sendMessageOptimistic(selectedRoomId, inputMessage.trim(), {
+        senderAlias: "Local Node (You)",
         isEphemeral,
-      };
-
-      setMessages((prev) => ({
-        ...prev,
-        [selectedRoomId]: [...(prev[selectedRoomId] || []), newMsg],
-      }));
-
-      setRooms((prev) =>
-        prev.map((r) =>
-          r.id === selectedRoomId
-            ? { ...r, lastMessage: newMsg.text, lastMessageTime: now }
-            : r,
-        ),
-      );
+      });
 
       setInputMessage("");
       setIsSending(false);
     },
-    [inputMessage, isSending, selectedRoomId, isEphemeral],
+    [inputMessage, isEphemeral, isSending, selectedRoomId, sendMessageOptimistic]
   );
 
   return (
-    <div className="relative w-full h-screen font-sans bg-slate-950 text-white flex flex-col overflow-hidden">
+    <div className="relative w-full h-screen font-sans bg-[var(--background)] text-[var(--foreground)] flex flex-col overflow-hidden">
       {/* Top Status Bar */}
       <div className="relative z-50">
         <TopStatusBar isModalOpen={false} />
       </div>
 
       {/* View Header */}
-      <header className="relative z-40 border-b border-white/10 bg-slate-900/80 backdrop-blur-md px-4 py-3 flex flex-wrap items-center justify-between gap-4 mt-14 sm:mt-16">
+      <header className="relative z-40 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] backdrop-blur-md px-4 py-3 flex flex-wrap items-center justify-between gap-4 mt-14 sm:mt-16">
         <div className="flex items-center gap-3">
           {onClose && (
             <button
               type="button"
               onClick={onClose}
               aria-label="Back to Main View"
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
+              className="p-1.5 rounded-lg bg-[var(--foreground)]/5 hover:bg-[var(--foreground)]/10 text-[var(--foreground)]/70 hover:text-[var(--foreground)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
             >
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -474,10 +334,10 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
               <ShieldCheck className="w-4 h-4 text-[#39ff14]" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold tracking-wide text-white">
+              <h1 className="text-sm font-semibold tracking-wide text-[var(--foreground)]">
                 Xavier Telecom Hub
               </h1>
-              <p className="text-[10px] text-white/50 font-mono">
+              <p className="text-[10px] text-[var(--foreground)]/50 font-mono">
                 Encrypted Multi-Channel Node Router
               </p>
             </div>
@@ -485,12 +345,12 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
         </div>
 
         {/* Security & Transport Status Badge */}
-        <div className="hidden lg:flex items-center gap-4 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full text-xs font-mono">
+        <div className="hidden lg:flex items-center gap-4 bg-[var(--surface-card)] border border-[var(--border-subtle)] px-3 py-1.5 rounded-full text-xs font-mono">
           <div className="flex items-center gap-1.5 text-[#39ff14] text-[11px]">
             <Lock className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Noise-XK Protocol Active</span>
           </div>
-          <div className="w-px h-3 bg-white/10" />
+          <div className="w-px h-3 bg-[var(--foreground)]/10" />
           <div className="flex items-center gap-1 text-cyan-400 text-[11px]">
             <Zap className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Double Ratchet E2EE</span>
@@ -501,7 +361,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
         <div
           role="tablist"
           aria-label="Telecom Multi-Channel Navigation"
-          className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10"
+          className="flex items-center gap-1 bg-[var(--surface-card)] p-1 rounded-xl border border-[var(--border-subtle)]"
         >
           <button
             type="button"
@@ -513,7 +373,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "direct"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
             }`}
           >
             <User className="w-3.5 h-3.5" aria-hidden="true" />
@@ -530,7 +390,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "groups"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
             }`}
           >
             <Users className="w-3.5 h-3.5" aria-hidden="true" />
@@ -547,7 +407,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "peers"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5"
             }`}
           >
             <Network className="w-3.5 h-3.5" aria-hidden="true" />
@@ -557,18 +417,18 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
       </header>
 
       {/* Main Multi-Channel Content View */}
-      <main className="flex-1 flex overflow-hidden bg-slate-950/60 p-2 sm:p-4 gap-4">
+      <main className="flex-1 flex overflow-hidden bg-[var(--background)]/60 p-2 sm:p-4 gap-4">
         {/* Left Sidebar: Channel Rooms Navigation */}
         <aside
           id={`panel-${activeTab}`}
           role="tabpanel"
           aria-labelledby={`tab-${activeTab}`}
-          className="w-full md:w-80 shrink-0 bg-slate-900/60 rounded-2xl border border-white/10 p-3 flex flex-col gap-3"
+          className="w-full md:w-80 shrink-0 bg-[var(--surface-card)] rounded-2xl border border-[var(--border-subtle)] p-3 flex flex-col gap-3"
         >
           {/* Room Search Bar */}
           <div className="relative">
             <Search
-              className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+              className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--foreground)]/40"
               aria-hidden="true"
             />
             <input
@@ -576,13 +436,13 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Search ${activeTab}...`}
-              className="w-full bg-black/40 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#39ff14]/50 font-mono"
+              className="w-full bg-[var(--surface-card)] border border-[var(--border-subtle)] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[var(--foreground)] placeholder-white/30 focus:outline-none focus:border-[#39ff14]/50 font-mono"
             />
           </div>
 
           {/* Category Channel Header */}
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-white/40">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--foreground)]/40">
               {activeTab === "direct" && "Active Direct Encrypted Channels"}
               {activeTab === "groups" && "Active Group Telecom Rooms"}
               {activeTab === "peers" && "Known Peer Node Endpoints"}
@@ -590,7 +450,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
             <button
               type="button"
               aria-label={`Add new ${activeTab} channel`}
-              className="p-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
+              className="p-1 rounded-lg bg-[var(--foreground)]/5 hover:bg-[var(--foreground)]/10 text-[var(--foreground)]/60 hover:text-[var(--foreground)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
             >
               <Plus className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
@@ -599,28 +459,66 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
           {/* Rooms List */}
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {filteredRooms.length === 0 ? (
-              <div className="text-center py-8 text-xs text-white/40 font-mono">
+              <div className="text-center py-8 text-xs text-[var(--foreground)]/40 font-mono">
                 No matching channels found.
               </div>
             ) : (
-              filteredRooms.map((room) => (
-                <TelecomRoomListItem
-                  key={room.id}
-                  room={room}
-                  isSelected={room.id === selectedRoomId}
-                  onSelect={handleSelectRoom}
-                />
-              ))
+              filteredRooms.map((room) => {
+                const roomMsgs = messages[room.id] || [];
+                const lastMsg = roomMsgs.length > 0 ? roomMsgs[roomMsgs.length - 1].content : undefined;
+                return (
+                  <TelecomRoomListItem
+                    key={room.id}
+                    room={room}
+                    isSelected={room.id === selectedRoomId}
+                    lastMessage={lastMsg}
+                    onSelect={handleSelectRoom}
+                  />
+                );
+              })
             )}
           </div>
         </aside>
 
         {/* Center/Right Main Panel: Active Room / Peer View */}
-        <section className="flex-1 bg-slate-900/60 rounded-2xl border border-white/10 flex flex-col overflow-hidden">
-          {selectedRoom ? (
+        <section className="flex-1 bg-[var(--surface-card)] rounded-2xl border border-[var(--border-subtle)] flex flex-col overflow-hidden">
+          {activeTab === "peers" ? (
+            <div className="flex-1 p-4 overflow-y-auto space-y-4">
+              <h2 className="text-sm font-semibold text-[var(--foreground)] mb-4">Network Peers</h2>
+              {isLoadingPeers ? (
+                 <div className="text-center py-8 text-xs text-[var(--foreground)]/40 font-mono">
+                    <RefreshCw className="w-5 h-5 mx-auto mb-2 animate-spin text-[var(--foreground)]/20" />
+                    Loading peers...
+                 </div>
+              ) : peersError ? (
+                 <div className="text-center py-8 text-xs text-rose-400 font-mono">
+                    {peersError}
+                 </div>
+              ) : meshPeers.length === 0 ? (
+                 <div className="text-center py-8 text-xs text-[var(--foreground)]/40 font-mono">
+                    No peers discovered yet.
+                 </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {meshPeers.map(peer => (
+                    <PeerDiscoveryCard
+                      key={peer.node_id}
+                      publicKey={peer.node_id}
+                      nodeId={peer.node_id}
+                      alias={peer.alias}
+                      latencyMs={null}
+                      pingStatus={isPeerRecentlySeen(peer.last_seen_at) ? "online" : "offline"}
+                      lastSeen={peer.last_seen_at ? new Date(peer.last_seen_at * 1000).toLocaleTimeString() : "Unknown"}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : selectedRoom ? (
+
             <>
               {/* Room Header */}
-              <div className="p-3 sm:p-4 border-b border-white/10 bg-black/40 flex items-center justify-between flex-wrap gap-2">
+              <div className="p-3 sm:p-4 border-b border-[var(--border-subtle)] bg-[var(--surface-card)] flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-[#39ff14]/10 border border-[#39ff14]/30 flex items-center justify-center text-[#39ff14]">
                     {selectedRoom.category === "direct" && <User className="w-4 h-4" aria-hidden="true" />}
@@ -628,14 +526,14 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
                     {selectedRoom.category === "peers" && <Network className="w-4 h-4" aria-hidden="true" />}
                   </div>
                   <div>
-                    <h2 className="text-xs sm:text-sm font-semibold text-white flex items-center gap-2">
+                    <h2 className="text-xs sm:text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
                       <span>{selectedRoom.name}</span>
                       {selectedRoom.isEncrypted && (
                         <Lock className="w-3 h-3 text-[#39ff14]" aria-label="End-to-end encrypted" />
                       )}
                     </h2>
-                    <p className="text-[10px] text-white/40 font-mono">
-                      Category: {selectedRoom.category.toUpperCase()} · Status: {selectedRoom.isOnline ? "Online" : "Offline"}
+                    <p className="text-[10px] text-[var(--foreground)]/40 font-mono">
+                      Category: {String(selectedRoom.category || "direct").toUpperCase()} · Status: {selectedRoom.online ? "Online" : "Offline"}
                     </p>
                   </div>
                 </div>
@@ -648,7 +546,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
                     className={`px-2.5 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
                       isEphemeral
                         ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-white/5 text-white/50 border border-white/10 hover:text-white"
+                        : "bg-[var(--foreground)]/5 text-[var(--foreground)]/50 border border-[var(--border-subtle)] hover:text-[var(--foreground)]"
                     }`}
                   >
                     <Clock className="w-3 h-3" aria-hidden="true" />
@@ -661,8 +559,8 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
               <div className="flex-1 p-4 overflow-y-auto space-y-3 min-h-[280px]">
                 {activeMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2">
-                    <MessageSquare className="w-8 h-8 text-white/20" aria-hidden="true" />
-                    <p className="text-xs text-white/50 font-mono">
+                    <MessageSquare className="w-8 h-8 text-[var(--foreground)]/20" aria-hidden="true" />
+                    <p className="text-xs text-[var(--foreground)]/50 font-mono">
                       No encrypted messages in this channel yet.
                     </p>
                   </div>
@@ -676,14 +574,14 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
               {/* Message Composer Input Form */}
               <form
                 onSubmit={handleSendMessage}
-                className="p-3 border-t border-white/10 bg-black/40 flex items-center gap-2"
+                className="p-3 border-t border-[var(--border-subtle)] bg-[var(--surface-card)] flex items-center gap-2"
               >
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder={`Send encrypted message to ${selectedRoom.name}...`}
-                  className="flex-1 bg-white/5 border border-white/10 text-xs text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#39ff14]/50 font-mono placeholder-white/30"
+                  className="flex-1 bg-[var(--foreground)]/5 border border-[var(--border-subtle)] text-xs text-[var(--foreground)] px-3 py-2 rounded-xl focus:outline-none focus:border-[#39ff14]/50 font-mono placeholder-white/30"
                 />
                 <button
                   type="submit"
@@ -697,7 +595,7 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
               </form>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-white/40 font-mono text-xs">
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[var(--foreground)]/40 font-mono text-xs">
               Select a channel to view encrypted communication.
             </div>
           )}
@@ -705,15 +603,15 @@ export const TelecomHubView: React.FC<TelecomHubViewProps> = ({
 
         {/* Right Information Panel (Peer / Room Security Metadata) */}
         {selectedRoom && (
-          <aside className="hidden xl:flex w-72 shrink-0 bg-slate-900/60 rounded-2xl border border-white/10 p-4 flex-col gap-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+          <aside className="hidden xl:flex w-72 shrink-0 bg-[var(--surface-card)] rounded-2xl border border-[var(--border-subtle)] p-4 flex-col gap-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-[var(--border-subtle)]">
               <Shield className="w-4 h-4 text-[#39ff14]" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-white">Security & Key Info</h3>
+              <h3 className="text-xs font-semibold text-[var(--foreground)]">Security & Key Info</h3>
             </div>
 
             <TelecomPeerCard room={selectedRoom} />
 
-            <div className="p-3 rounded-xl bg-black/30 border border-white/5 space-y-2 text-[10px] font-mono text-white/60">
+            <div className="p-3 rounded-xl bg-[var(--surface-card)] border border-[var(--border-subtle)] space-y-2 text-[10px] font-mono text-[var(--foreground)]/60">
               <div className="flex justify-between">
                 <span>Signal Ratchet:</span>
                 <span className="text-emerald-400">Synced</span>
