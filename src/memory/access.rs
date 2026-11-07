@@ -1015,7 +1015,7 @@ mod prune_zone_tests {
 
     #[tokio::test]
     async fn test_prune_precondition_blocks_codebase_source() {
-        let store = crate::memory::fallback_store::FallbackStore::new(vec![]);
+        let store = crate::memory::store::InMemoryMemoryStore::default();
         let mut record = MemoryRecord::default();
         record.metadata = serde_json::json!({ "source": "codebase" });
         let res = prune_precondition(&store, &record, Utc::now())
@@ -1026,7 +1026,7 @@ mod prune_zone_tests {
 
     #[tokio::test]
     async fn test_prune_precondition_blocks_atomic_zone() {
-        let store = crate::memory::fallback_store::FallbackStore::new(vec![]);
+        let store = crate::memory::store::InMemoryMemoryStore::default();
         let mut record = MemoryRecord::default();
         record.metadata = serde_json::json!({ "zone": "atomic" });
         let res = prune_precondition(&store, &record, Utc::now())
