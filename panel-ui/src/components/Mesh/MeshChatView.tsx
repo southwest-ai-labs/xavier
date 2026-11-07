@@ -183,7 +183,7 @@ const ChatMessageItem = React.memo(function ChatMessageItem({ msg }: { msg: Chat
 
         {/* Attachment Indicator / Details */}
         {msg.attachment && (
-          <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-2 text-[11px]">
+          <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] dark:border-white/10 flex items-center gap-2 text-[11px]">
             <FileText className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             <div className="truncate">
               <span className="font-mono truncate block">{msg.attachment.name}</span>
@@ -328,7 +328,7 @@ export const MeshChatView: React.FC<MeshChatViewProps> = ({
       {/* Sidebar Overlay for Mobile Layout */}
       {isSidebarOpenMobile && (
         <div
-          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          className="fixed inset-0 bg-[var(--surface)] dark:bg-[var(--background)] dark:bg-black/60 z-30 md:hidden"
           onClick={() => setIsSidebarOpenMobile(false)}
         />
       )}

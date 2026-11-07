@@ -117,7 +117,7 @@ const MeshHubProposalItem = React.memo(function MeshHubProposalItem({
 }) {
   return (
     <div
-      className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4"
+      className="p-5 rounded-2xl bg-[var(--border-subtle)] dark:bg-white/[0.02] border border-[var(--border-subtle)] dark:border-white/10 space-y-4"
     >
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-[#39ff14] uppercase tracking-wider">
@@ -133,10 +133,10 @@ const MeshHubProposalItem = React.memo(function MeshHubProposalItem({
           {prop.status}
         </span>
       </div>
-      <h3 className="text-sm font-medium text-white">
+      <h3 className="text-sm font-medium text-[var(--foreground)] dark:text-white">
         {prop.title}
       </h3>
-      <div className="flex items-center justify-between text-xs text-white/50 border-t border-white/5 pt-3">
+      <div className="flex items-center justify-between text-xs text-[var(--foreground)]/50 dark:text-[var(--foreground)] dark:text-white/50 border-t border-[var(--border-subtle)] dark:border-white/5 pt-3">
         <span>Proposer: {prop.proposer}</span>
         <span>Votes: {prop.votesFor} For / {prop.votesAgainst} Against</span>
       </div>
@@ -159,7 +159,7 @@ const PeerHealthItem = React.memo(function PeerHealthItem({
 }) {
   return (
     <div
-      className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+      className="p-4 rounded-2xl bg-[var(--border-subtle)] dark:bg-white/[0.02] border border-[var(--border-subtle)] dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
     >
       <div className="flex items-center gap-3">
         <Heart
@@ -172,14 +172,14 @@ const PeerHealthItem = React.memo(function PeerHealthItem({
         />
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-white">
+            <span className="text-sm font-medium text-[var(--foreground)] dark:text-white">
               {peer.alias}
             </span>
-            <code className="text-[10px] text-white/40 font-mono">
+            <code className="text-[10px] text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 font-mono">
               {peer.nodeId}
             </code>
           </div>
-          <p className="text-xs text-white/40 mt-0.5">
+          <p className="text-xs text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 mt-0.5">
             Last seen: {peer.lastSeen}
           </p>
         </div>
@@ -187,16 +187,16 @@ const PeerHealthItem = React.memo(function PeerHealthItem({
 
       <div className="flex items-center gap-4 text-xs">
         <div className="text-right">
-          <span className="text-[10px] uppercase text-white/40 block font-mono">
+          <span className="text-[10px] uppercase text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 block font-mono">
             Sync Lag
           </span>
-          <span className="font-mono text-white/80">
+          <span className="font-mono text-[var(--foreground)]/80 dark:text-[var(--foreground)] dark:text-white/80">
             {peer.syncLagSecs}s
           </span>
         </div>
 
         <div className="text-right">
-          <span className="text-[10px] uppercase text-white/40 block font-mono">
+          <span className="text-[10px] uppercase text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 block font-mono">
             Auto-Repair Decision
           </span>
           <span
@@ -223,11 +223,11 @@ const ChatMessageItem = React.memo(function ChatMessageItem({
     <div
       className={`p-3 rounded-xl max-w-lg ${
         msg.sender.startsWith("Local Node")
-          ? "ml-auto bg-[#39ff14]/10 border border-[#39ff14]/20 text-white"
-          : "bg-white/5 border border-white/10 text-white/90"
+          ? "ml-auto bg-[#39ff14]/10 border border-[#39ff14]/20 text-[var(--foreground)] dark:text-white"
+          : "bg-[var(--border-subtle)] dark:bg-white/5 border border-[var(--border-subtle)] dark:border-white/10 text-[var(--foreground)]/90 dark:text-[var(--foreground)] dark:text-white/90"
       }`}
     >
-      <div className="flex justify-between items-center text-[10px] text-white/40 mb-1">
+      <div className="flex justify-between items-center text-[10px] text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 mb-1">
         <span className="font-medium text-[#39ff14]">{msg.sender}</span>
         <span className="font-mono">{msg.time}</span>
       </div>
@@ -276,21 +276,21 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-screen font-sans bg-slate-950 text-white flex flex-col overflow-hidden">
+    <div className="relative w-full h-screen font-sans bg-[var(--background)] dark:bg-slate-950 text-[var(--foreground)] dark:text-white flex flex-col overflow-hidden">
       {/* Top Status Bar Integration */}
       <div className="relative z-50">
         <TopStatusBar isModalOpen={false} />
       </div>
 
       {/* Navigation Header */}
-      <header className="relative z-40 border-b border-white/10 bg-slate-900/80 backdrop-blur-md px-4 py-3 flex items-center justify-between mt-14 sm:mt-16">
+      <header className="relative z-40 border-b border-[var(--border-subtle)] dark:border-white/10 bg-[var(--surface-card)] dark:bg-[var(--surface-card)] dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 flex items-center justify-between mt-14 sm:mt-16">
         <div className="flex items-center gap-3">
           {onClose && (
             <button
               type="button"
               onClick={onClose}
               aria-label="Back to Main View"
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
+              className="p-1.5 rounded-lg bg-[var(--border-subtle)] dark:bg-white/5 hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/10 text-[var(--foreground)]/70 dark:text-[var(--foreground)] dark:text-white/70 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
             >
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             </button>
@@ -300,10 +300,10 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
               <Network className="w-4 h-4 text-[#39ff14]" aria-hidden="true" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold tracking-wide text-white">
+              <h1 className="text-sm font-semibold tracking-wide text-[var(--foreground)] dark:text-white">
                 Xavier Mesh Hub
               </h1>
-              <p className="text-[10px] text-white/50 font-mono">
+              <p className="text-[10px] text-[var(--foreground)]/50 dark:text-[var(--foreground)] dark:text-white/50 font-mono">
                 P2P Decentralized Node View
               </p>
             </div>
@@ -311,13 +311,13 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
         </div>
 
         {/* Quick Active Network Indicator */}
-        <div className="hidden md:flex items-center gap-4 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full text-xs">
+        <div className="hidden md:flex items-center gap-4 bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-black/40 border border-[var(--border-subtle)] dark:border-white/10 px-3 py-1.5 rounded-full text-xs">
           <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Active Network: P2P-Mesh-Mainnet</span>
           </div>
-          <div className="w-px h-3 bg-white/10" />
-          <div className="flex items-center gap-1 text-white/60 text-[11px]">
+          <div className="w-px h-3 bg-[var(--border-subtle)] dark:bg-white/10" />
+          <div className="flex items-center gap-1 text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 text-[11px]">
             <Globe className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
             <span>3 Connected Peers</span>
           </div>
@@ -325,7 +325,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
 
         {/* Tab Navigation */}
         <nav
-          className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/10"
+          className="flex items-center gap-1 bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-black/30 p-1 rounded-xl border border-[var(--border-subtle)] dark:border-white/10"
           aria-label="Mesh Navigation Tabs"
         >
           <button
@@ -334,7 +334,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "networks"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/5"
             }`}
           >
             <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
@@ -347,7 +347,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "topology"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/5"
             }`}
           >
             <Network className="w-3.5 h-3.5" aria-hidden="true" />
@@ -360,7 +360,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "governance"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/5"
             }`}
           >
             <Vote className="w-3.5 h-3.5" aria-hidden="true" />
@@ -373,7 +373,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "chat"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/5"
             }`}
           >
             <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
@@ -386,7 +386,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14] ${
               activeTab === "health"
                 ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]/40"
-                : "text-white/60 hover:text-white hover:bg-white/5"
+                : "text-[var(--foreground)]/60 dark:text-[var(--foreground)] dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-[var(--foreground)] dark:text-white hover:bg-[var(--border-subtle)] dark:hover:bg-[var(--border-subtle)] dark:bg-white/5"
             }`}
           >
             <Heart className="w-3.5 h-3.5" aria-hidden="true" />
@@ -396,7 +396,7 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
       </header>
 
       {/* Main Tab View Content */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950/60">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-slate-950/60">
         {/* Networks Tab */}
         {activeTab === "networks" && (
           <div className="h-full">
@@ -409,15 +409,15 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
           <div className="space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-light text-white tracking-tight">
+                <h2 className="text-xl font-light text-[var(--foreground)] dark:text-white tracking-tight">
                   Mesh Network Topology
                 </h2>
-                <p className="text-xs text-white/40 mt-1">
+                <p className="text-xs text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 mt-1">
                   Visual node layout, routing distances, and active sync links.
                 </p>
               </div>
               <div className="flex gap-2">
-                <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono text-white/70">
+                <div className="px-3 py-1 rounded-lg bg-[var(--border-subtle)] dark:bg-white/5 border border-[var(--border-subtle)] dark:border-white/10 text-xs font-mono text-[var(--foreground)]/70 dark:text-[var(--foreground)] dark:text-white/70">
                   Total Nodes: 4
                 </div>
                 <div className="px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs font-mono text-emerald-400">
@@ -427,14 +427,14 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+              <div className="p-5 rounded-2xl bg-[var(--border-subtle)] dark:bg-white/[0.02] border border-[var(--border-subtle)] dark:border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/80">
+                  <span className="text-xs font-medium text-[var(--foreground)]/80 dark:text-[var(--foreground)] dark:text-white/80">
                     Local Node (You)
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#39ff14]" />
                 </div>
-                <p className="text-[11px] font-mono text-white/40">
+                <p className="text-[11px] font-mono text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40">
                   Role: Primary Validator
                 </p>
                 <div className="text-[10px] text-emerald-400/80 bg-emerald-500/10 p-2 rounded-lg border border-emerald-500/20 font-mono">
@@ -442,14 +442,14 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+              <div className="p-5 rounded-2xl bg-[var(--border-subtle)] dark:bg-white/[0.02] border border-[var(--border-subtle)] dark:border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/80">
+                  <span className="text-xs font-medium text-[var(--foreground)]/80 dark:text-[var(--foreground)] dark:text-white/80">
                     node_alpha_8f
                   </span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
-                <p className="text-[11px] font-mono text-white/40">
+                <p className="text-[11px] font-mono text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40">
                   Role: Gateway Node
                 </p>
                 <div className="text-[10px] text-cyan-400/80 bg-cyan-500/10 p-2 rounded-lg border border-cyan-500/20 font-mono">
@@ -457,14 +457,14 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
                 </div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3">
+              <div className="p-5 rounded-2xl bg-[var(--border-subtle)] dark:bg-white/[0.02] border border-[var(--border-subtle)] dark:border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/80">
+                  <span className="text-xs font-medium text-[var(--foreground)]/80 dark:text-[var(--foreground)] dark:text-white/80">
                     node_beta_3a
                   </span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
-                <p className="text-[11px] font-mono text-white/40">
+                <p className="text-[11px] font-mono text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40">
                   Role: Storage Relay
                 </p>
                 <div className="text-[10px] text-cyan-400/80 bg-cyan-500/10 p-2 rounded-lg border border-cyan-500/20 font-mono">
@@ -473,16 +473,16 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
               </div>
             </div>
 
-            <div className="p-6 rounded-2xl bg-black/40 border border-white/10 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
+            <div className="p-6 rounded-2xl bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-black/40 border border-[var(--border-subtle)] dark:border-white/10 flex flex-col items-center justify-center min-h-[300px] text-center space-y-4">
               <Network
                 className="w-12 h-12 text-[#39ff14]/40 animate-pulse"
                 aria-hidden="true"
               />
               <div>
-                <h3 className="text-sm font-medium text-white">
+                <h3 className="text-sm font-medium text-[var(--foreground)] dark:text-white">
                   Live Peer Connections Graph
                 </h3>
-                <p className="text-xs text-white/40 max-w-md mt-1">
+                <p className="text-xs text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 max-w-md mt-1">
                   P2P nodes communicate over libp2p and WebRTC transport channels with continuous background auto-repair.
                 </p>
               </div>
@@ -495,10 +495,10 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
           <div className="space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-light text-white tracking-tight">
+                <h2 className="text-xl font-light text-[var(--foreground)] dark:text-white tracking-tight">
                   DAO Governance & Tokenomics
                 </h2>
-                <p className="text-xs text-white/40 mt-1">
+                <p className="text-xs text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 mt-1">
                   Decentralized voting proposals and validator penalty metrics.
                 </p>
               </div>
@@ -520,14 +520,14 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
 
         {/* P2P Chat Tab */}
         {activeTab === "chat" && (
-          <div className="max-w-4xl mx-auto h-full flex flex-col bg-slate-900/60 rounded-2xl border border-white/10 overflow-hidden">
-            <div className="p-4 border-b border-white/10 bg-black/40 flex items-center justify-between">
+          <div className="max-w-4xl mx-auto h-full flex flex-col bg-[var(--surface-card)] dark:bg-[var(--surface-card)] dark:bg-slate-900/60 rounded-2xl border border-[var(--border-subtle)] dark:border-white/10 overflow-hidden">
+            <div className="p-4 border-b border-[var(--border-subtle)] dark:border-white/10 bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-black/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare
                   className="w-4 h-4 text-[#39ff14]"
                   aria-hidden="true"
                 />
-                <h3 className="text-sm font-medium text-white">
+                <h3 className="text-sm font-medium text-[var(--foreground)] dark:text-white">
                   Encrypted Mesh P2P Chat
                 </h3>
               </div>
@@ -544,14 +544,14 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
 
             <form
               onSubmit={handleSendMessage}
-              className="p-3 border-t border-white/10 bg-black/40 flex gap-2"
+              className="p-3 border-t border-[var(--border-subtle)] dark:border-white/10 bg-[var(--surface-card)] dark:bg-[var(--background)] dark:bg-black/40 flex gap-2"
             >
               <input
                 type="text"
                 value={chatMessage}
                 onChange={(e) => setChatMessage(e.target.value)}
                 placeholder="Type a peer-to-peer message..."
-                className="flex-1 bg-white/5 border border-white/10 text-xs text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#39ff14]/50 font-mono"
+                className="flex-1 bg-[var(--border-subtle)] dark:bg-white/5 border border-[var(--border-subtle)] dark:border-white/10 text-xs text-[var(--foreground)] dark:text-white px-3 py-2 rounded-xl focus:outline-none focus:border-[#39ff14]/50 font-mono"
               />
               <button
                 type="submit"
@@ -568,10 +568,10 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
           <div className="space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-light text-white tracking-tight">
+                <h2 className="text-xl font-light text-[var(--foreground)] dark:text-white tracking-tight">
                   Family Node Health & Auto-Repair Module
                 </h2>
-                <p className="text-xs text-white/40 mt-1">
+                <p className="text-xs text-[var(--foreground)]/40 dark:text-[var(--foreground)] dark:text-white/40 mt-1">
                   Peer reconnection status, sync lag, and auto-repair policies.
                 </p>
               </div>
