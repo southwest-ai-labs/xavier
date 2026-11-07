@@ -2,6 +2,12 @@
 
 <!-- BEGIN AUTOGEN -->
 
+## CLI & Agents
+
+| Variable | Type | Default | Description | Secret |
+|----------|------|---------|-------------|--------|
+| `XAVIER_TOTP_CODE` | `string` | (unset) | 6-digit TOTP two-factor authentication code for non-interactive xavier login | ✅ |
+
 ## CLI / Legacy
 
 | Variable | Type | Default | Description | Secret |
@@ -112,6 +118,12 @@
 | `XAVIER_ROUTER_QUALITY_MODEL` | `string` | (none) | Model for quality queries (router override) | ❌ |
 | `XAVIER_ROUTER_RETRIEVED_MODEL` | `string` |  | Model for retrieved-augmented queries | ❌ |
 
+## Security & Encryption
+
+| Variable | Type | Default | Description | Secret |
+|----------|------|---------|-------------|--------|
+| `XAVIER_CAPSULE_SECRET` | `string` | (unset) | Encryption passphrase/key used for sealing Zero-Handoff context capsules | ✅ |
+
 ## Server & Network
 
 | Variable | Type | Default | Description | Secret |
@@ -136,6 +148,14 @@
 | `XAVIER_TOKEN` | `string` | `—` | Authentication token for HTTP API and CLI clients | ✅ |
 | `XAVIER_TOKEN_SECRET` | `string` | `—` | Secret key for HMAC signing in sync/verification | ✅ |
 | `XAVIER_URL` | `string` | `"http://localhost:8006"` | Full URL for client, verification, and sync connections | ❌ |
+
+## Sync & Cloud
+
+| Variable | Type | Default | Description | Secret |
+|----------|------|---------|-------------|--------|
+| `XAVIER_R2_TOKEN` | `string` | (unset) | Bearer authorization token for Cloudflare R2 capsule storage uploads | ✅ |
+| `XAVIER_R2_URL` | `string` | (unset) | Endpoint URL for Cloudflare R2 context capsule storage | ❌ |
+| `XAVIER_TENANT` | `string` | `default` | Tenant identifier used in Cloudflare R2 capsule path isolation | ❌ |
 
 ## Synchronization
 
@@ -202,6 +222,7 @@
 | `XAVIER_CLOUD_BACKUP_INTERVAL_MINS` | `string` |  | Internal | ❌ |
 | `XAVIER_CLOUD_BACKUP_PASSPHRASE` | `string` |  | Internal | ✅ |
 | `XAVIER_CLOUD_BACKUP_PASSPHRASE_FILE` | `string` |  | Internal | ✅ |
+| `XAVIER_CLOUD_TOKEN` | `string` |  | Internal | ✅ |
 | `XAVIER_CODEGRAPH_BIN` | `string` |  | Internal | ❌ |
 | `XAVIER_CODEGRAPH_INSTALL_ACTIVE` | `string` |  | Internal | ❌ |
 | `XAVIER_CODEGRAPH_PROBE_DEPTH` | `string` | (unset) | Recursion guard for sidecar probing | ❌ |

@@ -575,6 +575,12 @@ pub enum Command {
         cmd: RepoCommand,
     },
 
+    /// Zero-Handoff context capsule storage (Cloudflare R2)
+    Capsule {
+        #[command(subcommand)]
+        cmd: CapsuleCommand,
+    },
+
     /// Manage Xavier spaces
     Space {
         #[command(subcommand)]
@@ -585,6 +591,51 @@ pub enum Command {
     Skills {
         #[command(subcommand)]
         cmd: SkillsCommand,
+    },
+
+    /// Log in to Xavier Cloud (SWAL Mesh) via 1-click magic link or browser
+    Login(super::login::LoginArgs),
+
+    /// Authentication commands (login, status, logout)
+    Auth {
+        #[command(subcommand)]
+        cmd: super::login::AuthCommand,
+    },
+
+    /// Log out from Xavier Cloud
+    Logout {
+        #[arg(long, default_value_t = false)]
+        json: bool,
+    },
+}
+
+/// Zero-Handoff context capsule subcommands (`xavier capsule push|pull`).
+#[derive(Subcommand, Debug, Clone)]
+pub enum CapsuleCommand {
+    /// Push an encrypted context capsule to Cloudflare R2
+    Push {
+        /// Capsule ID to push
+        capsule_id: String,
+        /// Optional path to file containing capsule payload
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+        /// Optional inline raw/JSON data payload
+        #[arg(short, long)]
+        data: Option<String>,
+        /// Output result in JSON format
+        #[arg(long, default_value_t = false)]
+        json: bool,
+    },
+    /// Pull and decrypt a context capsule from Cloudflare R2
+    Pull {
+        /// Capsule ID or swal-capsule:// token
+        capsule_id: String,
+        /// Optional path to save decompressed/decrypted capsule content
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+        /// Output result in JSON format
+        #[arg(long, default_value_t = false)]
+        json: bool,
     },
 }
 
@@ -2604,6 +2655,64 @@ mod tests {
                 _ => panic!("Expected ModelsCommand::List"),
             },
             _ => panic!("Expected Command::Models"),
+        }
+    }
+
+    #[test]
+    fn test_login_command_totp_code_parsing() {
+        let args = vec!["xavier", "login", "--totp-code", "123456"];
+        let cli = CliTest::try_parse_from(args).expect("Should parse login --totp-code");
+        match cli.command {
+            Command::Login(login_args) => {
+                assert_eq!(login_args.totp_code, Some("123456".to_string()));
+            }
+            _ => panic!("Expected Command::Login"),
+        }
+    }
+
+    #[test]
+    fn test_capsule_command_parsing() {
+        let push_args = vec![
+            "xavier",
+            "capsule",
+            "push",
+            "session-cap-123",
+            "--data",
+            "{\"state\":1}",
+        ];
+        let cli_push = CliTest::try_parse_from(push_args).expect("Should parse capsule push");
+        match cli_push.command {
+            Command::Capsule { cmd } => match cmd {
+                CapsuleCommand::Push {
+                    capsule_id, data, ..
+                } => {
+                    assert_eq!(capsule_id, "session-cap-123");
+                    assert_eq!(data, Some("{\"state\":1}".to_string()));
+                }
+                _ => panic!("Expected CapsuleCommand::Push"),
+            },
+            _ => panic!("Expected Command::Capsule"),
+        }
+
+        let pull_args = vec![
+            "xavier",
+            "capsule",
+            "pull",
+            "swal-capsule://session-cap-123",
+            "--json",
+        ];
+        let cli_pull = CliTest::try_parse_from(pull_args).expect("Should parse capsule pull");
+        match cli_pull.command {
+            Command::Capsule { cmd } => match cmd {
+                CapsuleCommand::Pull {
+                    capsule_id, json, ..
+                } => {
+                    assert_eq!(capsule_id, "swal-capsule://session-cap-123");
+                    assert!(json);
+                }
+                _ => panic!("Expected CapsuleCommand::Pull"),
+            },
+            _ => panic!("Expected Command::Capsule"),
         }
     }
 }

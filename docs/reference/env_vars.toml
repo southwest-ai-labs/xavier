@@ -1985,6 +1985,14 @@ category = "Uncategorized"
 secret = false
 
 [[variables]]
+name = "XAVIER_CLOUD_TOKEN"
+type = "string"
+default = ""
+description = "Internal"
+category = "Uncategorized"
+secret = true
+
+[[variables]]
 name = "XAVIER_PGHEART_TOKEN"
 type = "string"
 default = ""
@@ -2774,4 +2782,44 @@ type = "string"
 default = "(unset)"
 description = "Base URL for downloading offline/local ONNX embedding models (ADR-042)"
 category = "Model & Embeddings"
+secret = false
+
+[[variables]]
+name = "XAVIER_TOTP_CODE"
+type = "string"
+default = "(unset)"
+description = "6-digit TOTP two-factor authentication code for non-interactive xavier login"
+category = "CLI & Agents"
+secret = true
+
+[[variables]]
+name = "XAVIER_CAPSULE_SECRET"
+type = "string"
+default = "(unset)"
+description = "Encryption passphrase/key used for sealing Zero-Handoff context capsules"
+category = "Security & Encryption"
+secret = true
+
+[[variables]]
+name = "XAVIER_R2_TOKEN"
+type = "string"
+default = "(unset)"
+description = "Bearer authorization token for Cloudflare R2 capsule storage uploads"
+category = "Sync & Cloud"
+secret = true
+
+[[variables]]
+name = "XAVIER_R2_URL"
+type = "string"
+default = "(unset)"
+description = "Endpoint URL for Cloudflare R2 context capsule storage"
+category = "Sync & Cloud"
+secret = false
+
+[[variables]]
+name = "XAVIER_TENANT"
+type = "string"
+default = "default"
+description = "Tenant identifier used in Cloudflare R2 capsule path isolation"
+category = "Sync & Cloud"
 secret = false
