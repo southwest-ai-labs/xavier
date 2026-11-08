@@ -364,8 +364,28 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
   return (
     <div
       data-testid="purerag-explorer"
-      className="w-full h-full flex flex-col gap-4 max-w-7xl mx-auto p-2 sm:p-4 animate-in fade-in duration-200"
+      className="w-full h-full flex flex-col gap-4 max-w-7xl mx-auto p-2 sm:p-4 animate-in fade-in duration-200 text-[var(--foreground)]"
     >
+      {/* Header matching Maloca Ops Hub identity & style */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 pb-3 border-b border-[var(--border-subtle)] shrink-0">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--foreground)] mb-1 flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#39ff14] shadow-[0_0_12px_rgba(57,255,20,0.5)] animate-pulse" />
+            Pure RAG Explorer
+          </h1>
+          <p className="text-xs font-mono text-[var(--foreground)]/60">
+            Zero-AI Cognitive Vector & BM25 Memory • Primary Xavier Ecosystem Workspace
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14]" />
+            <span>Strict Zero-AI Engine</span>
+          </div>
+        </div>
+      </header>
+
       {/* 1. Input de escritura en la parte SUPERIOR (Ergonomía invertida) */}
       <PureRagTopSearchBar
         query={query}
@@ -377,7 +397,7 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
       />
 
       {error && (
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono">
+        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono">
           {error}
         </div>
       )}
@@ -388,7 +408,7 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
         <div className="lg:hidden flex items-center justify-between w-full order-1">
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono text-slate-300 hover:text-white"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] text-xs font-mono text-[var(--foreground)]/80 hover:text-[var(--foreground)] cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5 text-emerald-400" />
             <span>Filtros {activeFiltersCount > 0 ? `(${activeFiltersCount} activos)` : ""}</span>
@@ -407,10 +427,10 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
         {/* Bloque 1: Lista de resultados de textos coincidentes (Ordenados por % similitud) */}
         <div className="lg:col-span-5 order-3 lg:order-2 flex flex-col gap-2">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+            <span className="text-xs font-mono font-bold text-[var(--foreground)]/80 uppercase tracking-wider">
               Documentos & Textos RAG
             </span>
-            <span className="text-[11px] font-mono text-emerald-400">
+            <span className="text-[11px] font-mono text-[#39ff14] font-medium">
               Orden: Mayor % de Similitud primero
             </span>
           </div>
@@ -426,10 +446,10 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
         {/* Bloque 2: Tarjeta de Trazabilidad y Detalle (Dónde está, quién lo hizo, cuándo, grafo) */}
         <div className="lg:col-span-4 order-4 lg:order-3 lg:sticky lg:top-4">
           <div className="flex items-center justify-between px-1 mb-2">
-            <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+            <span className="text-xs font-mono font-bold text-[var(--foreground)]/80 uppercase tracking-wider">
               Tarjeta de Trazabilidad
             </span>
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[11px] font-mono text-[var(--foreground)]/50">
               Metadatos & Grafo
             </span>
           </div>

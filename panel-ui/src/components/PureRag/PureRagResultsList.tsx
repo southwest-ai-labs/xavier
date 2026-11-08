@@ -17,15 +17,15 @@ interface PureRagResultsListProps {
 
 function getBadgeStyle(percent: number) {
   if (percent >= 90) {
-    return "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-emerald-500/10";
+    return "bg-emerald-500/15 text-emerald-300 border-emerald-500/40 shadow-sm";
   }
   if (percent >= 75) {
-    return "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-cyan-500/10";
+    return "bg-cyan-500/15 text-cyan-300 border-cyan-500/40 shadow-sm";
   }
   if (percent >= 50) {
-    return "bg-amber-500/20 text-amber-300 border-amber-500/50";
+    return "bg-amber-500/15 text-amber-300 border-amber-500/40";
   }
-  return "bg-slate-500/20 text-slate-300 border-slate-500/40";
+  return "bg-white/5 text-[var(--foreground)]/60 border border-[var(--border-subtle)]";
 }
 
 function getModalityIcon(modality: ModalityType) {
@@ -57,7 +57,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     regex.test(part) ? (
       <mark
         key={i}
-        className="bg-emerald-500/30 text-emerald-200 px-0.5 rounded font-bold"
+        className="bg-emerald-500/25 text-[#39ff14] px-1 rounded font-mono font-bold"
       >
         {part}
       </mark>
@@ -75,10 +75,10 @@ export const PureRagResultsList: React.FC<PureRagResultsListProps> = ({
 }) => {
   if (items.length === 0) {
     return (
-      <div className="w-full h-64 flex flex-col items-center justify-center rounded-2xl bg-slate-900/40 border border-dashed border-white/10 text-slate-400 font-mono text-sm p-6 text-center">
-        <Sparkles className="w-8 h-8 text-slate-500 mb-2 opacity-50" />
+      <div className="w-full h-64 flex flex-col items-center justify-center rounded-2xl bg-[var(--surface)] border border-dashed border-[var(--border-subtle)] text-[var(--foreground)]/50 font-mono text-sm p-6 text-center">
+        <Sparkles className="w-8 h-8 text-[var(--foreground)]/30 mb-2 opacity-50" />
         <p>No se encontraron documentos en la memoria RAG para esta consulta o filtros.</p>
-        <span className="text-xs text-slate-500 mt-1">Prueba con palabras clave o ajusta la similitud mínima.</span>
+        <span className="text-xs text-[var(--foreground)]/40 mt-1">Prueba con palabras clave o ajusta la similitud mínima.</span>
       </div>
     );
   }
@@ -96,8 +96,8 @@ export const PureRagResultsList: React.FC<PureRagResultsListProps> = ({
             onClick={() => onSelectItem(item)}
             className={`group relative p-3.5 rounded-xl border transition-all cursor-pointer ${
               isSelected
-                ? "bg-emerald-950/30 border-emerald-500/60 shadow-lg shadow-emerald-500/5 ring-1 ring-emerald-500/40"
-                : "bg-slate-900/60 border-white/10 hover:border-white/20 hover:bg-slate-900/80"
+                ? "bg-white/10 text-[var(--foreground)] shadow-[inset_3px_0_0_#39ff14] border-emerald-500/40"
+                : "bg-[var(--surface-card)] border-[var(--border-subtle)] hover:border-white/20 hover:bg-white/5 text-[var(--foreground)]/80"
             }`}
           >
             {/* Header: Rank + Similarity Badge + Match Count + Modality */}
@@ -106,8 +106,8 @@ export const PureRagResultsList: React.FC<PureRagResultsListProps> = ({
                 <span
                   className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
                     isFirst
-                      ? "bg-emerald-500 text-black font-extrabold shadow-sm"
-                      : "bg-white/10 text-slate-300"
+                      ? "bg-[#39ff14] text-black font-extrabold shadow-sm"
+                      : "bg-white/10 text-[var(--foreground)]/80"
                   }`}
                 >
                   #{index + 1}
@@ -123,7 +123,7 @@ export const PureRagResultsList: React.FC<PureRagResultsListProps> = ({
                   </span>
                 ) : null}
 
-                <div className="flex items-center gap-1.5 text-xs text-white font-mono font-semibold truncate max-w-[170px] sm:max-w-[240px]">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--foreground)] font-mono font-semibold truncate max-w-[170px] sm:max-w-[240px]">
                   {getModalityIcon(item.modality)}
                   <span className="truncate">{item.title || item.path}</span>
                 </div>
@@ -150,31 +150,31 @@ export const PureRagResultsList: React.FC<PureRagResultsListProps> = ({
             </div>
 
             {/* Path / Reference (Cleaned location) */}
-            <div className="text-[11px] font-mono text-slate-400 truncate mb-2 flex items-center gap-1">
-              <span className="text-slate-500">📁</span>
+            <div className="text-[11px] font-mono text-[var(--foreground)]/50 truncate mb-2 flex items-center gap-1">
+              <span className="opacity-60">📁</span>
               <span className="truncate">{item.path}</span>
             </div>
 
             {/* Content snippet focused on keyword */}
-            <p className="text-xs text-slate-300 line-clamp-3 font-sans leading-relaxed">
+            <p className="text-xs text-[var(--foreground)]/80 line-clamp-3 font-sans leading-relaxed">
               {highlightMatch(item.cleanExcerpt || item.excerpt || item.content, query)}
             </p>
 
             {/* Footer tags */}
-            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5 text-[10px] font-mono text-slate-400">
+            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[var(--border-subtle)] text-[10px] font-mono text-[var(--foreground)]/50">
               {item.kind && (
-                <span className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+                <span className="px-1.5 py-0.5 rounded bg-white/5 border border-[var(--border-subtle)] text-[var(--foreground)]/70">
                   {item.kind}
                 </span>
               )}
               {item.workspaceId && (
-                <span className="truncate max-w-[120px] text-slate-400">
+                <span className="truncate max-w-[120px] text-[var(--foreground)]/60">
                   ws: {item.workspaceId}
                 </span>
               )}
-              <span className="text-slate-400 ml-auto flex items-center gap-1.5">
+              <span className="text-[var(--foreground)]/60 ml-auto flex items-center gap-1.5">
                 <span>{item.author ? `por ${item.author}` : ""}</span>
-                <span className="text-emerald-400/90 font-medium">· Abierto/Tocado: {item.lastAccessedAt || item.createdAt || "Reciente"}</span>
+                <span className="text-[#39ff14]/90 font-medium">· Abierto/Tocado: {item.lastAccessedAt || item.createdAt || "Reciente"}</span>
               </span>
             </div>
           </div>
