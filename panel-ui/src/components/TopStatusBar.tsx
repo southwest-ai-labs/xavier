@@ -92,6 +92,7 @@ export default React.memo(function TopStatusBar({
   const [retryCount, setRetryCount] = useState(0);
   const [remoteUrl, setRemoteUrlState] = useState<string>(getRemoteUrl());
   const [showNodeModal, setShowNodeModal] = useState(false);
+  const [liveVersion, setLiveVersion] = useState<string | null>(null);
 
   // Manual Memory Sync state
   const [showSyncPopover, setShowSyncPopover] = useState(false);
@@ -151,39 +152,40 @@ export default React.memo(function TopStatusBar({
     fetchConfig();
 
     const fetchMetrics = async () => {
+      try {
+        const res = await fetch(getApiUrl("/health"));
+        if (res.ok) {
+          setNodeStatus("connected");
+          setRetryCount(0);
+          const data = await res.json();
+          if (data.version) {
+            setLiveVersion(data.version);
+          }
+          if (data.system) {
+            const cpu_percent = data.system.cpu_usage ?? 0;
+            const ram_percent = data.system.ram_usage_percent ?? 0;
+            const deviceMemory =
+              (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
+            const ram_used_gb = (ram_percent / 100) * deviceMemory;
+            setMetrics({ cpu_percent, ram_used_gb, ram_total_gb: deviceMemory });
+          }
+        } else {
+          setNodeStatus("disconnected");
+          setRetryCount((prev) => prev + 1);
+        }
+      } catch (err) {
+        console.debug("Error fetching metrics from /health:", err);
+        setNodeStatus("disconnected");
+        setRetryCount((prev) => prev + 1);
+      }
+
       if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           const met = await invoke<any>("get_realtime_metrics");
           if (met) setMetrics(met);
-          setNodeStatus("connected");
-          setRetryCount(0);
         } catch (err) {
-          console.debug("Error fetching realtime metrics:", err);
-        }
-      } else {
-        try {
-          const res = await fetch(getApiUrl("/health"));
-          if (res.ok) {
-            setNodeStatus("connected");
-            setRetryCount(0);
-            const data = await res.json();
-            if (data.system) {
-              const cpu_percent = data.system.cpu_usage ?? 0;
-              const ram_percent = data.system.ram_usage_percent ?? 0;
-              const deviceMemory =
-                (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
-              const ram_used_gb = (ram_percent / 100) * deviceMemory;
-              setMetrics({ cpu_percent, ram_used_gb, ram_total_gb: deviceMemory });
-            }
-          } else {
-            setNodeStatus("disconnected");
-            setRetryCount((prev) => prev + 1);
-          }
-        } catch (err) {
-          console.debug("Error fetching metrics from /health:", err);
-          setNodeStatus("disconnected");
-          setRetryCount((prev) => prev + 1);
+          console.debug("Error fetching realtime metrics via Tauri:", err);
         }
       }
 
@@ -465,7 +467,7 @@ export default React.memo(function TopStatusBar({
               className="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#39ff14]/20 shadow-[0_0_12px_rgba(57,255,20,0.08)] rounded-full px-3 py-1 flex items-center justify-center cursor-default shrink-0 min-h-[28px]"
             >
               <span className="text-[#39ff14] font-mono tracking-widest text-[8px] uppercase font-bold">
-                Xavier {__APP_VERSION__}
+                Xavier {liveVersion || (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.2.20")}
               </span>
             </motion.div>
 
