@@ -33,6 +33,14 @@ const DEFAULT_PLUGINS: PluginItem[] = [
     installed: false,
     status: "Not Installed",
   },
+  {
+    name: "gestalt",
+    description: "Gestalt Multi-Agent Execution Engine & Event Bus — VFS isolation, observation hooks, and real-time swarm orchestration.",
+    version: "0.2.0",
+    languages: ["rust", "bash", "json"],
+    installed: true,
+    status: "Active (Sidecar)",
+  },
 ];
 
 export function PluginsManager({ token }: PluginsManagerProps) {
@@ -45,6 +53,7 @@ export function PluginsManager({ token }: PluginsManagerProps) {
   const [installedMap, setInstalledMap] = useState<Record<string, boolean>>({
     codegraph: false,
     "rtk-kernel": false,
+    gestalt: true,
   });
 
   const fetchPlugins = useCallback(async () => {
@@ -238,7 +247,7 @@ const PluginCard = React.memo(function PluginCard({
   const getStatusText = () => {
     if (isInstalling) return "Installing...";
     if (isInstalled) {
-      return plugin.name === "codegraph" ? "Active (Sidecar)" : "Active";
+      return plugin.name === "codegraph" || plugin.name === "gestalt" ? "Active (Sidecar)" : "Active";
     }
     return plugin.status || "Not Installed";
   };
@@ -309,7 +318,7 @@ const PluginCard = React.memo(function PluginCard({
             className="w-full py-2 px-4 rounded-xl bg-black/5 dark:bg-white/5 text-[var(--foreground)]/40 dark:text-white/40 text-xs font-semibold cursor-default flex items-center justify-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4 text-[#39ff14]" />
-            {plugin.name === "codegraph" ? "Active (Sidecar)" : "Installed"}
+            {plugin.name === "codegraph" || plugin.name === "gestalt" ? "Active (Sidecar)" : "Installed"}
           </button>
         ) : (
           <button
