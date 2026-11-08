@@ -492,6 +492,52 @@ pub async fn headless_memory_export() -> impl IntoResponse {
     }))
 }
 
+/// Headless system update check.
+pub async fn headless_system_update_check() -> impl IntoResponse {
+    let service = xavier::mesh::auto_update::AutoUpdateService::new();
+    match service.check_main_branch().await {
+        Ok(maybe_commit) => {
+            let last_sha = xavier::mesh::auto_update::get_last_known_sha();
+            AxumJson(json!({
+                "ok": true,
+                "update_available": maybe_commit.is_some(),
+                "latest_commit": maybe_commit,
+                "current_sha": last_sha,
+                "version": env!("CARGO_PKG_VERSION"),
+            }))
+            .into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AxumJson(json!({
+                "ok": false,
+                "error": format!("Update check failed: {e}")
+            })),
+        )
+            .into_response(),
+    }
+}
+
+/// Headless system update apply (silent update + notification).
+pub async fn headless_system_update_apply() -> impl IntoResponse {
+    let service = xavier::mesh::auto_update::AutoUpdateService::new();
+    match service.run_silent_update_cycle().await {
+        Ok(report) => AxumJson(json!({
+            "ok": true,
+            "report": report,
+        }))
+        .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            AxumJson(json!({
+                "ok": false,
+                "error": format!("Silent update apply failed: {e}")
+            })),
+        )
+            .into_response(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Note: Constructing a full CliState for unit testing is complex due to its many mandatory fields

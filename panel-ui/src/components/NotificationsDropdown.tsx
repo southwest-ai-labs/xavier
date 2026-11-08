@@ -79,6 +79,38 @@ function formatRelativeTime(dateInput: Date | string): string {
 	return `${Math.floor(diff / 86400)}d ago`;
 }
 
+function renderBodyWithLinks(body: string) {
+	if (!body) return null;
+	const urlRegex = /(https?:\/\/[^\s]+)/g;
+	const parts = body.split(urlRegex);
+
+	return parts.map((part, index) => {
+		if (urlRegex.test(part)) {
+			const label = part.includes("/commit/")
+				? "Ver detalles del commit →"
+				: part.includes("/releases/")
+				? "Ver release notes →"
+				: part.length > 45
+				? `${part.slice(0, 42)}...`
+				: part;
+
+			return (
+				<a
+					key={`link-${index}`}
+					href={part}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="text-emerald-500 hover:text-emerald-400 dark:text-emerald-400 dark:hover:text-emerald-300 underline font-medium cursor-pointer break-all"
+					onClick={(e) => e.stopPropagation()}
+				>
+					{label}
+				</a>
+			);
+		}
+		return part;
+	});
+}
+
 /**
  * ⚡ Bolt Performance Optimization
  *
@@ -128,9 +160,9 @@ const NotificationItem = React.memo(function NotificationItem({
 					</span>
 				</div>
 				<p
-					className={`text-[10px] mt-0.5 leading-relaxed ${notif.read ? "text-black/25 dark:text-white/25" : "text-black/45 dark:text-white/45"}`}
+					className={`text-[10px] mt-0.5 leading-relaxed whitespace-pre-line ${notif.read ? "text-black/25 dark:text-white/25" : "text-black/45 dark:text-white/45"}`}
 				>
-					{notif.body}
+					{renderBodyWithLinks(notif.body)}
 				</p>
 			</div>
 			{!notif.read && (

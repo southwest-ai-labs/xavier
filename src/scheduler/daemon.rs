@@ -238,6 +238,41 @@ impl MemoryDaemon {
                 }
             }
         });
+
+        // Autonomous Silent Auto-Update from main branch
+        let update_enabled = std::env::var("XAVIER_AUTO_UPDATE")
+            .map(|v| v != "0" && !v.eq_ignore_ascii_case("false"))
+            .unwrap_or(true);
+
+        if update_enabled {
+            tokio::spawn(async move {
+                let interval_secs = std::env::var("XAVIER_UPDATE_INTERVAL_SECS")
+                    .ok()
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .unwrap_or(900); // 15 minutes default
+                info!(
+                    "MemoryDaemon: Scheduled main branch auto-updater loop started ({}s interval)",
+                    interval_secs
+                );
+                let updater = crate::mesh::auto_update::AutoUpdateService::new();
+                loop {
+                    sleep(Duration::from_secs(interval_secs)).await;
+                    match updater.run_silent_update_cycle().await {
+                        Ok(report) => {
+                            if report.applied {
+                                info!(
+                                    "MemoryDaemon: Silent update applied: {} ({})",
+                                    report.title, report.current_sha
+                                );
+                            }
+                        }
+                        Err(e) => {
+                            warn!("MemoryDaemon: Silent update check failed: {}", e);
+                        }
+                    }
+                }
+            });
+        }
     }
 }
 

@@ -35,7 +35,6 @@
 
 pub mod acl;
 pub mod auth;
-#[cfg(feature = "mesh")]
 pub mod auto_update;
 pub mod challenge;
 pub mod cloud_node;
