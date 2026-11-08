@@ -593,6 +593,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, macos-latest]
+    permissions:
+      contents: read
+      issues: write
     env:
       # Clear Linux-only mold linker flag set at workflow level
       RUSTFLAGS: ""
@@ -613,7 +616,23 @@ jobs:
         run: cargo check --workspace --features ci-safe
 
       - name: Run Smoke Tests (Cross-Platform)
-        run: cargo test --package xavier --lib --features ci-safe -- cli::commands::login
+        run: "cargo test --package xavier --lib --features ci-safe -- cli::commands::login settings"
+
+      - name: Report Cross-Platform Failure to Jules
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONCLUSION: failure
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: "Xavier CI / CD"
+          JOB_NAME: "Cross-Platform (${{ matrix.os }})"
+          RUNNER_OS: "${{ matrix.os }}"
+          HEAD_BRANCH: "${{ github.ref_name }}"
+          REPRO_COMMAND: "cargo check --workspace --features ci-safe && cargo test --package xavier --lib --features ci-safe -- cli::commands::login"
+          TARGET_FILES: "src/**, Cargo.toml, .github/workflows/ci.yml"
+        run: bash scripts/e2e-failure-incident.sh
 
   # Job 4: Secret Scan
   secret-scan:
@@ -646,6 +665,9 @@ jobs:
     name: Frontend Build & Security Audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -709,6 +731,22 @@ jobs:
           path: panel-ui/test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+      - name: Report Frontend / Playwright E2E Failure to Jules
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONCLUSION: failure
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: "Xavier CI / CD"
+          JOB_NAME: "Frontend Build & Security Audit"
+          RUNNER_OS: "Linux"
+          HEAD_BRANCH: ${{ github.ref_name }}
+          REPRO_COMMAND: "pnpm --filter xavier-panel-ui run test && pnpm --filter xavier-panel-ui exec playwright test --project=chromium"
+          TARGET_FILES: "panel-ui/**"
+        run: bash scripts/e2e-failure-incident.sh
 
   version-gate:
     name: Version Sync Gate

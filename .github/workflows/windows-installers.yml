@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -91,6 +92,49 @@ jobs:
           Write-Host "OK: $($msi[0].Name) ($([math]::Round($msi[0].Length/1MB,1)) MB)"
         shell: pwsh
 
+      - name: E2E Smoke Test Xavier on Windows VM
+        id: test-windows-e2e
+        run: |
+          $BinPath = "target/x86_64-pc-windows-msvc/release/xavier.exe"
+          if (-not (Test-Path $BinPath)) {
+            Write-Error "xavier.exe not found at $BinPath"
+            exit 1
+          }
+          Write-Host "Verifying xavier.exe version..."
+          & $BinPath --version
+
+          Write-Host "Testing background daemon boot and health endpoint on Windows..."
+          $TestPort = 18025
+          $TempState = New-Item -ItemType Directory -Path "$env:TEMP\xavier-e2e-win-$([Guid]::NewGuid())"
+          $proc = Start-Process -FilePath $BinPath -ArgumentList "http $TestPort --host 127.0.0.1 --no-ui" -PassThru -NoNewWindow -Environment @{
+            XAVIER_STATE_DIR = $TempState.FullName
+            XAVIER_DATA_DIR = $TempState.FullName
+          }
+          try {
+            Start-Sleep -Seconds 4
+            $healthy = $false
+            for ($i = 0; $i -lt 15; $i++) {
+              try {
+                $resp = Invoke-RestMethod -Uri "http://127.0.0.1:$TestPort/health" -TimeoutSec 2 -ErrorAction Stop
+                if ($resp.status -eq "ok") {
+                  Write-Host "PASS: Windows daemon responding healthy on port $TestPort"
+                  $healthy = $true
+                  break
+                }
+              } catch {
+                Start-Sleep -Seconds 1
+              }
+            }
+            if (-not $healthy) {
+              Write-Error "Daemon failed health check on Windows VM"
+              exit 1
+            }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force $TempState.FullName -ErrorAction SilentlyContinue
+          }
+        shell: pwsh
+
       - name: Upload installers (artifact only, no release)
         uses: actions/upload-artifact@v7
         with:
@@ -100,3 +144,20 @@ jobs:
             dist/**/*.exe
           retention-days: 14
           if-no-files-found: error
+
+      - name: Report E2E Failure to Jules (Windows)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONCLUSION: failure
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: "Windows Installers (verify only)"
+          JOB_NAME: "Build .msi and .exe (windows-latest)"
+          RUNNER_OS: "Windows"
+          HEAD_BRANCH: ${{ github.ref_name }}
+          REPRO_COMMAND: "cargo build --release --target x86_64-pc-windows-msvc && & ./target/x86_64-pc-windows-msvc/release/xavier.exe --version"
+          TARGET_FILES: "installer/**, src/**, .github/workflows/windows-installers.yml"
+        run: bash scripts/e2e-failure-incident.sh
+        shell: bash

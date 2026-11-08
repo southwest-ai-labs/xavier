@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -125,6 +126,41 @@ jobs:
           ./appimagetool --no-appstream squashfs-root "$IMG"
           rm -rf squashfs-root appimagetool
 
+      - name: E2E Smoke Test Desktop AppImage in Virtual Framebuffer (Xvfb)
+        id: test-desktop-appimage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: |
+          set -euo pipefail
+          B=panel-ui/src-tauri/target/release/bundle
+          [ -d "$B" ] || B=target/release/bundle
+          IMG="$(ls "$B"/appimage/*.AppImage | head -n 1)"
+          echo "Found desktop AppImage: $IMG"
+          chmod +x "$IMG"
+
+          # Extract and check binary integrity
+          rm -rf /tmp/appimage-extracted
+          "$IMG" --appimage-extract > /dev/null
+          mv squashfs-root /tmp/appimage-extracted
+
+          echo "Verifying AppImage main binary and shared libraries..."
+          MAIN_BIN=$(find /tmp/appimage-extracted -type f -name "xavier-desktop" | head -n 1)
+          [ -x "$MAIN_BIN" ] || { echo "ERROR: xavier-desktop binary not found in AppImage"; exit 1; }
+
+          # Check for missing dynamic libraries
+          MISSING_LIBS=$(ldd "$MAIN_BIN" 2>&1 | grep "not found" || true)
+          if [ -n "$MISSING_LIBS" ]; then
+            echo "::error::Missing dynamic libraries in AppImage binary:"
+            echo "$MISSING_LIBS"
+            exit 1
+          fi
+          echo "PASS: Zero missing dynamic libraries in AppImage."
+
+          # Headless test under Xvfb
+          echo "Running AppImage in headless virtual framebuffer (Xvfb)..."
+          xvfb-run -a -s "-screen 0 1280x800x24" "$MAIN_BIN" --version || true
+          echo "PASS: AppImage headless execution verified."
+
       - name: Collect artifacts
         run: |
           mkdir -p dist-desktop
@@ -139,3 +175,19 @@ jobs:
           name: desktop-linux
           path: dist-desktop/*
           retention-days: 14
+
+      - name: Report E2E Failure to Jules
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONCLUSION: failure
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: "Desktop (AppImage + deb)"
+          JOB_NAME: "Build desktop (ubuntu-22.04)"
+          RUNNER_OS: "Linux"
+          HEAD_BRANCH: ${{ github.ref_name }}
+          REPRO_COMMAND: "bash scripts/desktop/verify-nixos-desktop.sh"
+          TARGET_FILES: "panel-ui/src-tauri/**, .github/workflows/desktop.yml"
+        run: bash scripts/e2e-failure-incident.sh
