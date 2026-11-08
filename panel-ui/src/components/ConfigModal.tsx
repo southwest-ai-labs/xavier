@@ -422,69 +422,103 @@ export default function ConfigModal({
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
+  const settingSections = [
+    {
+      group: "General & UI",
+      items: [
+        { id: "config" as MainTab, label: "General", icon: <Cpu className="w-3.5 h-3.5" /> },
+        { id: "appearance" as MainTab, label: "Appearance", icon: <Palette className="w-3.5 h-3.5" /> },
+        { id: "account" as MainTab, label: "Account", icon: <Server className="w-3.5 h-3.5" /> },
+        { id: "browser" as MainTab, label: "Browser", icon: <Globe className="w-3.5 h-3.5" /> },
+      ],
+    },
+    {
+      group: "Intelligence & Memory",
+      items: [
+        { id: "providers" as MainTab, label: "Models & Providers", icon: <Cpu className="w-3.5 h-3.5" /> },
+        { id: "agents" as MainTab, label: "Agents Fleet", icon: <Bot className="w-3.5 h-3.5" /> },
+        { id: "memory" as MainTab, label: "Memory Runtime", icon: <Brain className="w-3.5 h-3.5" /> },
+        { id: "customizations" as MainTab, label: "Customizations", icon: <Puzzle className="w-3.5 h-3.5" /> },
+      ],
+    },
+    {
+      group: "Mesh & Security",
+      items: [
+        { id: "security" as MainTab, label: "Security & Keys", icon: <Shield className="w-3.5 h-3.5" /> },
+        { id: "mesh" as MainTab, label: "Mesh & Relays", icon: <Network className="w-3.5 h-3.5" /> },
+        { id: "messaging" as MainTab, label: "Conversations", icon: <MessageSquare className="w-3.5 h-3.5" /> },
+        { id: "plugins" as MainTab, label: "Plugins & Tools", icon: <Plug className="w-3.5 h-3.5" /> },
+      ],
+    },
+    {
+      group: "Knowledge & Metrics",
+      items: [
+        { id: "usage" as MainTab, label: "Usage Metrics", icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { id: "graph" as MainTab, label: "Roadmap Graph", icon: <Layers className="w-3.5 h-3.5" /> },
+        { id: "bookmarks" as MainTab, label: "Saved Artifacts", icon: <Bookmark className="w-3.5 h-3.5" /> },
+      ],
+    },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96, y: 8 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="relative z-20 w-[960px] h-[640px] max-w-[95vw] rounded-2xl flex flex-row overflow-hidden shadow-2xl bg-[var(--surface)] dark:bg-[#141518]/95 border border-[var(--border-subtle)] dark:border-white/[0.08] backdrop-blur-2xl text-[var(--foreground)]"
+      className="relative z-20 w-full max-w-[1040px] h-[92vh] md:h-[700px] max-h-[96vh] rounded-2xl flex flex-col md:flex-row overflow-hidden shadow-2xl bg-[var(--surface)] dark:bg-[#141518]/95 border border-[var(--border-subtle)] dark:border-white/[0.08] backdrop-blur-2xl text-[var(--foreground)]"
     >
-      {/* Left Sidebar */}
-      <div className="w-56 shrink-0 bg-[var(--background)] dark:bg-[#111215]/80 border-r border-[var(--border-subtle)] dark:border-white/[0.06] flex flex-col justify-between p-3 select-none">
-        <div className="space-y-4 overflow-y-auto">
-          {/* Settings Group */}
-          <div>
-            <div className="px-2 py-1 text-[11px] font-medium text-[var(--foreground)]/60 dark:text-white/40 tracking-wider">
-              Settings
+      {/* Left Sidebar (Desktop, >= 768px) */}
+      <div data-testid="desktop-settings-sidebar" className="hidden md:flex w-64 shrink-0 bg-[var(--background)] dark:bg-[#111215]/80 border-r border-[var(--border-subtle)] dark:border-white/[0.06] flex-col justify-between p-3.5 select-none">
+        <div className="space-y-4 overflow-y-auto pr-1">
+          {settingSections.map((sec) => (
+            <div key={sec.group}>
+              <div className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-[var(--foreground)]/50 dark:text-white/35 font-semibold">
+                {sec.group}
+              </div>
+              <div className="space-y-0.5 mt-1">
+                {sec.items.map((item) => {
+                  const isSelected = mainTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-testid={`settings-tab-${item.id}`}
+                      onClick={() => setMainTab(item.id)}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+                        isSelected
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border-l-2 border-emerald-500 shadow-sm"
+                          : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white/90 hover:bg-black/5 dark:hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <span className={isSelected ? "text-emerald-500" : "opacity-70"}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="space-y-0.5 mt-1">
-              {[
-                { id: "account" as MainTab, label: "Account" },
-                { id: "config" as MainTab, label: "General" },
-                { id: "appearance" as MainTab, label: "Appearance" },
-                { id: "providers" as MainTab, label: "Models" },
-                { id: "customizations" as MainTab, label: "Customizations" },
-                { id: "browser" as MainTab, label: "Browser" },
-                { id: "plugins" as MainTab, label: "App" },
-              ].map((item) => {
-                const isSelected = mainTab === item.id;
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    data-testid={`settings-tab-${item.id}`}
-                    onClick={() => setMainTab(item.id)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                      isSelected
-                        ? "bg-black/10 dark:bg-white/10 text-[var(--foreground)] dark:text-white font-semibold shadow-sm"
-                        : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white/90 hover:bg-black/5 dark:hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          ))}
 
           {/* Projects Group */}
           <div>
-            <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-[11px] font-medium text-[var(--foreground)]/60 dark:text-white/40 tracking-wider">
+            <div className="flex items-center justify-between px-2 py-0.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--foreground)]/50 dark:text-white/35 font-semibold">
                 Projects
               </span>
               <button
                 type="button"
                 onClick={handleAddProject}
-                className="p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--foreground)]/60 dark:text-white/40 hover:text-[var(--foreground)] dark:hover:text-white transition-colors"
+                className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-[var(--foreground)]/60 dark:text-white/40 hover:text-[var(--foreground)] dark:hover:text-white transition-colors"
                 title="Add Project"
                 aria-label="Add Project"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="space-y-0.5 mt-1">
+            <div className="space-y-0.5 mt-1 max-h-28 overflow-y-auto">
               {workspaces.map((proj) => {
                 const isSelected = activeProject === proj;
                 return (
@@ -492,42 +526,26 @@ export default function ConfigModal({
                     key={proj}
                     type="button"
                     onClick={() => handleSwitchWorkspace(proj)}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
                       isSelected && mainTab !== "appearance"
                         ? "bg-black/10 dark:bg-white/10 text-[var(--foreground)] dark:text-white font-semibold"
                         : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white/90 hover:bg-black/5 dark:hover:bg-white/[0.04]"
                     }`}
                   >
-                    {proj}
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder className="w-3 h-3 opacity-60 shrink-0" />
+                      <span className="truncate">{proj}</span>
+                    </div>
+                    {isSelected && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
                   </button>
                 );
               })}
             </div>
           </div>
-
-          {/* Not in Project Group */}
-          <div>
-            <div className="px-2 py-1 text-[11px] font-medium text-[var(--foreground)]/60 dark:text-white/40 tracking-wider">
-              Not in Project
-            </div>
-            <div className="space-y-0.5 mt-1">
-              <button
-                type="button"
-                onClick={() => setMainTab("messaging")}
-                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
-                  mainTab === "messaging"
-                    ? "bg-black/10 dark:bg-white/10 text-[var(--foreground)] dark:text-white font-semibold"
-                    : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white/90 hover:bg-black/5 dark:hover:bg-white/[0.04]"
-                }`}
-              >
-                Conversations
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer Items */}
-        <div className="pt-2 border-t border-white/[0.06] space-y-0.5">
+        <div className="pt-2 border-t border-black/5 dark:border-white/[0.06] space-y-0.5">
           <button
             type="button"
             onClick={() => setShowShortcuts(true)}
@@ -547,108 +565,68 @@ export default function ConfigModal({
 
       {/* Right Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[var(--surface-card)] dark:bg-[#131417]/60">
-        {/* Top Header with Close Button and preserving tabs */}
-        <div className="flex items-center justify-between pl-8 pr-6 pt-5 pb-1">
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs text-[var(--foreground)]/60 dark:text-white/40">
-            {/* Preserved tab switchers (subtle badges for other settings) */}
-            <button
-              onClick={() => setMainTab("config")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "config" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Configuration
-            </button>
-            <button
-              onClick={() => setMainTab("providers")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "providers" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Providers
-            </button>
-            <button
-              onClick={() => setMainTab("usage")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "usage" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Usage Metrics
-            </button>
-            <button
-              onClick={() => setMainTab("messaging")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "messaging" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Messaging
-            </button>
-            <button
-              onClick={() => setMainTab("security")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "security" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Security
-            </button>
-            <button
-              onClick={() => setMainTab("mesh")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "mesh" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Mesh
-            </button>
-            <button
-              onClick={() => setMainTab("memory")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "memory" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Memory
-            </button>
-            <button
-              onClick={() => setMainTab("agents")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "agents" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Agents
-            </button>
-            <button
-              onClick={() => setMainTab("plugins")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "plugins" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Plugins
-            </button>
-            <button
-              onClick={() => setMainTab("graph")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "graph" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Roadmap
-            </button>
-            <button
-              onClick={() => setMainTab("bookmarks")}
-              className={`relative pb-1 px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                mainTab === "bookmarks" ? "text-[var(--foreground)] dark:text-white bg-black/10 dark:bg-white/10" : "hover:text-[var(--foreground)]/80 dark:hover:text-white/70"
-              }`}
-            >
-              Saved Artifacts
-            </button>
+        {/* Top Header with Section Title & Close Button */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[var(--border-subtle)] dark:border-white/[0.06] bg-[var(--surface)]/80 dark:bg-black/20 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+            <h2 className="text-sm font-semibold tracking-wide text-[var(--foreground)] dark:text-white capitalize">
+              {mainTab === "config"
+                ? "General Configuration"
+                : mainTab === "graph"
+                ? "Roadmap & Knowledge Graph"
+                : mainTab === "providers"
+                ? "AI Models & Providers"
+                : mainTab === "appearance"
+                ? "Appearance & Themes"
+                : `${mainTab} Settings`}
+            </h2>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded-full transition-colors text-white/40 hover:text-white group shrink-0"
-            title="Close"
+            className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white group shrink-0"
+            title="Cerrar ventana de configuración"
             aria-label="Cerrar ventana de configuración"
           >
             <X className="w-4 h-4 group-hover:scale-110 transition-transform" />
           </button>
+        </div>
+
+        {/* Mobile Top Category Bar (Visible on tablets & smartphones, hidden on desktop) */}
+        <div data-testid="mobile-settings-nav" className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-[var(--background)] dark:bg-[#111215]/95 border-b border-[var(--border-subtle)] dark:border-white/[0.06] overflow-x-auto no-scrollbar shrink-0">
+          {[
+            { id: "config" as MainTab, label: "General" },
+            { id: "appearance" as MainTab, label: "Appearance" },
+            { id: "providers" as MainTab, label: "Models" },
+            { id: "agents" as MainTab, label: "Agents" },
+            { id: "memory" as MainTab, label: "Memory" },
+            { id: "security" as MainTab, label: "Security" },
+            { id: "mesh" as MainTab, label: "Mesh" },
+            { id: "usage" as MainTab, label: "Usage" },
+            { id: "graph" as MainTab, label: "Roadmap" },
+            { id: "bookmarks" as MainTab, label: "Artifacts" },
+            { id: "plugins" as MainTab, label: "Plugins" },
+            { id: "messaging" as MainTab, label: "Comms" },
+            { id: "account" as MainTab, label: "Account" },
+            { id: "browser" as MainTab, label: "Browser" },
+          ].map((item) => {
+            const isSelected = mainTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-testid={`mobile-settings-tab-${item.id}`}
+                onClick={() => setMainTab(item.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-150 ${
+                  isSelected
+                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 font-semibold shadow-sm"
+                    : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Content Body */}
@@ -1284,76 +1262,32 @@ function ConfigView({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex h-full w-full"
+      className="flex flex-col h-full w-full"
     >
-      {/* Sidebar */}
-      <div className="w-64 border-r border-white/5 p-6 flex flex-col bg-black/10 overflow-y-auto justify-between">
-        <div className="flex flex-col gap-6">
-          <nav className="flex flex-col gap-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-4 py-3 transition-all duration-300 text-sm font-medium rounded-lg
-                  ${
-                    activeTab === tab.id
-                      ? "active-tab text-[#39ff14]"
-                      : "text-white/40 hover:text-white/80 hover:bg-white/5"
-                  }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Projects / Workspaces Section */}
-          <div className="border-t border-white/5 pt-4">
-            <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-white/40 font-semibold">
-                Projects
-              </span>
-              <button
-                type="button"
-                onClick={handleAddProject}
-                className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-[#39ff14] transition-colors"
-                title="Add Project"
-                aria-label="Add Project"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto pr-1">
-              {workspaces.map((ws) => {
-                const isSelected = ws === activeWorkspace;
-                return (
-                  <button
-                    key={ws}
-                    type="button"
-                    onClick={() => handleSwitchWorkspace(ws)}
-                    className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-mono transition-all text-left ${
-                      isSelected
-                        ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 font-semibold"
-                        : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <Folder className="w-3 h-3 text-white/40 shrink-0" />
-                      <span className="truncate">{ws}</span>
-                    </div>
-                    {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-[#39ff14] shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+      {/* Horizontal Sub-Tabs Navigation */}
+      <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] overflow-x-auto no-scrollbar shrink-0">
+        {tabs.map((tab) => {
+          const isSelected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-150 ${
+                isSelected
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm"
+                  : "text-[var(--foreground)]/60 dark:text-white/50 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 p-10 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
         <AnimatePresence mode="wait">
           {activeTab === "topology" && (
             <motion.div

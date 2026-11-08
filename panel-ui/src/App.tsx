@@ -16,6 +16,7 @@ import { MeshHubView } from "./components/Mesh/MeshHubView";
 import { FirstLoginSecurityOnboarding } from "./components/Onboarding/FirstLoginSecurityOnboarding";
 import { OnboardingFlow } from "./components/Onboarding/OnboardingFlow";
 import ParticleBackground from "./components/ParticleBackground";
+import { PureRagView } from "./components/PureRag/PureRagView";
 import { RecoveryModal } from "./components/RecoveryModal";
 import SystemAlertBanner from "./components/SystemAlertBanner";
 import { AgentResponderSelect } from "./components/Telecom/AgentResponderSelect";
@@ -24,7 +25,6 @@ import GroupRoomView from "./components/Telecom/GroupRoomView";
 import TelecomAuditTrailView from "./components/Telecom/TelecomAuditTrailView";
 import TelecomHubView from "./components/Telecom/TelecomHubView";
 import TopStatusBar from "./components/TopStatusBar";
-import { PureRagView } from "./components/PureRag/PureRagView";
 import ErrorToast from "./components/ui/ErrorToast";
 import WalletView from "./components/WalletView";
 import { XavierLandingView } from "./components/XavierLandingView";
@@ -729,7 +729,11 @@ function AppContent() {
 	return (
 		<div className="relative w-full h-screen font-sans bg-slate-50 dark:bg-[#050505] flex flex-col overflow-hidden text-slate-900 dark:text-white transition-colors duration-200">
 			<ParticleBackground />
-			<TopStatusBar isModalOpen={isConfigOpen} isLoading={_isLoading} />
+			<TopStatusBar
+				isModalOpen={isConfigOpen}
+				isLoading={_isLoading}
+				onOpenConfig={handleOpenConfig}
+			/>
 			<SystemAlertBanner
 				alerts={errorAlerts}
 				onDismiss={() => setError(null)}
@@ -741,6 +745,7 @@ function AppContent() {
 			<div className="w-full flex items-center justify-center mt-16 sm:mt-14 pb-2 px-4 z-30 shrink-0">
 				<div className="flex items-center gap-1.5 p-1 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 shadow-xl">
 					<button
+						type="button"
 						data-testid="purerag-tab"
 						onClick={() => handleSelectTopTab("purerag")}
 						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
@@ -753,6 +758,7 @@ function AppContent() {
 						<span>⚡ PURERAG</span>
 					</button>
 					<button
+						type="button"
 						data-testid="chat-tab"
 						onClick={() => handleSelectTopTab("chat")}
 						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${

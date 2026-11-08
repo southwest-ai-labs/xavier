@@ -46,6 +46,7 @@ type MessagingPlatform =
 interface TopStatusBarProps {
   isModalOpen?: boolean;
   isLoading?: boolean;
+  onOpenConfig?: () => void;
 }
 
 declare const __APP_VERSION__: string;
@@ -63,6 +64,7 @@ function getToken(): string {
 export default React.memo(function TopStatusBar({
   isModalOpen = false,
   isLoading: propIsLoading,
+  onOpenConfig,
 }: TopStatusBarProps) {
   const [time, setTime] = useState(new Date());
   const [memoryCount, setMemoryCount] = useState(0);
@@ -454,7 +456,7 @@ export default React.memo(function TopStatusBar({
           <motion.div
             layout
             transition={spring}
-            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[60] hidden md:block"
+            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[40] hidden lg:block"
           >
           <div className="relative group">
             <motion.div
@@ -567,6 +569,25 @@ export default React.memo(function TopStatusBar({
               Maloca
             </span>
           </motion.button>
+
+          {/* Settings / Control Node Button */}
+          {onOpenConfig && (
+            <motion.button
+              layout
+              transition={spring}
+              type="button"
+              onClick={onOpenConfig}
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/50 hover:bg-emerald-500/10 transition-colors text-slate-300 hover:text-white cursor-pointer"
+              title="Open Control Node"
+              aria-label="Open Control Node"
+              data-testid="topbar-settings-btn"
+            >
+              <Settings className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block">
+                Settings
+              </span>
+            </motion.button>
+          )}
 
           {/* Marketplace Status Card Pill */}
           {modules.marketplace && (
