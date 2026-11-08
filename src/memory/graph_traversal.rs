@@ -582,8 +582,9 @@ mod tests {
 
         // Alpha = 0.0 (pure PPR score)
         let results_alpha_0 = pathfinder.associate_and_rerank(&candidates, 0.0, 0.85, 100, 1e-4);
-        assert_eq!(results_alpha_0[0].0, "a");
+        assert_eq!(results_alpha_0[0].0, "b");
         assert_eq!(results_alpha_0[0].1, 1.0); // max_ppr normalization means top node is 1.0
+        assert_eq!(results_alpha_0[1].0, "a");
     }
 
     #[test]
