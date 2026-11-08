@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.20] — 2026-11-08
+
 ### Added
 - **PureRAG Real-Time Retrieval Explorer**: Zero-AI inverted UI with human titles, authentic mtime dates, keyword match badges (`🔥 nx`), Codebase and Session badges, full SWAL codebase indexing (853 files, 45,077 embeddings), and auto-recovering 401 Unauthorized handling (REQ-088, #3931).
 - **Cognitive Memory & Retrieval Algorithm Improvements**:
