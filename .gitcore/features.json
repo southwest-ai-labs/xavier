@@ -4674,6 +4674,57 @@
         "REQ-MESH-012"
       ],
       "user_stories": []
+    },
+    "feat-purerag-explorer": {
+      "id": "feat-purerag-explorer",
+      "name": "PureRAG Real-Time Retrieval Explorer & Graph Traceability",
+      "category": "ui / search",
+      "status": "planned",
+      "progress_pct": 100,
+      "description": "Zero-AI real-time retrieval explorer embedded in the primary chat UI with an inverted layout (search at top, results below), descending similarity ranking, lateral filters (workspace, project, user, kind), dual-pane text & provenance inspector, and one-click Information Graph bridge.",
+      "steps": [
+        "Create PureRAG UI components in panel-ui (PureRagView, PureRagTopSearchBar, PureRagFilterSidebar, PureRagResultsList, PureRagDetailCard)",
+        "Wire real-time debounced retrieval client to /v1/memories/search with zero LLM invocation",
+        "Implement strict descending similarity score ranking and auto-select highest similarity match #1",
+        "Implement lateral filter state (workspace, project, user, kind, similarity slider)",
+        "Wire one-click Information Graph navigation bridge linking DetailCard to GraphView focused node",
+        "Add unit and component integration tests"
+      ],
+      "passes": false,
+      "verified_by": "automated",
+      "github_issue": null,
+      "last_tested": null,
+      "notes": "Spec: docs/features/specs/FEATURE-purerag-explorer.md. SRS mapping: REQ-088. Never hand-promoted; status promotes to stable only via green verify-pipeline execution.",
+      "implemented_in": "panel-ui/src/components/PureRag/, panel-ui/src/App.tsx",
+      "tests": ["tests/purerag.test.tsx", "tests/e2e/purerag.spec.ts"],
+      "req_ids": [
+        "REQ-088"
+      ]
+    },
+    "feat-multimodal-rag-core": {
+      "id": "feat-multimodal-rag-core",
+      "name": "Multimodal Video & Image RAG Storage and Spatiotemporal Retrieval",
+      "category": "storage / search",
+      "status": "planned",
+      "progress_pct": 0,
+      "description": "Multi-modal vector memory and indexing core supporting spatial bounding boxes for images and keyframe millisecond timestamps for video scenes, with PureRAG UI preview adapters.",
+      "steps": [
+        "Extend MemoryDocument and metadata schema with ModalityType, spatial, and temporal attributes",
+        "Implement image feature embedding pipeline (CLIP/SigLIP) and video scene segmentation",
+        "Add image thumbnail viewer and video scene player components to PureRAG DetailCard",
+        "Add multimodal edge relations to Knowledge Graph view",
+        "Add unit and integration tests"
+      ],
+      "passes": false,
+      "verified_by": "automated",
+      "github_issue": null,
+      "last_tested": null,
+      "notes": "Spec: docs/features/specs/FEATURE-purerag-explorer.md section 5. SRS mapping: REQ-089. Status planned.",
+      "implemented_in": "crates/xavier-core-logic/src/types.rs, src/memory/schema.rs, panel-ui/src/components/PureRag/",
+      "tests": [],
+      "req_ids": [
+        "REQ-089"
+      ]
     }
   },
   "verification_commands": {

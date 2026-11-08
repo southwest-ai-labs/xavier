@@ -55,6 +55,24 @@ function getInitialSession(): {
 	if (typeof window === "undefined") {
 		return { token: null, user: null, isAuthenticated: false };
 	}
+	const isTauri = "__TAURI_INTERNALS__" in window;
+	const desktopToken = localStorage.getItem("xavier_desktop_token");
+	if (isTauri || (desktopToken && desktopToken.trim().length > 0)) {
+		const tok = desktopToken || "desktop-operator";
+		const now = Math.floor(Date.now() / 1000);
+		return {
+			token: tok,
+			user: {
+				id: "desktop-operator",
+				name: "Operator",
+				email: "operator@xavier.local",
+				role: "admin",
+				created_at: now,
+				updated_at: now,
+			},
+			isAuthenticated: true,
+		};
+	}
 	const h = window.location.hash;
 	if (h.startsWith("#/session")) {
 		const q = h.indexOf("?");
@@ -223,6 +241,25 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 	},
 
 	refreshSession: async () => {
+		if (typeof window !== "undefined") {
+			const isTauri = "__TAURI_INTERNALS__" in window;
+			const desktopToken = localStorage.getItem("xavier_desktop_token");
+			if (isTauri || (desktopToken && desktopToken.trim().length > 0)) {
+				const tok = desktopToken || "desktop-operator";
+				set({
+					user: {
+						id: "desktop-operator",
+						name: "Operator",
+						email: "operator@xavier.local",
+						role: "admin",
+					},
+					token: tok,
+					accessToken: tok,
+					isAuthenticated: true,
+				});
+				return;
+			}
+		}
 		try {
 			const rt = get().refreshToken ?? readRt();
 			// Cloudflare mesh web session token

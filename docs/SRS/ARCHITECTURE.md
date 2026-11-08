@@ -36,6 +36,8 @@
 | SwalNode gate | Pro enablement | REQ-003 |
 | Xavier client | Agentic memory | REQ-005 |
 | Mesh adapter | P2P work data | REQ-004 |
+| PureRAG UI & Retrieval Engine | Zero-AI real-time inverted search & graph traceability | REQ-088 |
+| Multimodal Vector Runtime | Spatiotemporal video & image chunk indexing & retrieval | REQ-089 |
 | GitCore meta | Process compliance | REQ-001 |
 
 ## Deployment / privacy

@@ -57,7 +57,7 @@ import { getActiveWorkspaceId, getWorkspaceList } from "./WorkspaceSelector";
 import FeedbackModal from "./modals/FeedbackModal";
 import ShortcutsModal from "./modals/ShortcutsModal";
 
-interface ConfigModalProps {
+export interface ConfigModalProps {
   key?: React.Key;
   onClose: () => void;
   graphData: GraphData;
@@ -66,9 +66,10 @@ interface ConfigModalProps {
   onPinArtifact: (artifact: BookmarkArtifact) => void;
   onUpdateBookmark: (updated: BookmarkArtifact) => void;
   token?: string;
+  initialTab?: MainTab;
 }
 
-type MainTab =
+export type MainTab =
   | "config"
   | "general"
   | "account"
@@ -96,9 +97,16 @@ export default function ConfigModal({
   onPinArtifact,
   onUpdateBookmark,
   token,
+  initialTab = "appearance",
 }: ConfigModalProps) {
-  const [mainTab, setMainTab] = useState<MainTab>("appearance");
+  const [mainTab, setMainTab] = useState<MainTab>(initialTab);
   const [subLayer, setSubLayer] = useState<SubLayer>("roadmap");
+
+  useEffect(() => {
+    if (initialTab) {
+      setMainTab(initialTab);
+    }
+  }, [initialTab]);
 
   const api = useMemo(() => new ApiClient(token || ""), [token]);
 

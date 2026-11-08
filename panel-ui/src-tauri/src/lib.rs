@@ -331,6 +331,40 @@ fn sidecar_token(data_dir: &std::path::Path) -> String {
     token
 }
 
+fn resolve_desktop_token(data_dir: &std::path::Path) -> String {
+    if let Ok(tok) = std::env::var("XAVIER_TOKEN") {
+        let t = tok.trim();
+        if !t.is_empty() {
+            return t.to_string();
+        }
+    }
+    if let Some(home) = home_dir() {
+        let candidates = [
+            home.join("proyectosSWAL/apps/xavier/.env"),
+            home.join(".config/xavier/.env"),
+            home.join(".xavier/.env"),
+        ];
+        for cand in &candidates {
+            if cand.exists() {
+                if let Ok(content) = std::fs::read_to_string(cand) {
+                    for line in content.lines() {
+                        let trimmed = line.trim();
+                        if let Some((k, v)) = trimmed.split_once('=') {
+                            if k.trim() == "XAVIER_TOKEN" {
+                                let val = v.trim().trim_matches('"').trim_matches('\'');
+                                if !val.is_empty() {
+                                    return val.to_string();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    sidecar_token(data_dir)
+}
+
 enum Backend {
     /// A Xavier we do not own answered; nothing was spawned.
     Attached,
@@ -340,7 +374,13 @@ enum Backend {
     Unavailable(String),
 }
 
-fn start_backend(app: &tauri::App, port: u16, state: &SidecarState) -> Backend {
+#[tauri::command]
+fn get_auth_token() -> String {
+    let data_dir = desktop_data_dir();
+    resolve_desktop_token(&data_dir)
+}
+
+fn start_backend(app: &tauri::App, port: u16, state: &SidecarState, token: &str) -> Backend {
     if probe_health(port) {
         log::info!("Xavier already running on port {port}: attaching (no sidecar)");
         return Backend::Attached;
@@ -355,7 +395,8 @@ fn start_backend(app: &tauri::App, port: u16, state: &SidecarState) -> Backend {
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
         return Backend::Unavailable(format!("Cannot create {}: {e}", data_dir.display()));
     }
-    let token = sidecar_token(&data_dir);
+    let token_path = data_dir.join("sidecar-token");
+    let _ = std::fs::write(&token_path, token);
 
     let mut cmd = match app.shell().sidecar("xavier") {
         Ok(cmd) => cmd,
@@ -462,14 +503,22 @@ pub fn run() {
             app.manage(sidecar_state.clone());
 
             let port = configured_port();
-            let backend = start_backend(app, port, &sidecar_state);
+            let desktop_data = desktop_data_dir();
+            let desktop_token = resolve_desktop_token(&desktop_data);
+            let backend = start_backend(app, port, &sidecar_state, &desktop_token);
             let base = format!("http://127.0.0.1:{port}");
 
-            // Point the panel at the resolved server. Only overwrite a value we
-            // manage (loopback) so a user-chosen remote URL is preserved.
+            // Point the panel at the resolved server and inject local desktop session.
             let init = format!(
-                "try{{var k='xavier_remote_url',v=localStorage.getItem(k);\
-                 if(!v||v.indexOf('http://127.0.0.1:')===0)localStorage.setItem(k,'{base}');}}catch(e){{}}"
+                "try{{\
+var k='xavier_remote_url',v=localStorage.getItem(k);\
+if(!v||v.indexOf('http://127.0.0.1:')===0)localStorage.setItem(k,'{base}');\
+localStorage.setItem('xavier_desktop_token','{desktop_token}');\
+localStorage.setItem('xavier_onboarding_completed','true');\
+if(!localStorage.getItem('xavier_active_top_tab')){{\
+localStorage.setItem('xavier_active_top_tab','purerag');\
+}}\
+}}catch(e){{}}"
             );
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("Xavier")
@@ -556,9 +605,14 @@ pub fn run() {
         })
         .invoke_handler(
             #[cfg(desktop)]
-            tauri::generate_handler![scan_system, save_initial_config, register_window],
+            tauri::generate_handler![
+                scan_system,
+                save_initial_config,
+                register_window,
+                get_auth_token
+            ],
             #[cfg(not(desktop))]
-            tauri::generate_handler![scan_system, save_initial_config],
+            tauri::generate_handler![scan_system, save_initial_config, get_auth_token],
         )
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -317,7 +317,7 @@ export default React.memo(function TopStatusBar({
 
           {/* SWAL Genesis Founder Node Telemetry Badge */}
           {modules.founder && (
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <motion.button
                 layout
                 transition={spring}
@@ -349,7 +349,9 @@ export default React.memo(function TopStatusBar({
             </div>
           )}
 
-          <OperationModeBadge />
+          <div className="hidden sm:block">
+            <OperationModeBadge />
+          </div>
           <WorkspaceSelector />
 
           {/* System Resources Pill */}
@@ -452,7 +454,7 @@ export default React.memo(function TopStatusBar({
           <motion.div
             layout
             transition={spring}
-            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[60]"
+            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[60] hidden md:block"
           >
           <div className="relative group">
             <motion.div
@@ -556,7 +558,7 @@ export default React.memo(function TopStatusBar({
             transition={spring}
             type="button"
             onClick={() => { window.location.hash = "#/maloca"; }}
-            className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors"
+            className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors"
             title="Abrir Maloca (ops workspace)"
             aria-label="Abrir Maloca (ops workspace)"
           >
@@ -613,7 +615,7 @@ export default React.memo(function TopStatusBar({
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 lg:flex"
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-2 h-7 shrink-0"
             >
               <div className="flex items-center gap-1" title="TPM HW Encryption Active">
                 <ShieldCheck className="w-3 h-3 text-emerald-400" />
@@ -627,7 +629,7 @@ export default React.memo(function TopStatusBar({
 
           {/* Node Sync Pill */}
           {modules.sync && (
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <motion.button
                 layout
                 transition={spring}
