@@ -174,6 +174,45 @@ impl RelationKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum ModalityType {
+    #[default]
+    #[serde(rename = "text", alias = "Text")]
+    Text,
+    #[serde(rename = "image", alias = "Image")]
+    Image,
+    #[serde(rename = "video_scene", alias = "VideoScene", alias = "video")]
+    VideoScene,
+    #[serde(rename = "audio", alias = "Audio")]
+    Audio,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SpatialRegion {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl SpatialRegion {
+    pub fn is_valid(&self) -> bool {
+        self.width >= 0.0 && self.height >= 0.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct TemporalRange {
+    pub start_ms: u64,
+    pub end_ms: u64,
+}
+
+impl TemporalRange {
+    pub fn is_valid(&self) -> bool {
+        self.start_ms <= self.end_ms
+    }
+}
+
 /// Document representation for memory retrieval and BM25 scoring.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MemoryDocument {
@@ -201,6 +240,12 @@ pub struct MemoryDocument {
     pub source_node_id: Option<String>,
     #[serde(default)]
     pub source_db_id: Option<String>,
+    #[serde(default)]
+    pub modality: ModalityType,
+    #[serde(default)]
+    pub spatial: Option<SpatialRegion>,
+    #[serde(default)]
+    pub temporal: Option<TemporalRange>,
 }
 
 impl Default for MemoryDocument {
@@ -221,6 +266,9 @@ impl Default for MemoryDocument {
             score: 0.0,
             source_node_id: None,
             source_db_id: None,
+            modality: ModalityType::default(),
+            spatial: None,
+            temporal: None,
         }
     }
 }
@@ -252,6 +300,9 @@ impl MemoryDocument {
             + 4
             + self.source_node_id.as_ref().map(|s| s.len()).unwrap_or(0) as u64
             + self.source_db_id.as_ref().map(|s| s.len()).unwrap_or(0) as u64
+            + 1 // modality
+            + self.spatial.as_ref().map(|_| 16).unwrap_or(0) as u64 // 4 * f32
+            + self.temporal.as_ref().map(|_| 16).unwrap_or(0) as u64 // 2 * u64
     }
 }
 
