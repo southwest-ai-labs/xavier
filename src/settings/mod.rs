@@ -303,6 +303,8 @@ pub mod tests {
         assert_eq!(settings.advanced.qjl_threshold, 500);
         assert!(settings.advanced.entity_extraction_enabled);
         assert!(settings.advanced.audit_chain_enabled);
+        assert_eq!(settings.advanced.disk_warn_pct, 85);
+        assert_eq!(settings.advanced.disk_crit_pct, 92);
         assert_eq!(settings.memory_layers.working.capacity, 100);
         assert_eq!(settings.memory_layers.episodic.max_sessions, 50);
         assert!(!settings.telegram.enabled);
