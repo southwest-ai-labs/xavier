@@ -131,7 +131,10 @@ fn home_relative(path: PathBuf) -> PathBuf {
     if path.is_absolute() {
         return path;
     }
-    dirs::home_dir()
+    std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+        .map(PathBuf::from)
+        .or_else(dirs::home_dir)
         .unwrap_or_else(std::env::temp_dir)
         .join(path)
 }
