@@ -174,6 +174,88 @@ impl RelationKind {
     }
 }
 
+/// Modality type classification for multimodal RAG.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum ModalityType {
+    #[default]
+    #[serde(rename = "text", alias = "Text")]
+    Text,
+    #[serde(rename = "image", alias = "Image")]
+    Image,
+    #[serde(rename = "video_scene", alias = "VideoScene", alias = "video")]
+    VideoScene,
+    #[serde(rename = "audio", alias = "Audio")]
+    Audio,
+}
+
+impl ModalityType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Image => "image",
+            Self::VideoScene => "video_scene",
+            Self::Audio => "audio",
+        }
+    }
+}
+
+/// Normalized spatial region bounding box (0.0 to 1.0 coordinates).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SpatialRegion {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl SpatialRegion {
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
+    }
+
+    /// Checks if coordinates are finite, non-negative, and fit inside normalized [0.0, 1.0] unit bounds.
+    pub fn is_valid(&self) -> bool {
+        self.x.is_finite()
+            && self.y.is_finite()
+            && self.width.is_finite()
+            && self.height.is_finite()
+            && self.x >= 0.0
+            && self.y >= 0.0
+            && self.width >= 0.0
+            && self.height >= 0.0
+            && (self.x + self.width) <= 1.0 + f32::EPSILON
+            && (self.y + self.height) <= 1.0 + f32::EPSILON
+    }
+}
+
+/// Millisecond temporal range for video scenes or audio segments.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct TemporalRange {
+    pub start_ms: u64,
+    pub end_ms: u64,
+}
+
+impl TemporalRange {
+    pub fn new(start_ms: u64, end_ms: u64) -> Self {
+        Self { start_ms, end_ms }
+    }
+
+    /// Validates that start_ms is less than or equal to end_ms.
+    pub fn is_valid(&self) -> bool {
+        self.start_ms <= self.end_ms
+    }
+
+    /// Returns the temporal duration in milliseconds.
+    pub fn duration_ms(&self) -> u64 {
+        self.end_ms.saturating_sub(self.start_ms)
+    }
+}
+
 /// Document representation for memory retrieval and BM25 scoring.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MemoryDocument {
@@ -201,6 +283,12 @@ pub struct MemoryDocument {
     pub source_node_id: Option<String>,
     #[serde(default)]
     pub source_db_id: Option<String>,
+    #[serde(default)]
+    pub modality: ModalityType,
+    #[serde(default)]
+    pub spatial: Option<SpatialRegion>,
+    #[serde(default)]
+    pub temporal: Option<TemporalRange>,
 }
 
 impl Default for MemoryDocument {
@@ -221,6 +309,9 @@ impl Default for MemoryDocument {
             score: 0.0,
             source_node_id: None,
             source_db_id: None,
+            modality: ModalityType::default(),
+            spatial: None,
+            temporal: None,
         }
     }
 }
@@ -252,6 +343,17 @@ impl MemoryDocument {
             + 4
             + self.source_node_id.as_ref().map(|s| s.len()).unwrap_or(0) as u64
             + self.source_db_id.as_ref().map(|s| s.len()).unwrap_or(0) as u64
+            + 1
+            + self
+                .spatial
+                .as_ref()
+                .map(|_| std::mem::size_of::<SpatialRegion>() as u64)
+                .unwrap_or(0)
+            + self
+                .temporal
+                .as_ref()
+                .map(|_| std::mem::size_of::<TemporalRange>() as u64)
+                .unwrap_or(0)
     }
 }
 
@@ -334,4 +436,137 @@ pub struct ScoredResult {
     pub updated_at: Option<i64>,
     #[serde(default)]
     pub zone: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_modality_type_defaults_and_serde() {
+        assert_eq!(ModalityType::default(), ModalityType::Text);
+        assert_eq!(ModalityType::Text.as_str(), "text");
+        assert_eq!(ModalityType::Image.as_str(), "image");
+        assert_eq!(ModalityType::VideoScene.as_str(), "video_scene");
+        assert_eq!(ModalityType::Audio.as_str(), "audio");
+
+        let text_json = serde_json::to_string(&ModalityType::Text).unwrap();
+        assert_eq!(text_json, "\"text\"");
+
+        let img: ModalityType = serde_json::from_str("\"Image\"").unwrap();
+        assert_eq!(img, ModalityType::Image);
+
+        let video1: ModalityType = serde_json::from_str("\"VideoScene\"").unwrap();
+        assert_eq!(video1, ModalityType::VideoScene);
+
+        let video2: ModalityType = serde_json::from_str("\"video\"").unwrap();
+        assert_eq!(video2, ModalityType::VideoScene);
+
+        let audio: ModalityType = serde_json::from_str("\"Audio\"").unwrap();
+        assert_eq!(audio, ModalityType::Audio);
+    }
+
+    #[test]
+    fn test_spatial_region_validation() {
+        let valid = SpatialRegion::new(0.1, 0.2, 0.5, 0.6);
+        assert!(valid.is_valid());
+
+        let invalid_negative = SpatialRegion::new(-0.1, 0.0, 0.5, 0.5);
+        assert!(!invalid_negative.is_valid());
+
+        let invalid_overflow_x = SpatialRegion::new(0.8, 0.0, 0.5, 0.5);
+        assert!(!invalid_overflow_x.is_valid());
+
+        let invalid_overflow_y = SpatialRegion::new(0.0, 0.8, 0.5, 0.5);
+        assert!(!invalid_overflow_y.is_valid());
+
+        let invalid_nan = SpatialRegion::new(f32::NAN, 0.0, 0.5, 0.5);
+        assert!(!invalid_nan.is_valid());
+
+        let edge_full = SpatialRegion::new(0.0, 0.0, 1.0, 1.0);
+        assert!(edge_full.is_valid());
+    }
+
+    #[test]
+    fn test_temporal_range_validation_and_duration() {
+        let valid = TemporalRange::new(1000, 5000);
+        assert!(valid.is_valid());
+        assert_eq!(valid.duration_ms(), 4000);
+
+        let instantaneous = TemporalRange::new(500, 500);
+        assert!(instantaneous.is_valid());
+        assert_eq!(instantaneous.duration_ms(), 0);
+
+        let invalid = TemporalRange::new(6000, 1000);
+        assert!(!invalid.is_valid());
+        assert_eq!(invalid.duration_ms(), 0);
+    }
+
+    #[test]
+    fn test_memory_document_default_and_roundtrip() {
+        let doc = MemoryDocument::default();
+        assert_eq!(doc.modality, ModalityType::Text);
+        assert_eq!(doc.spatial, None);
+        assert_eq!(doc.temporal, None);
+
+        let mut image_doc = MemoryDocument {
+            id: Some("doc-img-1".to_string()),
+            path: "images/cat.jpg".to_string(),
+            content: "a cute cat on a couch".to_string(),
+            modality: ModalityType::Image,
+            spatial: Some(SpatialRegion::new(0.1, 0.2, 0.4, 0.5)),
+            ..MemoryDocument::default()
+        };
+        image_doc.embedding = vec![0.1, 0.2, 0.3];
+
+        let serialized = serde_json::to_string(&image_doc).unwrap();
+        let deserialized: MemoryDocument = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized.modality, ModalityType::Image);
+        assert_eq!(
+            deserialized.spatial,
+            Some(SpatialRegion::new(0.1, 0.2, 0.4, 0.5))
+        );
+        assert_eq!(deserialized.temporal, None);
+        assert_eq!(deserialized, image_doc);
+
+        let mut video_doc = MemoryDocument {
+            id: Some("doc-video-1".to_string()),
+            path: "videos/lecture.mp4".to_string(),
+            content: "lecture intro scene".to_string(),
+            modality: ModalityType::VideoScene,
+            temporal: Some(TemporalRange::new(0, 15000)),
+            ..MemoryDocument::default()
+        };
+        video_doc.embedding = vec![0.4, 0.5];
+
+        let serialized_video = serde_json::to_string(&video_doc).unwrap();
+        let deserialized_video: MemoryDocument = serde_json::from_str(&serialized_video).unwrap();
+        assert_eq!(deserialized_video.modality, ModalityType::VideoScene);
+        assert_eq!(
+            deserialized_video.temporal,
+            Some(TemporalRange::new(0, 15000))
+        );
+        assert_eq!(deserialized_video.spatial, None);
+        assert_eq!(deserialized_video, video_doc);
+    }
+
+    #[test]
+    fn test_legacy_payload_deserialization_backward_compatibility() {
+        let legacy_json = serde_json::json!({
+            "id": "legacy-doc-123",
+            "path": "notes/todo.md",
+            "content": "buy milk and eggs",
+            "metadata": {"tags": ["grocery"]},
+            "embedding": [0.05, 0.12, 0.88]
+        })
+        .to_string();
+
+        let doc: MemoryDocument = serde_json::from_str(&legacy_json).unwrap();
+        assert_eq!(doc.id.as_deref(), Some("legacy-doc-123"));
+        assert_eq!(doc.path, "notes/todo.md");
+        assert_eq!(doc.content, "buy milk and eggs");
+        assert_eq!(doc.modality, ModalityType::Text);
+        assert_eq!(doc.spatial, None);
+        assert_eq!(doc.temporal, None);
+    }
 }
