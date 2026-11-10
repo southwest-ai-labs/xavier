@@ -105,6 +105,8 @@ fn config_source_relative_data_dir_is_home_relative_in_any_cwd() {
             std::env::remove_var(key);
         }
         std::env::set_var("HOME", &home);
+        std::env::set_var("USERPROFILE", &home);
+        std::env::set_var("XAVIER_TEST_REAL_HOME", "1");
         std::env::set_var("XDG_CONFIG_HOME", home.join(".config"));
         std::env::set_var("XAVIER_CONFIG_PATH", home.join("config.json"));
         std::env::set_var("XAVIER_RUNTIME_STATE_PATH", home.join("runtime.json"));
@@ -132,6 +134,7 @@ fn config_source_relative_data_dir_is_home_relative_in_any_cwd() {
             .env_clear()
             .env("HOME", root.path())
             .env("USERPROFILE", root.path())
+            .env("XAVIER_TEST_REAL_HOME", "1")
             .env("XAVIER_CONFIG_PATH", &config)
             .env("XAVIER_RUNTIME_STATE_PATH", root.path().join("runtime.json"))
             .env("XAVIER_ENV_FILE", &env_file)
