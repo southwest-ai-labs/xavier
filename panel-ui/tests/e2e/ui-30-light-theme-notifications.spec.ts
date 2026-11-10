@@ -156,7 +156,13 @@ test.describe("Notifications Dropdown Theme Compliance", () => {
     await moonBtn.click();
 
     // Close modal
-    await page.keyboard.press('Escape');
+    const closeBtn = page.locator('button[aria-label="Cerrar ventana de configuración"]');
+    if (await closeBtn.isVisible()) {
+      await closeBtn.click();
+    } else {
+      await page.keyboard.press('Escape');
+    }
+    await expect(page.locator('.fixed.inset-0.z-\\[80\\]')).toBeHidden({ timeout: 10000 });
 
     // Open notifications again
     await bellButton.click();

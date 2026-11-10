@@ -300,7 +300,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-4 md:left-6 top-6 flex-row items-start"}`}
+          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-4 md:left-6 top-6 flex-row items-start z-[65]"}`}
         >
           {/* Time & Date Pill */}
           {modules.time && (
@@ -358,42 +358,6 @@ export default React.memo(function TopStatusBar({
           </div>
           <WorkspaceSelector />
 
-          {/* System Resources Pill */}
-          {modules.resources && (
-            <motion.div
-              layout
-              transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-3 py-1 flex items-center gap-3 h-7 shrink-0 hidden lg:flex"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-1.5 px-1">
-                  <LoadingSpinner size={12} />
-                  <span className="font-mono text-[10px] text-white/50">Loading...</span>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className="flex items-center gap-1 text-[10px] text-white/70"
-                    title={`Memory: ${metrics.ram_used_gb.toFixed(1)}GB / ${metrics.ram_total_gb.toFixed(1)}GB`}
-                  >
-                    <Database className="w-3 h-3 text-blue-400" />
-                    <span className="font-mono">{Math.round(metrics.ram_used_gb)}G</span>
-                  </div>
-                  <div
-                    className="flex items-center gap-1 text-[10px] text-white/70"
-                    title={`CPU: ${Math.round(metrics.cpu_percent)}%`}
-                  >
-                    <Activity className="w-3 h-3 text-red-400" />
-                    <span className="font-mono">{Math.round(metrics.cpu_percent)}%</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] text-[#39ff14]" title="GPU: ON">
-                    <Zap className="w-3 h-3 fill-[#39ff14]/20" />
-                  </div>
-                </>
-              )}
-            </motion.div>
-          )}
-
           {/* Communication Channels */}
           {modules.channels && (
             <motion.div
@@ -449,6 +413,42 @@ export default React.memo(function TopStatusBar({
               >
                 <MessageSquare className="w-3 h-3 text-green-400/40 group-hover:text-green-400 transition-colors" aria-hidden="true" />
               </button>
+            </motion.div>
+          )}
+
+          {/* System Resources Pill */}
+          {modules.resources && (
+            <motion.div
+              layout
+              transition={spring}
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-3 py-1 flex items-center gap-3 h-7 shrink-0 hidden lg:flex"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-1.5 px-1">
+                  <LoadingSpinner size={12} />
+                  <span className="font-mono text-[10px] text-white/50">Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="flex items-center gap-1 text-[10px] text-white/70"
+                    title={`Memory: ${metrics.ram_used_gb.toFixed(1)}GB / ${metrics.ram_total_gb.toFixed(1)}GB`}
+                  >
+                    <Database className="w-3 h-3 text-blue-400" />
+                    <span className="font-mono">{Math.round(metrics.ram_used_gb)}G</span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1 text-[10px] text-white/70"
+                    title={`CPU: ${Math.round(metrics.cpu_percent)}%`}
+                  >
+                    <Activity className="w-3 h-3 text-red-400" />
+                    <span className="font-mono">{Math.round(metrics.cpu_percent)}%</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-[#39ff14]" title="GPU: ON">
+                    <Zap className="w-3 h-3 fill-[#39ff14]/20" />
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </motion.div>
@@ -580,8 +580,8 @@ export default React.memo(function TopStatusBar({
               type="button"
               onClick={onOpenConfig}
               className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/50 hover:bg-emerald-500/10 transition-colors text-slate-300 hover:text-white cursor-pointer"
-              title="Open Control Node"
-              aria-label="Open Control Node"
+              title="Control Node Settings"
+              aria-label="Control Node Settings"
               data-testid="topbar-settings-btn"
             >
               <Settings className="w-3.5 h-3.5 text-emerald-400" />

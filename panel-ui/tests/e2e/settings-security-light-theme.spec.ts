@@ -46,12 +46,11 @@ test.describe("Settings Security Light Theme", () => {
     await brainButton.click();
 
     // Navigate to Security tab
-    const securityTab = page.locator('button[data-testid="sidebar-btn-security"]');
-    if (await securityTab.isVisible()) {
-        await securityTab.click();
+    const securityTab = page.locator('button[data-testid="settings-tab-security"], button[data-testid="sidebar-btn-security"]');
+    if (await securityTab.first().isVisible()) {
+        await securityTab.first().click();
     } else {
-        // Find by text if testid not found
-        await page.locator('text="Security"').first().click();
+        await page.getByRole("button", { name: "Security" }).first().click();
     }
 
 

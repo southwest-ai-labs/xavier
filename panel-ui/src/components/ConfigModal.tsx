@@ -372,6 +372,18 @@ export default function ConfigModal({
     codeEgoQuery,
   ]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   const [workspaces, setWorkspaces] = useState<string[]>(() => getWorkspaceList());
   const [activeProject, setActiveProject] = useState<string>(() => getActiveWorkspaceId());
 
@@ -1087,6 +1099,7 @@ function ConfigView({
   const [activeTab, setActiveTab] = useState("topology");
 
   // Projects / Workspaces state
+
   const [workspaces, setWorkspaces] = useState<string[]>(() => getWorkspaceList());
   const [activeWorkspace, setActiveWorkspace] = useState<string>(() =>
     getActiveWorkspaceId(),
