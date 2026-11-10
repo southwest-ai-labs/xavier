@@ -300,7 +300,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-4 md:left-6 top-6 flex-row items-start z-[60]"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-3 md:left-4 top-6 flex-row items-start z-[60]"}`}
         >
           {/* Time & Date Pill */}
           {modules.time && (
@@ -363,7 +363,7 @@ export default React.memo(function TopStatusBar({
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 hidden lg:flex"
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2 py-1 flex items-center gap-1.5 h-7 shrink-0 hidden lg:flex"
             >
               <button
                 type="button"
@@ -421,7 +421,7 @@ export default React.memo(function TopStatusBar({
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-3 py-1 flex items-center gap-3 h-7 shrink-0 hidden 2xl:flex"
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 hidden lg:flex"
             >
               {isLoading ? (
                 <div className="flex items-center gap-1.5 px-1">
@@ -525,7 +525,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-4 md:right-6 top-6 flex-row items-start z-[70]"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-3 md:right-4 top-6 flex-row items-start z-[70]"}`}
         >
           {/* Active Node Indicator */}
           <motion.button
