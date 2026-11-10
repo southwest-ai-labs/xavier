@@ -6,6 +6,7 @@ pub mod daemon;
 pub mod job;
 pub mod night_trainer;
 pub mod retry;
+pub mod vault_sync;
 
 #[cfg(test)]
 mod retry_tests;

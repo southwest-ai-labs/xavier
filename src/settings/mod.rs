@@ -16,6 +16,7 @@ pub mod paths;
 pub mod serialization;
 pub mod types;
 pub mod validation;
+pub mod vault_sync_config;
 
 pub use serialization::configured_model_provider;
 pub use types::*;
