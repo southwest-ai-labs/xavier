@@ -1,0 +1,38 @@
+name: Cloudflare Quota Sentinel
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Runs every 3 hours
+  workflow_dispatch:        # Allows manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  quota-check:
+    name: Audit Cloudflare Quota & Alert
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Sentinel Guard
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 scripts/guardian/cf_quota_sentinel.py --status-file cf-quota-status.json
+
+      - name: Upload Status Artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cf-quota-status
+          path: cf-quota-status.json
+          retention-days: 7

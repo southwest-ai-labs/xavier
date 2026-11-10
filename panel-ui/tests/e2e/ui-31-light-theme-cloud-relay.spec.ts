@@ -93,9 +93,9 @@ test.describe("Cloud Relay Config - Theme Support", () => {
     });
 
     await page.goto("/");
-    await page.locator('button[title="Open Control Node"]').click();
-    await page.getByRole("button", { name: "Configuration" }).click();
-    await page.getByRole("button", { name: "Network" }).click();
+    await page.locator('button[data-testid="topbar-settings-btn"], button[title*="Control Node"], button[aria-label*="Control Node"]').first().click();
+    await page.locator('button[data-testid="settings-tab-config"], button[data-testid="settings-tab-general"], button:has-text("General")').first().click();
+    await page.locator('button:has-text("Server & Network")').first().click();
 
     // We can also try clicking on any element that renders the ConfigModal or navigate to a tab
     // Let's look for "Zero-Trust Cloud Relay" heading which is inside CloudRelayConfig
@@ -141,9 +141,9 @@ test.describe("Cloud Relay Config - Theme Support", () => {
     });
 
     await page.goto("/");
-    await page.locator('button[title="Open Control Node"]').click();
-    await page.getByRole("button", { name: "Configuration" }).click();
-    await page.getByRole("button", { name: "Network" }).click();
+    await page.locator('button[data-testid="topbar-settings-btn"], button[title*="Control Node"], button[aria-label*="Control Node"]').first().click();
+    await page.locator('button[data-testid="settings-tab-config"], button[data-testid="settings-tab-general"], button:has-text("General")').first().click();
+    await page.locator('button:has-text("Server & Network")').first().click();
 
     const heading = page.getByRole('heading', { name: 'Zero-Trust Cloud Relay' });
     await expect(heading).toBeVisible({ timeout: 10000 });

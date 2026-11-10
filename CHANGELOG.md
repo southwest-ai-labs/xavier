@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+## [0.2.20] — 2026-11-08
+
+### Added
+- **PureRAG Real-Time Retrieval Explorer**: Zero-AI inverted UI with human titles, authentic mtime dates, keyword match badges (`🔥 nx`), Codebase and Session badges, full SWAL codebase indexing (853 files, 45,077 embeddings), and auto-recovering 401 Unauthorized handling (REQ-088, #3931).
+- **Cognitive Memory & Retrieval Algorithm Improvements**:
+  - **Bi-directional Associative Multi-Hop Re-ranking**: Multi-hop pathfinder associative graph traversal (#3937).
+  - **ContextZone-Differentiated Memory Pruning Protection**: Protection of active workspace and project memory zones during GC sweeps (#3936).
+  - **Personalized PageRank (PPR)**: Multi-agent belief graph traversal with normalized entity IDs (#3935).
+  - **Ebbinghaus Forgetting Curve**: Spaced retention stability ($R = e^{-t/S}$) for long-term memory consolidation (#3933).
+  - **Soft Query-Time Memory Decay**: Dynamic recency weighting in hybrid vector/lexical retrieval without destroying foundational knowledge anchors (#3932).
+- **Core Wave 100 & Light-Theme Studio UI**: Complete light theme contrast (`studio-bone`), telemetry audit trail (`#/telecom/audit-trail`), file transfers, voice note player, WebAuthn keys (#3931).
+- **Sentinel & Quota Monitoring**: Cloudflare quota sentinel script and automated GitHub Action cron monitor (`cf-quota-sentinel.yml`).
+- **Embedding & Orthogonal Model Assets**: `xavier-embed-ort` crate (#3822), on-demand multimodal embedding selector (#3824, #3831), zero-Ollama asset downloader.
+- **Security & Threat Model**: CSPRNG entropy verification, Turnstile edge verification, and replay resistance (#3817).
+- **CLI & Onboarding**: Interactive 2FA challenge prompt in `xavier login` (#3867), Zero-Handoff context capsule upload to Cloudflare R2 (#3864), deep chunk SHA256 verify and dry-run restore drills (#3863).
+
+### Changed
+- Refactored `panel-ui` authentication to support passwordless magic-link sessions, desktop token auto-hydration, and instant PureRAG navigation.
+- Desktop daemon launcher and NixOS wrapper auto-export `XAVIER_TOKEN` and start directly in PureRAG mode.
+- System resources status bar badges dynamically adapt to mobile and desktop viewports.
+
+### Fixed
+- **PureRAG 401 Unauthorized Self-Healing**: Automated token sanitization and fallback recovery on invalid operator credentials.
+- **Hybrid Search Latency**: Systemd drop-in configuration adjusting search deadline to 10s and embedding fallback budget to 5s.
+- **Gitleaks Test Sanitization**: Prevent dummy API keys in telemetry tests from triggering false-positive secret leaks.
+
 ## [0.2.19] — 2026-10-24
 
 ### Added

@@ -99,10 +99,14 @@ fn config_source_relative_data_dir_is_home_relative_in_any_cwd() {
     const MARKER: &str = "XAVIER_CONFIG_SOURCE_CHILD";
     if let Some(root) = std::env::var_os(MARKER) {
         let home = PathBuf::from(root);
-        for (key, _) in std::env::vars().filter(|(key, _)| key.starts_with("XAVIER_")) {
+        for (key, _) in std::env::vars()
+            .filter(|(key, _)| key.starts_with("XAVIER_") && key != "XAVIER_ENV_FILE")
+        {
             std::env::remove_var(key);
         }
         std::env::set_var("HOME", &home);
+        std::env::set_var("USERPROFILE", &home);
+        std::env::set_var("XAVIER_TEST_REAL_HOME", "1");
         std::env::set_var("XDG_CONFIG_HOME", home.join(".config"));
         std::env::set_var("XAVIER_CONFIG_PATH", home.join("config.json"));
         std::env::set_var("XAVIER_RUNTIME_STATE_PATH", home.join("runtime.json"));
@@ -120,9 +124,8 @@ fn config_source_relative_data_dir_is_home_relative_in_any_cwd() {
     }
     let root = tempfile::tempdir().unwrap();
     let config = root.path().join("config.json");
-    let env_dir = root.path().join(".config/xavier");
-    std::fs::create_dir_all(&env_dir).unwrap();
-    std::fs::write(env_dir.join("env"), "XAVIER_DATA_DIR=node-data\n").unwrap();
+    let env_file = root.path().join("xavier.env");
+    std::fs::write(&env_file, "XAVIER_DATA_DIR=node-data\n").unwrap();
     std::fs::write(&config, r#"{"memory":{"data_dir":"other-data"}}"#).unwrap();
     for cwd in [root.path().join("first"), root.path().join("second")] {
         std::fs::create_dir_all(&cwd).unwrap();
@@ -130,8 +133,11 @@ fn config_source_relative_data_dir_is_home_relative_in_any_cwd() {
             .args(["--exact", "settings::serialization::config_source_tests::config_source_relative_data_dir_is_home_relative_in_any_cwd", "--nocapture"])
             .env_clear()
             .env("HOME", root.path())
+            .env("USERPROFILE", root.path())
+            .env("XAVIER_TEST_REAL_HOME", "1")
             .env("XAVIER_CONFIG_PATH", &config)
             .env("XAVIER_RUNTIME_STATE_PATH", root.path().join("runtime.json"))
+            .env("XAVIER_ENV_FILE", &env_file)
             .env("XDG_CONFIG_HOME", root.path().join(".config"))
             .env(MARKER, root.path())
             .current_dir(cwd)

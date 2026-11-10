@@ -150,7 +150,7 @@ test.describe("OfflineModelManager Light Theme Verification", () => {
     await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
 
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible({ timeout: 15000 });
     await brainButton.click();
 

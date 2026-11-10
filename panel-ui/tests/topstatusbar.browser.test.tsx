@@ -60,6 +60,11 @@ describe("TopStatusBar Browser Compatibility & Guards", () => {
   });
 
   test("uses dynamic invoke mock when __TAURI_INTERNALS__ is present in window", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}),
+    });
+
     const mockInvoke = vi.fn().mockImplementation((cmd: string) => {
       if (cmd === "get_current_config_state") {
         return Promise.resolve({

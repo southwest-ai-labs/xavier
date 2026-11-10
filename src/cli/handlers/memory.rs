@@ -2637,6 +2637,7 @@ pub async fn memory_index_self_handler(
     }
 
     let files_to_index = vec![
+        ("README.md", "overview"),
         ("SOUL.md", "identity"),
         ("CHANGELOG.md", "log"),
         ("PLAN_TRES_MEMORIAS.md", "decision"),
@@ -2654,7 +2655,10 @@ pub async fn memory_index_self_handler(
         match index_file_by_sections(&state, filename, doc_type).await {
             Ok(count) => indexed_count += count,
             Err(e) => {
-                if tokio::fs::metadata(filename).await.is_ok() {
+                if tokio::fs::metadata(state.workspace_dir.join(filename))
+                    .await
+                    .is_ok()
+                {
                     errors.push(format!("{}: {}", filename, e));
                 }
             }
@@ -2662,15 +2666,44 @@ pub async fn memory_index_self_handler(
     }
 
     // Index all markdown files in memory/ directory
-    if let Ok(mut entries) = tokio::fs::read_dir("memory").await {
+    if let Ok(mut entries) = tokio::fs::read_dir(state.workspace_dir.join("memory")).await {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
             if path.extension().and_then(|s| s.to_str()) == Some("md") {
-                let filename = path.to_string_lossy().to_string();
+                let filename = path
+                    .strip_prefix(&state.workspace_dir)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string();
                 match index_file_by_sections(&state, &filename, "log").await {
                     Ok(count) => indexed_count += count,
                     Err(e) => errors.push(format!("{}: {}", filename, e)),
                 }
+            }
+        }
+    }
+
+    let docs_dir = state.workspace_dir.join("docs");
+    if docs_dir.is_dir() {
+        for entry in walkdir::WalkDir::new(&docs_dir) {
+            match entry {
+                Ok(entry)
+                    if entry.file_type().is_file()
+                        && entry.path().extension().and_then(|s| s.to_str()) == Some("md") =>
+                {
+                    let filename = entry
+                        .path()
+                        .strip_prefix(&state.workspace_dir)
+                        .unwrap_or(entry.path())
+                        .to_string_lossy()
+                        .to_string();
+                    match index_file_by_sections(&state, &filename, "documentation").await {
+                        Ok(count) => indexed_count += count,
+                        Err(e) => errors.push(format!("{}: {}", filename, e)),
+                    }
+                }
+                Err(e) => errors.push(format!("docs: {}", e)),
+                _ => {}
             }
         }
     }
@@ -2690,7 +2723,14 @@ async fn index_file_by_sections(
     filename: &str,
     doc_type: &str,
 ) -> anyhow::Result<usize> {
-    let content = tokio::fs::read_to_string(filename).await?;
+    let full_path = if std::path::Path::new(filename).is_absolute() {
+        std::path::PathBuf::from(filename)
+    } else {
+        state.workspace_dir.join(filename)
+    };
+    let modified: chrono::DateTime<chrono::Utc> =
+        tokio::fs::metadata(&full_path).await?.modified()?.into();
+    let content = tokio::fs::read_to_string(&full_path).await?;
     let sections = split_markdown_by_sections(&content);
     let mut count = 0;
 
@@ -2712,16 +2752,18 @@ async fn index_file_by_sections(
             path: path.clone(),
             content: section_content,
             metadata: serde_json::json!({
-                "source": "xavier-self",
+                "source": "codebase",
                 "type": doc_type,
                 "title": title,
                 "file": filename,
+                "file_path": full_path.to_string_lossy(),
+                "last_modified": modified.to_rfc3339(),
                 "kind": "Document",
                 "namespace": "Global"
             }),
             embedding,
             created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            updated_at: modified,
             revision: 1,
             deleted_at: None,
             primary: true,

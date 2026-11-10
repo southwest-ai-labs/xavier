@@ -1538,6 +1538,73 @@ Each product repo with explicit opt-in SHALL own a physical SQLite memory store 
 
 ---
 
+## REQ-088: PureRAG Real-Time Retrieval Explorer (UI + Zero-LLM Architecture)
+
+- **Category:** Functional / UI
+- **Priority:** High
+- **SRS Status:** `implemented` (100%)
+- **Files:** `panel-ui/src/components/PureRag/`, `panel-ui/src/App.tsx`, `panel-ui/src/api/client.ts`, `docs/features/specs/FEATURE-purerag-explorer.md`
+- **Features:** `feat-purerag-explorer`
+
+- **Verification reported:** Vitest 5/5 and Playwright E2E 3/3; human-readable KWIC parser, term-frequency badges, and sorting by actual recency. These results were supplied for the documentation update and were not rerun as part of this change.
+
+### Description
+
+The system SHALL provide a dedicated top-level tab named `PURERAG` in the primary chat window that enables real-time, Zero-AI semantic and lexical retrieval across the Xavier memory store without invoking generative LLMs.
+
+The interface SHALL invert standard chat ergonomics by placing the text search input at the top and cascading results downward into an interactive two-column split layout. Results SHALL be strictly ordered descending by similarity percentage ($\% \text{ Match}$), with the highest-ranked result automatically selected by default. A lateral filter drawer SHALL isolate queries by workspace, project, shared user, and memory kind.
+
+The right-hand detail card SHALL display comprehensive provenance metadata (source file path/URI, creation timestamp, authorship/agent identity, and connected relationship hierarchy). The detail card SHALL include a direct action to transition into the Information Graph view (`GraphView`), centering and highlighting the selected document's entity node and its connected 1st- and 2nd-degree relations.
+
+### Acceptance criteria
+
+- [ ] A top-level tab switcher toggles seamlessly between standard conversational Chat and `PURERAG` in `panel-ui`
+- [ ] PureRAG search input is anchored at the top of the view and executes queries in real-time on keystroke (debounced $\le 150\text{ms}$)
+- [ ] Search executes strictly via vector distance and BM25 full-text indexing with 0 LLM/generative model API calls
+- [ ] Results are strictly sorted descending by similarity percentage, and the top result (#1) is automatically selected upon query resolution
+- [ ] Lateral filter controls allow filtering by Workspace, Project, Shared User, and Document Kind
+- [ ] The Detail Card displays source path, creation date, author identity, and graph connectivity
+- [ ] Clicking "Explore in Information Graph" navigates to the Information Graph centered on the selected node
+
+---
+
+## Auditoría de Herramientas de Indexación
+
+The following figures are reported audit values; they were not independently verified as part of this documentation update.
+
+| Tool | Reported progress | Scope |
+|---|---:|---|
+| Codebase / Repository Indexer | 100% | 853 documents from READMEs, docs, and specs, with actual mtime and FTS5 |
+| PureRAG Retrieval Engine (REQ-088) | 100% | Real-time retrieval explorer |
+| Agent Session Indexer | 100% | Agent sessions |
+| Index-Self | 100% | Foundational docs and README |
+| CodeGraph AST Indexer | 90% | AST indexing |
+
+---
+
+## REQ-089: Multimodal Video & Image RAG Indexing and Visual Retrieval
+
+- **Category:** Functional / Storage
+- **Priority:** Medium
+- **SRS Status:** `planned`
+- **Files:** `crates/xavier-core-logic/src/types.rs`, `src/memory/schema.rs`, `panel-ui/src/components/PureRag/`
+- **Features:** `feat-multimodal-rag-core`
+
+### Description
+
+The memory and retrieval runtime SHALL support multimodal documents, specifically visual images and scene-segmented videos, alongside textual memories.
+
+The data schema SHALL incorporate `ModalityType` (`text`, `code`, `image`, `video`, `audio`) with spatial bounding coordinates (`[ymin, xmin, ymax, xmax]`) for visual images/keyframes and temporal timestamps (`start_time_ms`, `end_time_ms`, `keyframe_id`) for video media. The PureRAG explorer SHALL provide native UI preview capabilities: image thumbnail previews with bounding-box highlights, and video scene cards with embedded time-scrubbing players. The Information Graph SHALL link visual nodes via temporal and semantic edges (`scene_transition`, `visual_cooccurrence`).
+
+### Acceptance criteria
+
+- [ ] Memory schema supports `modality`, spatial bounding boxes, and temporal millisecond ranges
+- [ ] Video chunks store `start_time_ms`, `end_time_ms`, and keyframe references
+- [ ] PureRAG Detail Card renders responsive image viewer and timestamp-seeking video player
+- [ ] Graph explorer visualizes image/video nodes with media badges and temporal edges
+
+---
+
 *WAVE-10 (2026-09-21): REQ-060..065 added (skill-injection wave: scan-paths, semantic-rank, loader-fate, fusion-gates, MCP-tools, ledger-docs). Implemented live: registry scans canonical store, cosine rank w/ keyword tiebreak, fusion gate 0.5 + ack-gate, MCP dispatch/list tools. Measured: Recall@3 0.950 / MRR 0.950 (20-query offline eval), live E2E post 0.2.5 restart. Full `verify-pipeline` green deferred: pre-existing zero-match filters outside the wave need ledger-wide cleanup (see rescan report).*
 
 *Domain-specific REQ-020..027 added 2026-08-08 (F12 preservation + mini-experts vision). Updated 2026-08-04 (honesty reconciliation: 27 features ↔ REQ-001..019 ↔ US-001..032). REQ-029..030 added 2026-08-14 (node provisioning — Olas M6/M7). Note: REQ-028/US-041 are reserved by `feat-issue-context-packager` (see features.json); new IDs use REQ-029..030 / US-042..043 to avoid collision. WAVE-3 (2026-08-31): REQ-031..040 added, 10 deltas, features 46→52 (4 promotions + 6 new), Docs + harness verified. WAVE-4 (2026-08-31): REQ-012,020,021,022,023,024,025,026,027,029,030 promoted to `verified` 100% (9 PRs 1753-1767 + 1758), `cargo test --package xavier --lib --features ci-safe` 2009 passed + `xavier-wasm` 4 + `code-graph` 81 + `xavier-core-logic` 24, clippy 0, fmt 0, panel-ui build 0. WAVE-5 (2026-09-01): REQ-044 added for panel browser compat. WAVE-6 (2026-09-03): REQ-045..046 added for Desktop One-Click installer & Cloudflare Edge Persistence. REQ-047 added 2026-09-05 for RTK Kernel CLI Proxy. WAVE-8 2026-09-12: REQ-048..052 added (HumanChallenge curation pipeline, introspection mode, privacy pipeline, informed consent). Module: humanchallenge + data_commons + enterprise + panel-ui. WAVE-9 (2026-09-18): REQ-053..059 added (ripwire+graphify extraction O1-O7: honest-confidence, language-registry, blast-testgate, incremental-ids, budget-query, pagerank-router, contracts-arch; US-101..US-114; specs docs/features/specs/FEATURE-feat-cg-*.md; doc docs/EXTRACTION-RIPWIRE-GRAPHIFY.md; ADR-032/033).*

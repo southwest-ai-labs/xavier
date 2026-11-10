@@ -303,11 +303,369 @@ impl<'a> Pathfinder<'a> {
 
         result
     }
+
+    /// Computes Personalized PageRank (PPR) with restart vector u focused on seed_nodes.
+    /// Follows the power iteration: p_{k+1} = (1 - d) u + d * M * p_k
+    /// where d is the damping factor (typically 0.85).
+    pub fn personalized_pagerank(
+        &self,
+        seed_nodes: &[String],
+        damping_factor: f32,
+        max_iterations: usize,
+        tolerance: f32,
+    ) -> HashMap<String, f32> {
+        let mut ranks: HashMap<String, f32> = HashMap::new();
+        // Match seeds against adjacency map and degrees (handling lowercase normalization)
+        let valid_seeds: Vec<String> = seed_nodes
+            .iter()
+            .map(|s| s.to_lowercase())
+            .filter(|s| self.adjacency_map.contains_key(s) || self.degrees.contains_key(s))
+            .collect();
+
+        if valid_seeds.is_empty() {
+            return ranks;
+        }
+
+        // Initialize uniform restart vector u over valid seed nodes
+        let seed_prob = 1.0 / (valid_seeds.len() as f32);
+        let mut restart_vector: HashMap<String, f32> = HashMap::new();
+        for seed in &valid_seeds {
+            restart_vector.insert(seed.clone(), seed_prob);
+            ranks.insert(seed.clone(), seed_prob);
+        }
+
+        let d = damping_factor.clamp(0.01, 0.99);
+
+        for _ in 0..max_iterations {
+            let mut next_ranks: HashMap<String, f32> = HashMap::new();
+
+            // Distribute probability through outgoing edges
+            for (node, &prob) in &ranks {
+                if prob <= 0.0 {
+                    continue;
+                }
+                if let Some(edges) = self.adjacency_map.get(node) {
+                    if !edges.is_empty() {
+                        let out_share = (prob * d) / (edges.len() as f32);
+                        for edge in edges {
+                            *next_ranks.entry(edge.target.clone()).or_insert(0.0) += out_share;
+                        }
+                    } else {
+                        // Dangling node: redirect to restart vector
+                        for (seed, &u_prob) in &restart_vector {
+                            *next_ranks.entry(seed.clone()).or_insert(0.0) += prob * d * u_prob;
+                        }
+                    }
+                } else {
+                    for (seed, &u_prob) in &restart_vector {
+                        *next_ranks.entry(seed.clone()).or_insert(0.0) += prob * d * u_prob;
+                    }
+                }
+            }
+
+            // Add restart teleportation component: (1 - d) * u
+            for (seed, &u_prob) in &restart_vector {
+                *next_ranks.entry(seed.clone()).or_insert(0.0) += (1.0 - d) * u_prob;
+            }
+
+            // Check convergence
+            let mut max_diff: f32 = 0.0;
+            let all_keys: HashSet<String> =
+                ranks.keys().chain(next_ranks.keys()).cloned().collect();
+            for key in all_keys {
+                let p_old = ranks.get(&key).copied().unwrap_or(0.0);
+                let p_new = next_ranks.get(&key).copied().unwrap_or(0.0);
+                max_diff = max_diff.max((p_new - p_old).abs());
+            }
+
+            ranks = next_ranks;
+
+            if max_diff < tolerance {
+                break;
+            }
+        }
+
+        ranks
+    }
+
+    pub fn associate_and_rerank(
+        &self,
+        initial_candidates: &[(String, f32)],
+        alpha: f32,
+        damping_factor: f32,
+        max_iterations: usize,
+        tolerance: f32,
+    ) -> Vec<(String, f32)> {
+        if initial_candidates.is_empty() {
+            return Vec::new();
+        }
+
+        let mut seeds: Vec<String> = initial_candidates
+            .iter()
+            .filter(|(_, s)| *s > 0.0)
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        if seeds.is_empty() {
+            seeds = initial_candidates
+                .iter()
+                .map(|(id, _)| id.clone())
+                .collect();
+        }
+
+        let ppr_scores =
+            self.personalized_pagerank(&seeds, damping_factor, max_iterations, tolerance);
+        let max_ppr = ppr_scores.values().fold(0.0f32, |acc, &val| acc.max(val));
+
+        let a = alpha.clamp(0.0, 1.0);
+        let mut results: Vec<(String, f32)> = Vec::new();
+
+        // Track candidates added
+        let mut seen = HashSet::new();
+
+        for (id, direct_score) in initial_candidates {
+            let ppr_raw = ppr_scores.get(&id.to_lowercase()).copied().unwrap_or(0.0);
+            let ppr_norm = if max_ppr > 0.0 {
+                ppr_raw / max_ppr
+            } else {
+                0.0
+            };
+            let composite = a * direct_score + (1.0 - a) * ppr_norm;
+            results.push((id.clone(), composite));
+            seen.insert(id.to_lowercase());
+        }
+
+        // Associative Expansion (HippoRAG discovery of unindexed bridge nodes)
+        for (node_id, &ppr_raw) in &ppr_scores {
+            if !seen.contains(&node_id.to_lowercase()) {
+                let ppr_norm = if max_ppr > 0.0 {
+                    ppr_raw / max_ppr
+                } else {
+                    0.0
+                };
+                if ppr_norm >= 0.1 && a < 1.0 {
+                    let composite = (1.0 - a) * ppr_norm;
+                    results.push((node_id.clone(), composite));
+                }
+            }
+        }
+
+        results.sort_by(|a_val, b_val| {
+            b_val
+                .1
+                .partial_cmp(&a_val.1)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a_val.0.cmp(&b_val.0))
+        });
+
+        results
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_associate_and_rerank_empty_candidates() {
+        let graph = BeliefGraph::new();
+        let pathfinder = Pathfinder::new(&graph);
+        let results = pathfinder.associate_and_rerank(&[], 0.5, 0.85, 100, 1e-4);
+        assert!(results.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_associate_and_rerank_combines_vector_and_graph() {
+        let graph = BeliefGraph::new();
+        graph.add_node("a".to_string(), 1.0, None);
+        graph.add_node("b".to_string(), 1.0, None);
+        graph.add_node("c".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "a".to_string(),
+                "b".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        graph
+            .add_relation(
+                "b".to_string(),
+                "c".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+
+        let initial_candidates = vec![("a".to_string(), 0.9), ("c".to_string(), 0.2)];
+
+        let results = pathfinder.associate_and_rerank(&initial_candidates, 0.5, 0.85, 100, 1e-4);
+
+        assert_eq!(results.len(), 3); // a, c, and discovered b
+        assert_eq!(results[0].0, "a");
+        // We know 'b' should get a decent PPR score due to 'a' being the seed.
+        // It might even surpass 'c' in total score.
+        let has_b = results.iter().any(|(id, _)| id == "b");
+        assert!(has_b, "node b should be discovered");
+    }
+
+    #[tokio::test]
+    async fn test_associate_and_rerank_discovers_multihop_neighbors() {
+        let graph = BeliefGraph::new();
+        graph.add_node("seed_node".to_string(), 1.0, None);
+        graph.add_node("hop_1".to_string(), 1.0, None);
+        graph.add_node("hop_2".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "seed_node".to_string(),
+                "hop_1".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        graph
+            .add_relation(
+                "hop_1".to_string(),
+                "hop_2".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let candidates = vec![("seed_node".to_string(), 1.0)];
+
+        // With high damping factor, pagerank will propagate to hop_1 and hop_2
+        let results = pathfinder.associate_and_rerank(&candidates, 0.0, 0.9, 100, 1e-4);
+
+        let has_hop_1 = results.iter().any(|(id, _)| id == "hop_1");
+        assert!(has_hop_1, "hop_1 should be discovered");
+    }
+
+    #[tokio::test]
+    async fn test_associate_and_rerank_alpha_boundary() {
+        let graph = BeliefGraph::new();
+        graph.add_node("a".to_string(), 1.0, None);
+        graph.add_node("b".to_string(), 1.0, None);
+        graph
+            .add_relation(
+                "a".to_string(),
+                "b".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let candidates = vec![("a".to_string(), 0.8), ("b".to_string(), 0.2)];
+
+        // Alpha = 1.0 (pure direct score)
+        let results_alpha_1 = pathfinder.associate_and_rerank(&candidates, 1.0, 0.85, 100, 1e-4);
+        assert_eq!(results_alpha_1[0].0, "a");
+        assert_eq!(results_alpha_1[0].1, 0.8);
+        assert_eq!(results_alpha_1[1].0, "b");
+        assert_eq!(results_alpha_1[1].1, 0.2);
+
+        // Alpha = 0.0 (pure PPR score)
+        let results_alpha_0 = pathfinder.associate_and_rerank(&candidates, 0.0, 0.85, 100, 1e-4);
+        assert_eq!(results_alpha_0[0].0, "b");
+        assert_eq!(results_alpha_0[0].1, 1.0); // max_ppr normalization means top node is 1.0
+        assert_eq!(results_alpha_0[1].0, "a");
+    }
+
+    #[test]
+    fn test_personalized_pagerank_empty_seeds_returns_empty() {
+        let graph = BeliefGraph::new();
+        let pathfinder = Pathfinder::new(&graph);
+        let ranks = pathfinder.personalized_pagerank(&[], 0.85, 100, 1e-4);
+        assert!(ranks.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_personalized_pagerank_propagates_to_neighbors() {
+        let graph = BeliefGraph::new();
+        graph.add_node("a".to_string(), 1.0, None);
+        graph.add_node("b".to_string(), 1.0, None);
+        graph.add_node("c".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "a".to_string(),
+                "b".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+        graph
+            .add_relation(
+                "b".to_string(),
+                "c".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let seeds = vec!["a".to_string()];
+        let ranks = pathfinder.personalized_pagerank(&seeds, 0.85, 100, 1e-4);
+
+        let rank_a = *ranks.get("a").unwrap_or(&0.0);
+        let rank_b = *ranks.get("b").unwrap_or(&0.0);
+        let rank_c = *ranks.get("c").unwrap_or(&0.0);
+
+        assert!(rank_a > rank_b, "a should have higher rank than b");
+        assert!(rank_b > rank_c, "b should have higher rank than c");
+        assert!(rank_c > 0.0, "c should have non-zero rank");
+    }
+
+    #[tokio::test]
+    async fn test_personalized_pagerank_damping_boundary() {
+        let graph = BeliefGraph::new();
+        graph.add_node("a".to_string(), 1.0, None);
+        graph.add_node("b".to_string(), 1.0, None);
+
+        graph
+            .add_relation(
+                "a".to_string(),
+                "b".to_string(),
+                "relates".to_string(),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let pathfinder = Pathfinder::new(&graph);
+        let seeds = vec!["a".to_string()];
+
+        // Pass out-of-bounds damping factor (1.5)
+        let ranks = pathfinder.personalized_pagerank(&seeds, 1.5, 100, 1e-4);
+
+        let sum: f32 = ranks.values().sum();
+        assert!(
+            (sum - 1.0).abs() < 0.05,
+            "Probabilities should sum to approximately 1.0, got {}",
+            sum
+        );
+    }
 
     #[tokio::test]
     async fn test_pathfinding() {

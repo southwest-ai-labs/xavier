@@ -9,13 +9,14 @@ import { RecoveryPage } from "./auth/RecoveryPage";
 import { RegisterPage } from "./auth/RegisterPage";
 import { TwoFactorSetup } from "./auth/TwoFactorSetup";
 import ChatHistory from "./components/ChatHistory";
-import ConfigModal from "./components/ConfigModal";
+import ConfigModal, { type MainTab } from "./components/ConfigModal";
 import DraggableWidget from "./components/DraggableWidget";
 import InputArea from "./components/InputArea";
 import { MeshHubView } from "./components/Mesh/MeshHubView";
 import { FirstLoginSecurityOnboarding } from "./components/Onboarding/FirstLoginSecurityOnboarding";
 import { OnboardingFlow } from "./components/Onboarding/OnboardingFlow";
 import ParticleBackground from "./components/ParticleBackground";
+import { PureRagView } from "./components/PureRag/PureRagView";
 import { RecoveryModal } from "./components/RecoveryModal";
 import SystemAlertBanner from "./components/SystemAlertBanner";
 import { AgentResponderSelect } from "./components/Telecom/AgentResponderSelect";
@@ -103,9 +104,24 @@ function AppContent() {
 	const graphMetaRef = useRef(graphMeta);
 	const graphSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+	const [activeTopTab, setActiveTopTab] = useState<"chat" | "purerag">(() => {
+		if (typeof window !== "undefined") {
+			const saved = localStorage.getItem("xavier_active_top_tab");
+			if (saved === "chat" || saved === "purerag") return saved;
+		}
+		return "chat";
+	});
+
+	const handleSelectTopTab = useCallback((tab: "chat" | "purerag") => {
+		setActiveTopTab(tab);
+		if (typeof window !== "undefined") {
+			localStorage.setItem("xavier_active_top_tab", tab);
+		}
+	}, []);
 	const [hasConfig, setHasConfig] = useState(true);
 
 	const [isConfigOpen, setIsConfigOpen] = useState(false);
+	const [configModalTab, setConfigModalTab] = useState<MainTab>("appearance");
 	const [showOnboarding, setShowOnboarding] = useState(() => {
 		if (typeof window === "undefined") return false;
 		const isCloud =
@@ -451,6 +467,7 @@ function AppContent() {
 	}, []);
 
 	const handleOpenConfig = useCallback(() => {
+		setConfigModalTab("appearance");
 		setIsConfigOpen(true);
 	}, []);
 
@@ -712,13 +729,48 @@ function AppContent() {
 	return (
 		<div className="relative w-full h-screen font-sans bg-slate-50 dark:bg-[#050505] flex flex-col overflow-hidden text-slate-900 dark:text-white transition-colors duration-200">
 			<ParticleBackground />
-			<TopStatusBar isModalOpen={isConfigOpen} isLoading={_isLoading} />
+			<TopStatusBar
+				isModalOpen={isConfigOpen}
+				isLoading={_isLoading}
+				onOpenConfig={handleOpenConfig}
+			/>
 			<SystemAlertBanner
 				alerts={errorAlerts}
 				onDismiss={() => setError(null)}
 				onOpenConfig={handleOpenConfig}
 			/>
 			<ErrorToast message={error} onClose={() => setError(null)} />
+
+			{/* Top Navigation Bar: PURERAG (Primary) vs Chat */}
+			<div className="w-full flex items-center justify-center mt-16 sm:mt-14 pb-2 px-4 z-30 shrink-0">
+				<div className="flex items-center gap-1.5 p-1 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 shadow-xl">
+					<button
+						type="button"
+						data-testid="purerag-tab"
+						onClick={() => handleSelectTopTab("purerag")}
+						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+							activeTopTab === "purerag"
+								? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20"
+								: "text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+						}`}
+					>
+						<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+						<span>⚡ PURERAG</span>
+					</button>
+					<button
+						type="button"
+						data-testid="chat-tab"
+						onClick={() => handleSelectTopTab("chat")}
+						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+							activeTopTab === "chat"
+								? "bg-white/15 text-white border border-white/20 shadow-sm"
+								: "text-slate-400 hover:text-white hover:bg-white/5"
+						}`}
+					>
+						<span>💬 Chat</span>
+					</button>
+				</div>
+			</div>
 
 			{/* Pinned Widgets Layer */}
 			<div className="absolute inset-0 pointer-events-none z-20">
@@ -734,58 +786,74 @@ function AppContent() {
 				</AnimatePresence>
 			</div>
 
-			{/* Main Content Area */}
-			<main className="flex-1 w-full flex items-center justify-center relative pb-20 sm:pb-24 z-10 px-2 sm:px-4 md:px-8 lg:px-12">
-				<AnimatePresence mode="wait">
-					{isConfigOpen && (
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							exit={{ opacity: 0 }}
-							className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 md:p-6"
-						>
-							<ConfigModal
-								key="modal"
-								onClose={handleCloseConfig}
-								graphData={graphData}
-								onUpdateGraphData={handleUpdateGraphData}
-								bookmarks={
-									bookmarks.length > 0
-										? (bookmarks as unknown as BookmarkArtifact[])
-										: initialBookmarks
-								}
-								onPinArtifact={handlePinArtifact}
-								onUpdateBookmark={handleUpdateBookmark}
-								token={token || undefined}
-							/>
-						</motion.div>
-					)}
-				</AnimatePresence>
-			</main>
-
-			<ChatHistory
-				messages={messages}
-				streamingMessageId={streamingMessageId}
-				isLoading={_isLoading}
-				onStreamingComplete={handleStreamingComplete}
-			/>
-
-			<AnimatePresence>
-				{!isConfigOpen && (
+			{/* Modal Layer: Accessible from both Chat and PURERAG */}
+			<AnimatePresence mode="wait">
+				{isConfigOpen && (
 					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						exit={{ opacity: 0, y: 20 }}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 md:p-6"
 					>
-						<InputArea
-							onSendMessage={sendMessage}
-							onOpenConfig={handleOpenConfig}
-							onSystemMessage={handleSystemMessage}
-							isLoading={_isLoading}
+						<ConfigModal
+							key="modal"
+							initialTab={configModalTab}
+							onClose={handleCloseConfig}
+							graphData={graphData}
+							onUpdateGraphData={handleUpdateGraphData}
+							bookmarks={
+								bookmarks.length > 0
+									? (bookmarks as unknown as BookmarkArtifact[])
+									: initialBookmarks
+							}
+							onPinArtifact={handlePinArtifact}
+							onUpdateBookmark={handleUpdateBookmark}
+							token={token || undefined}
 						/>
 					</motion.div>
 				)}
 			</AnimatePresence>
+
+			{/* Main Content Area */}
+			{activeTopTab === "purerag" ? (
+				<main className="flex-1 w-full relative z-20 overflow-y-auto px-2 sm:px-4 md:px-8">
+					<PureRagView
+						token={token || undefined}
+						onNavigateToGraph={(_nodeId, _nodeTitle) => {
+							setConfigModalTab("graph");
+							setIsConfigOpen(true);
+						}}
+					/>
+				</main>
+			) : (
+				<>
+					<main className="flex-1 w-full flex items-center justify-center relative pb-20 sm:pb-24 z-10 px-2 sm:px-4 md:px-8 lg:px-12" />
+
+					<ChatHistory
+						messages={messages}
+						streamingMessageId={streamingMessageId}
+						isLoading={_isLoading}
+						onStreamingComplete={handleStreamingComplete}
+					/>
+
+					<AnimatePresence>
+						{!isConfigOpen && (
+							<motion.div
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, y: 20 }}
+							>
+								<InputArea
+									onSendMessage={sendMessage}
+									onOpenConfig={handleOpenConfig}
+									onSystemMessage={handleSystemMessage}
+									isLoading={_isLoading}
+								/>
+							</motion.div>
+						)}
+					</AnimatePresence>
+				</>
+			)}
 		</div>
 	);
 }

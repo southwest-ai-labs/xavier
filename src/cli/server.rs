@@ -922,6 +922,14 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
             get(crate::cli::handlers::headless_api::headless_system_info),
         )
         .route(
+            "/v1/system/update/check",
+            get(crate::cli::handlers::headless_api::headless_system_update_check),
+        )
+        .route(
+            "/v1/system/update/apply",
+            post(crate::cli::handlers::headless_api::headless_system_update_apply),
+        )
+        .route(
             "/v1/chat/completions",
             post(crate::cli::handlers::headless_api::headless_chat),
         )

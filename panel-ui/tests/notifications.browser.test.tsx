@@ -94,4 +94,40 @@ describe("Notifications Browser Compatibility & Functionality", () => {
 			expect(screen.getByText("Env Token Notification")).toBeInTheDocument();
 		});
 	});
+
+	it("renders clickable commit details link in notification body", async () => {
+		const updateNotif: Notification[] = [
+			{
+				id: "notif-update-1",
+				islandId: "system",
+				title: "Xavier actualizado silenciosamente (fe4125c)",
+				body: "Se aplicaron las siguientes mejoras desde main:\n• feat(ui): responsive panel\nDetalles: https://github.com/southwest-ai-labs/xavier/commit/fe4125ca7",
+				timestamp: new Date().toISOString(),
+				read: false,
+				severity: "success",
+			},
+		];
+
+		global.fetch = vi.fn().mockImplementation((url: string) => {
+			if (url.includes("/notifications")) {
+				return Promise.resolve({
+					ok: true,
+					status: 200,
+					json: () => Promise.resolve(updateNotif),
+				} as Response);
+			}
+			return Promise.resolve({ ok: true, json: () => Promise.resolve({}) } as Response);
+		});
+
+		render(<NotificationsDropdown onClose={() => {}} />);
+
+		await waitFor(() => {
+			expect(screen.getByText("Xavier actualizado silenciosamente (fe4125c)")).toBeInTheDocument();
+		});
+
+		const link = screen.getByRole("link", { name: /ver detalles del commit/i });
+		expect(link).toBeInTheDocument();
+		expect(link).toHaveAttribute("href", "https://github.com/southwest-ai-labs/xavier/commit/fe4125ca7");
+		expect(link).toHaveAttribute("target", "_blank");
+	});
 });

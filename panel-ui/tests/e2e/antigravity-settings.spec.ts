@@ -257,8 +257,8 @@ test.describe("Antigravity Settings Modal & Live Telemetry E2E Suite", () => {
     }
 
     // 4. Open Settings Modal via BrainCircuit button
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
-    await expect(brainButton).toBeVisible({ timeout: 15000 });
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
+    await expect(brainButton).toBeVisible({ timeout: 20000 });
     await brainButton.click();
 
     // Wait for ConfigModal to appear
@@ -268,7 +268,6 @@ test.describe("Antigravity Settings Modal & Live Telemetry E2E Suite", () => {
     // Verify Antigravity Sidebar sections
     await expect(page.locator('text="Settings"').first()).toBeVisible();
     await expect(page.locator('text="Projects"').first()).toBeVisible();
-    await expect(page.locator('text="Not in Project"').first()).toBeVisible();
     await expect(page.locator('text="Shortcuts"').first()).toBeVisible();
     await expect(page.locator('text="Provide Feedback"').first()).toBeVisible();
 

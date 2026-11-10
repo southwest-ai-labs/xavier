@@ -2,7 +2,12 @@ name: Jules CI Auto-Fixer Feedback Loop
 
 on:
   workflow_run:
-    workflows: ["Xavier CI / CD"]
+    workflows:
+      - "Xavier CI / CD"
+      - "E2E Segmented"
+      - "Desktop (AppImage + deb)"
+      - "Windows Installers (verify only)"
+      - "Release & Multi-Platform Binaries"
     types: [completed]
 
 permissions:
@@ -52,7 +57,8 @@ jobs:
           PR_NUMBER=$(gh pr list --head "$HEAD_BRANCH" --json number -q '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
-            echo "No open PR found for branch $HEAD_BRANCH. Skipping notification."
+            echo "No open PR found for branch $HEAD_BRANCH. Creating or updating Jules E2E incident issue..."
+            bash scripts/e2e-failure-incident.sh
             exit 0
           fi
 

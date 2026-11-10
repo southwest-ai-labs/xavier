@@ -31,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: e2e-${{ github.sha }}
@@ -846,3 +847,19 @@ jobs:
             exit 1
           fi
           echo "E2E gate PASSED: all 13 waves reported no failing targets"
+
+      - name: Report E2E Segmented Failure to Jules
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONCLUSION: failure
+          HEAD_SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_NAME: "E2E Segmented"
+          JOB_NAME: "E2E gate"
+          RUNNER_OS: "Linux"
+          HEAD_BRANCH: ${{ github.ref_name }}
+          REPRO_COMMAND: "source scripts/e2e-wave-target.sh && cargo test --package xavier --features ci-safe"
+          TARGET_FILES: "tests/**, src/**, .github/workflows/e2e-segmented.yml"
+        run: bash scripts/e2e-failure-incident.sh

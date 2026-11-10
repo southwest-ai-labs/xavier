@@ -159,7 +159,7 @@ test.describe("Plugins Manager Light Theme E2E", () => {
   test("loads plugins manager in light theme and verifies luminosity", async ({ page }) => {
 
     // Switch to Light Mode via App Appearance Modal
-    const configBtn = page.locator('button[aria-label="Open Control Node"]');
+    const configBtn = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(configBtn).toBeVisible();
     await configBtn.click();
 

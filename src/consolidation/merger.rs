@@ -263,6 +263,44 @@ pub fn importance_score(
         .clamp(0.0, 1.0)
 }
 
+/// Ebbinghaus retention strength R(t) = exp(-elapsed_days / stability_days).
+pub fn ebbinghaus_retention(stability_days: f32, elapsed_days: f32) -> f32 {
+    let s = stability_days.max(0.5);
+    let t = elapsed_days.max(0.0);
+    (-t / s).exp().clamp(0.0, 1.0)
+}
+
+/// Compute memory stability in days reinforced by spaced accesses.
+/// Base stability is 2.0 days; each access exponentially extends stability.
+pub fn reinforced_stability(access_count: usize, base_stability_days: f32) -> f32 {
+    let base = base_stability_days.max(1.0);
+    let factor = 1.0 + 0.5 * (1.0 + access_count as f32).ln();
+    (base * factor).max(1.0)
+}
+
+pub fn decay_importance_with_stability(
+    importance: f32,
+    last_access: Option<DateTime<Utc>>,
+    created_at: Option<DateTime<Utc>>,
+    decay_rate: f32,
+    access_count: usize,
+) -> f32 {
+    let age = age_days(last_access, created_at);
+    let stability = reinforced_stability(access_count, 3.0);
+    let retention = ebbinghaus_retention(stability, age);
+
+    let usage_decay = 1.0 / (1.0 + age / 20.0);
+    let mut score = importance * decay_rate.powf(age / 7.0) * usage_decay * (0.3 + 0.7 * retention);
+
+    if let Some(last_access) = last_access {
+        let days_since_access = (Utc::now() - last_access).num_seconds().max(0) as f32 / 86_400.0;
+        let access_retention = ebbinghaus_retention(stability, days_since_access);
+        score *= 0.4 + 0.6 * access_retention;
+    }
+
+    score.clamp(0.0, 1.0)
+}
+
 /// Decay importance.
 pub fn decay_importance(
     importance: f32,
@@ -270,16 +308,7 @@ pub fn decay_importance(
     created_at: Option<DateTime<Utc>>,
     decay_rate: f32,
 ) -> f32 {
-    let age = age_days(last_access, created_at);
-    let usage_decay = 1.0 / (1.0 + age / 20.0);
-    let mut score = importance * decay_rate.powf(age / 7.0) * usage_decay;
-
-    if let Some(last_access) = last_access {
-        let days_since_access = (Utc::now() - last_access).num_days().max(0) as f32;
-        score *= 1.0 / (1.0 + days_since_access / 30.0);
-    }
-
-    score.clamp(0.0, 1.0)
+    decay_importance_with_stability(importance, last_access, created_at, decay_rate, 1)
 }
 
 /// Age days.
@@ -395,6 +424,34 @@ fn priority_boost(metadata: &serde_json::Value) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Duration;
+
+    #[test]
+    fn test_ebbinghaus_retention_boundary_values() {
+        assert!((ebbinghaus_retention(3.0, 0.0) - 1.0).abs() < 1e-6);
+        assert!(ebbinghaus_retention(3.0, 1000.0) < 0.01);
+        assert!(ebbinghaus_retention(3.0, 1.0) > ebbinghaus_retention(3.0, 2.0));
+    }
+
+    #[test]
+    fn test_reinforced_stability_scales_with_accesses() {
+        let base = reinforced_stability(0, 3.0);
+        let high_access = reinforced_stability(20, 3.0);
+        assert!(high_access > base * 1.5);
+    }
+
+    #[test]
+    fn test_decay_importance_preserves_reinforced_memory() {
+        let created_at = Some(Utc::now() - Duration::days(30));
+        let last_access = Some(Utc::now() - Duration::days(5));
+
+        let score_unreinforced =
+            decay_importance_with_stability(1.0, last_access, created_at, 0.95, 0);
+        let score_reinforced =
+            decay_importance_with_stability(1.0, last_access, created_at, 0.95, 15);
+
+        assert!(score_reinforced > score_unreinforced);
+    }
 
     fn memory(path: &str, content: &str, importance: f32) -> ManagedMemory {
         let doc = MemoryDocument {

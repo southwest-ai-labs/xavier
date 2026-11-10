@@ -46,6 +46,7 @@ type MessagingPlatform =
 interface TopStatusBarProps {
   isModalOpen?: boolean;
   isLoading?: boolean;
+  onOpenConfig?: () => void;
 }
 
 declare const __APP_VERSION__: string;
@@ -63,6 +64,7 @@ function getToken(): string {
 export default React.memo(function TopStatusBar({
   isModalOpen = false,
   isLoading: propIsLoading,
+  onOpenConfig,
 }: TopStatusBarProps) {
   const [time, setTime] = useState(new Date());
   const [memoryCount, setMemoryCount] = useState(0);
@@ -90,6 +92,7 @@ export default React.memo(function TopStatusBar({
   const [retryCount, setRetryCount] = useState(0);
   const [remoteUrl, setRemoteUrlState] = useState<string>(getRemoteUrl());
   const [showNodeModal, setShowNodeModal] = useState(false);
+  const [liveVersion, setLiveVersion] = useState<string | null>(null);
 
   // Manual Memory Sync state
   const [showSyncPopover, setShowSyncPopover] = useState(false);
@@ -149,39 +152,40 @@ export default React.memo(function TopStatusBar({
     fetchConfig();
 
     const fetchMetrics = async () => {
+      try {
+        const res = await fetch(getApiUrl("/health"));
+        if (res.ok) {
+          setNodeStatus("connected");
+          setRetryCount(0);
+          const data = await res.json();
+          if (data.version) {
+            setLiveVersion(data.version);
+          }
+          if (data.system) {
+            const cpu_percent = data.system.cpu_usage ?? 0;
+            const ram_percent = data.system.ram_usage_percent ?? 0;
+            const deviceMemory =
+              (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
+            const ram_used_gb = (ram_percent / 100) * deviceMemory;
+            setMetrics({ cpu_percent, ram_used_gb, ram_total_gb: deviceMemory });
+          }
+        } else {
+          setNodeStatus("disconnected");
+          setRetryCount((prev) => prev + 1);
+        }
+      } catch (err) {
+        console.debug("Error fetching metrics from /health:", err);
+        setNodeStatus("disconnected");
+        setRetryCount((prev) => prev + 1);
+      }
+
       if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
         try {
           const { invoke } = await import("@tauri-apps/api/core");
           const met = await invoke<any>("get_realtime_metrics");
           if (met) setMetrics(met);
-          setNodeStatus("connected");
-          setRetryCount(0);
         } catch (err) {
-          console.debug("Error fetching realtime metrics:", err);
-        }
-      } else {
-        try {
-          const res = await fetch(getApiUrl("/health"));
-          if (res.ok) {
-            setNodeStatus("connected");
-            setRetryCount(0);
-            const data = await res.json();
-            if (data.system) {
-              const cpu_percent = data.system.cpu_usage ?? 0;
-              const ram_percent = data.system.ram_usage_percent ?? 0;
-              const deviceMemory =
-                (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
-              const ram_used_gb = (ram_percent / 100) * deviceMemory;
-              setMetrics({ cpu_percent, ram_used_gb, ram_total_gb: deviceMemory });
-            }
-          } else {
-            setNodeStatus("disconnected");
-            setRetryCount((prev) => prev + 1);
-          }
-        } catch (err) {
-          console.debug("Error fetching metrics from /health:", err);
-          setNodeStatus("disconnected");
-          setRetryCount((prev) => prev + 1);
+          console.debug("Error fetching realtime metrics via Tauri:", err);
         }
       }
 
@@ -296,7 +300,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-4 md:left-6 top-6 flex-row items-start"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-3 md:left-4 top-6 flex-row items-start z-[60]"}`}
         >
           {/* Time & Date Pill */}
           {modules.time && (
@@ -317,7 +321,7 @@ export default React.memo(function TopStatusBar({
 
           {/* SWAL Genesis Founder Node Telemetry Badge */}
           {modules.founder && (
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <motion.button
                 layout
                 transition={spring}
@@ -349,51 +353,17 @@ export default React.memo(function TopStatusBar({
             </div>
           )}
 
-          <OperationModeBadge />
+          <div className="hidden sm:block">
+            <OperationModeBadge />
+          </div>
           <WorkspaceSelector />
-
-          {/* System Resources Pill */}
-          {modules.resources && (
-            <motion.div
-              layout
-              transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-3 py-1 flex items-center gap-3 h-7 shrink-0 hidden lg:flex"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-1.5 px-1">
-                  <LoadingSpinner size={12} />
-                  <span className="font-mono text-[10px] text-white/50">Loading...</span>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className="flex items-center gap-1 text-[10px] text-white/70"
-                    title={`Memory: ${metrics.ram_used_gb.toFixed(1)}GB / ${metrics.ram_total_gb.toFixed(1)}GB`}
-                  >
-                    <Database className="w-3 h-3 text-blue-400" />
-                    <span className="font-mono">{Math.round(metrics.ram_used_gb)}G</span>
-                  </div>
-                  <div
-                    className="flex items-center gap-1 text-[10px] text-white/70"
-                    title={`CPU: ${Math.round(metrics.cpu_percent)}%`}
-                  >
-                    <Activity className="w-3 h-3 text-red-400" />
-                    <span className="font-mono">{Math.round(metrics.cpu_percent)}%</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[10px] text-[#39ff14]" title="GPU: ON">
-                    <Zap className="w-3 h-3 fill-[#39ff14]/20" />
-                  </div>
-                </>
-              )}
-            </motion.div>
-          )}
 
           {/* Communication Channels */}
           {modules.channels && (
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 hidden md:flex"
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2 py-1 flex items-center gap-1.5 h-7 shrink-0 hidden lg:flex"
             >
               <button
                 type="button"
@@ -445,6 +415,42 @@ export default React.memo(function TopStatusBar({
               </button>
             </motion.div>
           )}
+
+          {/* System Resources Pill */}
+          {modules.resources && (
+            <motion.div
+              layout
+              transition={spring}
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 hidden lg:flex"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-1.5 px-1">
+                  <LoadingSpinner size={12} />
+                  <span className="font-mono text-[10px] text-white/50">Loading...</span>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="flex items-center gap-1 text-[10px] text-white/70"
+                    title={`Memory: ${metrics.ram_used_gb.toFixed(1)}GB / ${metrics.ram_total_gb.toFixed(1)}GB`}
+                  >
+                    <Database className="w-3 h-3 text-blue-400" />
+                    <span className="font-mono">{Math.round(metrics.ram_used_gb)}G</span>
+                  </div>
+                  <div
+                    className="flex items-center gap-1 text-[10px] text-white/70"
+                    title={`CPU: ${Math.round(metrics.cpu_percent)}%`}
+                  >
+                    <Activity className="w-3 h-3 text-red-400" />
+                    <span className="font-mono">{Math.round(metrics.cpu_percent)}%</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-[#39ff14]" title="GPU: ON">
+                    <Zap className="w-3 h-3 fill-[#39ff14]/20" />
+                  </div>
+                </>
+              )}
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Center — Identity */}
@@ -452,7 +458,7 @@ export default React.memo(function TopStatusBar({
           <motion.div
             layout
             transition={spring}
-            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[60]"
+            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[40] hidden lg:block"
           >
           <div className="relative group">
             <motion.div
@@ -461,7 +467,7 @@ export default React.memo(function TopStatusBar({
               className="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#39ff14]/20 shadow-[0_0_12px_rgba(57,255,20,0.08)] rounded-full px-3 py-1 flex items-center justify-center cursor-default shrink-0 min-h-[28px]"
             >
               <span className="text-[#39ff14] font-mono tracking-widest text-[8px] uppercase font-bold">
-                Xavier {__APP_VERSION__}
+                Xavier {liveVersion || (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.2.20")}
               </span>
             </motion.div>
 
@@ -519,7 +525,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-2 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-4 md:right-6 top-6 flex-row items-start"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-3 md:right-4 top-6 flex-row items-start z-[70]"}`}
         >
           {/* Active Node Indicator */}
           <motion.button
@@ -556,7 +562,7 @@ export default React.memo(function TopStatusBar({
             transition={spring}
             type="button"
             onClick={() => { window.location.hash = "#/maloca"; }}
-            className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors"
+            className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors"
             title="Abrir Maloca (ops workspace)"
             aria-label="Abrir Maloca (ops workspace)"
           >
@@ -565,6 +571,25 @@ export default React.memo(function TopStatusBar({
               Maloca
             </span>
           </motion.button>
+
+          {/* Settings / Control Node Button */}
+          {onOpenConfig && (
+            <motion.button
+              layout
+              transition={spring}
+              type="button"
+              onClick={onOpenConfig}
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/50 hover:bg-emerald-500/10 transition-colors text-slate-300 hover:text-white cursor-pointer"
+              title="Control Node Settings"
+              aria-label="Control Node Settings"
+              data-testid="topbar-settings-btn"
+            >
+              <Settings className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block">
+                Settings
+              </span>
+            </motion.button>
+          )}
 
           {/* Marketplace Status Card Pill */}
           {modules.marketplace && (
@@ -613,7 +638,7 @@ export default React.memo(function TopStatusBar({
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-2 h-7 shrink-0 lg:flex"
+              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-2 h-7 shrink-0"
             >
               <div className="flex items-center gap-1" title="TPM HW Encryption Active">
                 <ShieldCheck className="w-3 h-3 text-emerald-400" />
@@ -627,7 +652,7 @@ export default React.memo(function TopStatusBar({
 
           {/* Node Sync Pill */}
           {modules.sync && (
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <motion.button
                 layout
                 transition={spring}

@@ -437,6 +437,16 @@
 | `XAVIER_ZONE_BOOST` | `string` |  | Internal | ❌ |
 | `XAVIER_ZONE_PENALTY` | `string` |  | Internal | ❌ |
 
+## Updater
+
+| Variable | Type | Default | Description | Secret |
+|----------|------|---------|-------------|--------|
+| `XAVIER_AUTO_UPDATE` | `bool` | `false` | Enable background auto-updater from GitHub release/main branch | ❌ |
+| `XAVIER_UPDATE_BRANCH` | `string` | `main` | Target git branch for the background auto-updater | ❌ |
+| `XAVIER_UPDATE_HOOK` | `string` | `None` | Optional post-update shell command hook | ❌ |
+| `XAVIER_UPDATE_INTERVAL_SECS` | `u64` | `3600` | Polling interval in seconds for the background auto-updater | ❌ |
+| `XAVIER_UPDATE_REPO` | `string` | `southwest-ai-labs/xavier` | GitHub repository slug for auto-updater checks | ❌ |
+
 ## Vector Store Features
 
 | Variable | Type | Default | Description | Secret |
