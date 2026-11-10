@@ -156,8 +156,6 @@ mod tests {
     use crate::node_identity::{DerivedNodeKeys, PublicNodeIdentity};
     use std::fs;
     use tempfile::tempdir;
-    use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_vault_sync_disabled() {
@@ -186,15 +184,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_vault_sync_success_with_mock() {
-        // Setup mock server
-        let mock_server = MockServer::start().await;
-        Mock::given(method("POST"))
-            .and(path("/sync"))
-            .respond_with(ResponseTemplate::new(200))
-            .mount(&mock_server)
+        // Setup mock server with mockito
+        let mut server = mockito::Server::new_async().await;
+        let _m = server
+            .mock("POST", "/sync")
+            .with_status(200)
+            .create_async()
             .await;
 
-        let url = format!("{}/sync", mock_server.uri());
+        let url = format!("{}/sync", server.url());
         let config = VaultSyncConfig {
             enabled: true,
             url: Some(url),
