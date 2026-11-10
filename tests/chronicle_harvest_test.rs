@@ -62,6 +62,7 @@ async fn test_full_harvest_workflow() {
             signature: Some("fn main()".into()),
             parent: None,
             complexity: None,
+            project_root: None,
         })
         .expect("test assertion");
 

@@ -133,6 +133,7 @@ async fn test_exact_name_filtering_and_code_context_with_references() {
         signature: Some("export function useXavierMemory()".to_string()),
         parent: None,
         complexity: Some(1.2),
+        project_root: None,
     };
     db.insert_symbol(&sym1).expect("insert sym1");
 
@@ -150,6 +151,7 @@ async fn test_exact_name_filtering_and_code_context_with_references() {
         signature: Some("export function useXavierMemoryHelper()".to_string()),
         parent: None,
         complexity: Some(1.0),
+        project_root: None,
     };
     db.insert_symbol(&sym2).expect("insert sym2");
 
