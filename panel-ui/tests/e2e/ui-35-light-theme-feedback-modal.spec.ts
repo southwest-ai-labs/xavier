@@ -94,7 +94,7 @@ test.describe("FeedbackModal Light Theme Compatibility", () => {
     await expect(htmlElement).toHaveAttribute("data-theme", "studio-bone");
 
     // 2. Open Config Modal then Feedback Modal
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 
@@ -217,7 +217,7 @@ test.describe("FeedbackModal Light Theme Compatibility", () => {
     const htmlElement = page.locator("html");
     await expect(htmlElement).toHaveAttribute("data-theme", "studio-dark");
 
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

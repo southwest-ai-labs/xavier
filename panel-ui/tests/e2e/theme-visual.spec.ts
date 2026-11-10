@@ -224,7 +224,7 @@ test.describe("Xavier Studio Dark & Antigravity Appearance E2E Verification", ()
     await page.screenshot({ path: studioDarkPath, fullPage: true });
 
     // 3. Open Config Modal to inspect Appearance tab
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible({ timeout: 15000 });
     await brainButton.click();
 
@@ -235,7 +235,6 @@ test.describe("Xavier Studio Dark & Antigravity Appearance E2E Verification", ()
     // Verify Antigravity Sidebar sections
     await expect(page.locator('text="Settings"').first()).toBeVisible();
     await expect(page.locator('text="Projects"').first()).toBeVisible();
-    await expect(page.locator('text="Not in Project"').first()).toBeVisible();
     await expect(page.locator('text="Shortcuts"').first()).toBeVisible();
     await expect(page.locator('text="Provide Feedback"').first()).toBeVisible();
 

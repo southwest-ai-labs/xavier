@@ -97,7 +97,7 @@ test.describe("GraphCanvas interactive roadmap navigation & node filtering", () 
   });
 
   test("should open ConfigModal, switch to roadmap, interact with filters, and capture screenshot", async ({ page }) => {
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

@@ -158,7 +158,7 @@ test.describe("FounderNodeStatusCard Light Theme E2E", () => {
     await expect(statusCard).toBeHidden();
 
     // Open Config Modal to switch theme
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

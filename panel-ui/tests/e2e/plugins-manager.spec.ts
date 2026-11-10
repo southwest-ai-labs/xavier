@@ -139,7 +139,7 @@ test.describe("Plugins Manager E2E Verification", () => {
     page,
   }) => {
     // 1. Open Config Modal
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

@@ -99,7 +99,7 @@ test.describe("Usage Metrics Light Theme E2E", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // 2. Open Config Modal
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

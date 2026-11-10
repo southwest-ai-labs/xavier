@@ -68,7 +68,7 @@ test.describe("Shortcuts Modal Light Theme", () => {
     }
 
     // 3. Open Config Modal to inspect Appearance tab and shortcuts
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 

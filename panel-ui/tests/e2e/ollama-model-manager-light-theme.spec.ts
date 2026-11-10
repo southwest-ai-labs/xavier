@@ -74,7 +74,7 @@ test.describe("Ollama Model Manager - Light Theme Support", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // Click config/control node button
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
     await expect(brainButton).toBeVisible();
     await brainButton.click();
 
