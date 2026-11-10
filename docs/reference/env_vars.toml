@@ -2823,3 +2823,43 @@ default = "default"
 description = "Tenant identifier used in Cloudflare R2 capsule path isolation"
 category = "Sync & Cloud"
 secret = false
+
+[[variables]]
+name = "XAVIER_AUTO_UPDATE"
+type = "bool"
+default = "false"
+description = "Enable background auto-updater from GitHub release/main branch"
+category = "Updater"
+secret = false
+
+[[variables]]
+name = "XAVIER_UPDATE_BRANCH"
+type = "string"
+default = "main"
+description = "Target git branch for the background auto-updater"
+category = "Updater"
+secret = false
+
+[[variables]]
+name = "XAVIER_UPDATE_HOOK"
+type = "string"
+default = "None"
+description = "Optional post-update shell command hook"
+category = "Updater"
+secret = false
+
+[[variables]]
+name = "XAVIER_UPDATE_INTERVAL_SECS"
+type = "u64"
+default = "3600"
+description = "Polling interval in seconds for the background auto-updater"
+category = "Updater"
+secret = false
+
+[[variables]]
+name = "XAVIER_UPDATE_REPO"
+type = "string"
+default = "southwest-ai-labs/xavier"
+description = "GitHub repository slug for auto-updater checks"
+category = "Updater"
+secret = false

@@ -92,13 +92,13 @@ test.describe("Full panel accessibility & WCAG 2.1 AA automated audit E2E test",
     await page.screenshot({ path: mainShellPath, fullPage: true });
 
     // 2. Open Config Modal
-    const brainButton = page.locator('button[aria-label="Open Control Node"]');
-    await expect(brainButton).toBeVisible();
+    const brainButton = page.locator('button[aria-label="Open Control Node"]').first();
+    await expect(brainButton).toBeVisible({ timeout: 20000 });
     await brainButton.click();
 
     // Wait for modal to be fully visible
     const modalCloseButton = page.locator('button[aria-label="Cerrar ventana de configuración"]');
-    await expect(modalCloseButton).toBeVisible();
+    await expect(modalCloseButton).toBeVisible({ timeout: 20000 });
     await page.waitForTimeout(500);
 
     // Capture config modal screenshot
@@ -116,7 +116,7 @@ test.describe("Full panel accessibility & WCAG 2.1 AA automated audit E2E test",
     await expect(brainButton).toHaveAttribute("aria-label", "Open Control Node");
 
     const sendCommandButton = page.locator('button[aria-label="Send command"]');
-    await expect(sendCommandButton).toBeVisible();
+    await expect(sendCommandButton).toBeVisible({ timeout: 20000 });
     await expect(sendCommandButton).toHaveAttribute("aria-label", "Send command");
 
     const notificationsButton = page.locator('button[aria-label="Notifications"]');

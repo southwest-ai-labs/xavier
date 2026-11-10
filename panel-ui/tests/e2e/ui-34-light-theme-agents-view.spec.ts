@@ -97,7 +97,7 @@ test.describe("AgentsView Theme Compliance", () => {
     await expect(modal).toBeVisible();
 
     // Switch to Agents tab
-    const agentsTab = page.locator('button', { hasText: /^Agents$/ });
+    const agentsTab = page.locator('[data-testid="settings-tab-agents"], [data-testid="mobile-settings-tab-agents"]').first();
     await expect(agentsTab).toBeVisible();
     await agentsTab.click();
 

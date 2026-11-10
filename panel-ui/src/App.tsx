@@ -109,7 +109,7 @@ function AppContent() {
 			const saved = localStorage.getItem("xavier_active_top_tab");
 			if (saved === "chat" || saved === "purerag") return saved;
 		}
-		return "purerag";
+		return "chat";
 	});
 
 	const handleSelectTopTab = useCallback((tab: "chat" | "purerag") => {

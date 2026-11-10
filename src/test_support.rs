@@ -101,14 +101,41 @@ fn passwd_home() -> Option<PathBuf> {
 
 #[cfg(unix)]
 fn passwd_home() -> Option<PathBuf> {
-    // SAFETY-free: parse /etc/passwd for our uid instead of calling getpwuid.
-    use std::os::unix::fs::MetadataExt;
-    let uid = std::fs::metadata("/proc/self").ok()?.uid();
-    let passwd = std::fs::read_to_string("/etc/passwd").ok()?;
-    passwd.lines().find_map(|l| {
-        let f: Vec<&str> = l.split(':').collect();
-        (f.len() >= 6 && f[2].parse::<u32>().ok() == Some(uid)).then(|| PathBuf::from(f[5]))
-    })
+    // 1. Try parsing /etc/passwd if /proc/self is available (Linux)
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if let Ok(meta) = std::fs::metadata("/proc/self") {
+            let uid = meta.uid();
+            if let Ok(passwd) = std::fs::read_to_string("/etc/passwd") {
+                if let Some(home) = passwd.lines().find_map(|l| {
+                    let f: Vec<&str> = l.split(':').collect();
+                    (f.len() >= 6 && f[2].parse::<u32>().ok() == Some(uid))
+                        .then(|| PathBuf::from(f[5]))
+                }) {
+                    return Some(home);
+                }
+            }
+        }
+    }
+
+    // 2. POSIX fallback via getpwuid (works on macOS and Linux)
+    #[allow(unsafe_code)]
+    unsafe {
+        let uid = libc::getuid();
+        let pwd = libc::getpwuid(uid);
+        if !pwd.is_null() && !(*pwd).pw_dir.is_null() {
+            let cstr = std::ffi::CStr::from_ptr((*pwd).pw_dir);
+            if let Ok(s) = cstr.to_str() {
+                if !s.is_empty() {
+                    return Some(PathBuf::from(s));
+                }
+            }
+        }
+    }
+
+    // 3. Fallback to HOME if not isolated yet
+    std::env::var_os("HOME").map(PathBuf::from)
 }
 
 /// Redirect every user/state directory into a per-process tempdir. Returns the
@@ -131,6 +158,17 @@ pub fn isolate_user_dirs() -> PathBuf {
                 };
                 let _ = std::fs::create_dir_all(&dir);
                 std::env::set_var(var, &dir);
+            }
+
+            #[cfg(windows)]
+            {
+                std::env::set_var("USERPROFILE", &root);
+                let appdata = root.join("AppData").join("Roaming");
+                let localappdata = root.join("AppData").join("Local");
+                let _ = std::fs::create_dir_all(&appdata);
+                let _ = std::fs::create_dir_all(&localappdata);
+                std::env::set_var("APPDATA", &appdata);
+                std::env::set_var("LOCALAPPDATA", &localappdata);
             }
 
             // The OS keyring/secret-service is user-global: force the file fallback.
@@ -237,6 +275,10 @@ fn absolutize(path: &Path) -> PathBuf {
 pub fn guard_user_path(path: &Path) {
     if !running_under_cargo_test() || std::env::var("XAVIER_TEST_REAL_HOME").as_deref() == Ok("1") {
         return;
+    }
+    // Ensure sandbox is initialized if `.init_array` was unsupported on current platform (macOS/Windows)
+    if SANDBOX.get().is_none() {
+        isolate_user_dirs();
     }
     let Some(home) = real_home() else {
         panic!(
@@ -360,19 +402,28 @@ fn sandbox_root() -> PathBuf {
 /// Sandbox a test/bench binary before `main`, so no lazy global can resolve
 /// the real home first. Put `xavier::isolate_test_process!();` once at the top
 /// of every integration-test and bench crate root (checked by
-/// `scripts/check-test-writes.sh`). Linux only; elsewhere the path guard in
-/// [`guard_user_path`] is the safety net.
+/// `scripts/check-test-writes.sh`).
 #[macro_export]
 macro_rules! isolate_test_process {
     () => {
-        #[cfg(target_os = "linux")]
         #[allow(unsafe_code)]
         const _: () = {
             extern "C" fn __xavier_isolate_init() {
                 $crate::test_support::isolate_user_dirs();
             }
+            #[cfg(target_os = "linux")]
             #[used]
             #[link_section = ".init_array"]
+            static __XAVIER_ISOLATE_INIT: extern "C" fn() = __xavier_isolate_init;
+
+            #[cfg(target_os = "macos")]
+            #[used]
+            #[link_section = "__DATA,__mod_init_func"]
+            static __XAVIER_ISOLATE_INIT: extern "C" fn() = __xavier_isolate_init;
+
+            #[cfg(target_os = "windows")]
+            #[used]
+            #[link_section = ".CRT$XCU"]
             static __XAVIER_ISOLATE_INIT: extern "C" fn() = __xavier_isolate_init;
         };
     };

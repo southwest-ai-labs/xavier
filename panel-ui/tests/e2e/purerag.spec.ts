@@ -184,7 +184,7 @@ test.describe("PureRAG Inverted Real-Time Explorer E2E", () => {
     // 3. Verify top search bar is prominently visible at the top
     const searchInput = page.locator('[data-testid="purerag-search-input"]');
     await expect(searchInput).toBeVisible();
-    await expect(page.locator("text=Zero-AI")).toBeVisible();
+    await expect(page.locator("text=Zero-AI").first()).toBeVisible();
 
     // 4. Type search query
     await searchInput.fill("hybrid reciprocal rank");
