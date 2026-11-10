@@ -63,6 +63,7 @@ fn seed_mock_symbols(db: &CodeGraphDB) -> Result<()> {
             signature: Some("pub async fn execute_agent_task() -> Result<()>".to_string()),
             parent: None,
             complexity: Some(2.5),
+            project_root: None,
         },
         Symbol {
             id: None,
@@ -78,6 +79,7 @@ fn seed_mock_symbols(db: &CodeGraphDB) -> Result<()> {
             signature: Some("pub struct AgentContext".to_string()),
             parent: None,
             complexity: Some(1.0),
+            project_root: None,
         },
         Symbol {
             id: None,
@@ -93,6 +95,7 @@ fn seed_mock_symbols(db: &CodeGraphDB) -> Result<()> {
             signature: Some("pub fn resolve_mesh_peer(peer_id: &str) -> Option<Peer>".to_string()),
             parent: None,
             complexity: Some(3.0),
+            project_root: None,
         },
     ];
 

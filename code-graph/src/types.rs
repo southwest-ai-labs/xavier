@@ -220,6 +220,8 @@ pub struct Symbol {
     pub signature: Option<String>,
     pub parent: Option<String>, // parent struct/class
     pub complexity: Option<f32>,
+    #[serde(default)]
+    pub project_root: Option<String>,
 }
 
 impl Symbol {

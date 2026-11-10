@@ -171,6 +171,7 @@ async fn wal_stays_under_64mb_during_batch_writes() {
     for batch in 0..num_batches {
         let symbols: Vec<code_graph::types::Symbol> = (0..symbols_per_batch)
             .map(|i| code_graph::types::Symbol {
+                project_root: None,
                 id: None,
                 stable_id: None,
                 name: format!("batch_{}_sym_{}", batch, i),

@@ -328,6 +328,7 @@ impl TypeScriptParser {
         let complexity = matches!(args.kind, SymbolKind::Function | SymbolKind::Method)
             .then(|| cyclomatic_complexity(args.node, args.source));
         symbols.push(Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: args.name,

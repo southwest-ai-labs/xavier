@@ -2625,6 +2625,7 @@ mod tests {
                 signature: None,
                 parent: None,
                 complexity: None,
+                project_root: None,
             })
             .unwrap();
         }

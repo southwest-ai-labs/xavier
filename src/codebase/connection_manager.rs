@@ -1936,6 +1936,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
         cg1.insert_symbol(&sym).unwrap();
         let found = cg2.find_by_name("cm_test_symbol", 1).unwrap();

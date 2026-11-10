@@ -10,6 +10,7 @@ fn test_find_by_file_row_errors() {
     let db = CodeGraphDB::new(&db_path).unwrap();
 
     let sym = Symbol {
+        project_root: None,
         id: None,
         stable_id: None,
         name: "test_sym".to_string(),

@@ -74,6 +74,7 @@ fn test_multi_project_namespace_isolation_no_collisions() {
 
     // Both projects have identical relative file path and function signature
     let mut sym_a = Symbol {
+        project_root: None,
         id: None,
         stable_id: None,
         name: "initialize_database".to_string(),
@@ -90,6 +91,7 @@ fn test_multi_project_namespace_isolation_no_collisions() {
     };
 
     let mut sym_b = Symbol {
+        project_root: None,
         id: None,
         stable_id: None,
         name: "initialize_database".to_string(),
@@ -159,6 +161,7 @@ fn test_cross_project_query_and_filtering() {
     let db = CodeGraphDB::in_memory().expect("db");
 
     let mut sym_payment = Symbol {
+        project_root: None,
         id: None,
         stable_id: None,
         name: "ProcessPayment".to_string(),
@@ -175,6 +178,7 @@ fn test_cross_project_query_and_filtering() {
     };
 
     let mut sym_auth = Symbol {
+        project_root: None,
         id: None,
         stable_id: None,
         name: "AuthenticateUser".to_string(),

@@ -398,6 +398,7 @@ mod tests {
             signature: Some("fn test_symbol()".to_string()),
             parent: None,
             complexity: Some(1.0),
+            project_root: None,
         };
         db.insert_symbol(&symbol).unwrap();
 

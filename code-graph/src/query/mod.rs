@@ -562,6 +562,15 @@ impl QueryEngine {
 
     /// Search for symbols by name (with caching and strict narrow filter)
     pub fn search(&self, query: &str, limit: usize) -> Result<QueryResult> {
+        self.search_with_root(query, limit, None)
+    }
+
+    pub fn search_with_root(
+        &self,
+        query: &str,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<QueryResult> {
         // Try cache first
         if let Some(ref cache) = self.cache {
             if let Some(result) = cache.get(query) {
@@ -575,7 +584,9 @@ impl QueryEngine {
         } else {
             (limit * 10).max(100)
         };
-        let mut result = self.db.find_symbols(query, fetch_limit)?;
+        let mut result = self
+            .db
+            .find_symbols_with_root(query, fetch_limit, project_root)?;
 
         // Narrow filter gate: keep a candidate when EVERY whitespace-separated
         // query token is a substring of the symbol name (or stable_id),
@@ -608,22 +619,58 @@ impl QueryEngine {
 
     /// Find symbols by exact name match
     pub fn find_by_name(&self, name: &str, limit: usize) -> Result<Vec<Symbol>> {
-        self.db.find_by_name(name, limit)
+        self.find_by_name_with_root(name, limit, None)
+    }
+
+    pub fn find_by_name_with_root(
+        &self,
+        name: &str,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        self.db.find_by_name_with_root(name, limit, project_root)
     }
 
     /// Find all functions
     pub fn functions(&self, limit: usize) -> Result<Vec<Symbol>> {
-        self.db.find_by_kind(SymbolKind::Function, limit)
+        self.functions_with_root(limit, None)
+    }
+
+    pub fn functions_with_root(
+        &self,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        self.db
+            .find_by_kind_with_root(SymbolKind::Function, limit, project_root)
     }
 
     /// Find all structs
     pub fn structs(&self, limit: usize) -> Result<Vec<Symbol>> {
-        self.db.find_by_kind(SymbolKind::Struct, limit)
+        self.structs_with_root(limit, None)
+    }
+
+    pub fn structs_with_root(
+        &self,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        self.db
+            .find_by_kind_with_root(SymbolKind::Struct, limit, project_root)
     }
 
     /// Find all classes
     pub fn classes(&self, limit: usize) -> Result<Vec<Symbol>> {
-        self.db.find_by_kind(SymbolKind::Class, limit)
+        self.classes_with_root(limit, None)
+    }
+
+    pub fn classes_with_root(
+        &self,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        self.db
+            .find_by_kind_with_root(SymbolKind::Class, limit, project_root)
     }
 
     /// Search by AST pattern (tree-sitter based)
@@ -646,7 +693,12 @@ impl QueryEngine {
 
     /// Find all enums
     pub fn enums(&self, limit: usize) -> Result<Vec<Symbol>> {
-        self.db.find_by_kind(SymbolKind::Enum, limit)
+        self.enums_with_root(limit, None)
+    }
+
+    pub fn enums_with_root(&self, limit: usize, project_root: Option<&str>) -> Result<Vec<Symbol>> {
+        self.db
+            .find_by_kind_with_root(SymbolKind::Enum, limit, project_root)
     }
 
     /// Find all HTTP routes
