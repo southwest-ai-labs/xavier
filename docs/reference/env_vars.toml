@@ -2825,6 +2825,22 @@ category = "Sync & Cloud"
 secret = false
 
 [[variables]]
+name = "XAVIER_VAULT_SYNC_ENABLED"
+type = "bool"
+default = "false"
+description = "Enables the background hourly sync of the node vault to a remote server. When set to true, VaultSyncTask will run periodically."
+category = "Sync & Cloud"
+secret = false
+
+[[variables]]
+name = "XAVIER_VAULT_SYNC_URL"
+type = "string"
+default = "(none)"
+description = "The target endpoint URL for the vault sync upload. The daemon posts the encrypted local vault to this URL, authenticated with an Ed25519 signature."
+category = "Sync & Cloud"
+secret = false
+
+[[variables]]
 name = "XAVIER_AUTO_UPDATE"
 type = "bool"
 default = "false"
