@@ -273,6 +273,22 @@ category = "Maintenance Jobs"
 secret = false
 
 [[variables]]
+name = "XAVIER_DISK_WARN_PCT"
+type = "u8"
+default = "85"
+description = "Disk warning threshold percentage for proactive alert"
+category = "Maintenance Jobs"
+secret = false
+
+[[variables]]
+name = "XAVIER_DISK_CRIT_PCT"
+type = "u8"
+default = "92"
+description = "Disk critical threshold percentage for proactive alert"
+category = "Maintenance Jobs"
+secret = false
+
+[[variables]]
 name = "XAVIER_DATA_DIR"
 type = "string"
 default = "\"data\""

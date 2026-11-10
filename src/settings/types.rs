@@ -560,6 +560,8 @@ pub struct AdvancedSettings {
     pub audit_chain_enabled: bool,
     pub panel_store_dir: String,
     pub minhash_threshold: f32,
+    pub disk_warn_pct: u8,
+    pub disk_crit_pct: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

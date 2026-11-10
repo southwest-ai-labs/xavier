@@ -390,6 +390,14 @@ pub fn apply_to_env_impl(settings: &XavierSettings) {
         "XAVIER_PANEL_STORE_DIR",
         non_empty(&settings.advanced.panel_store_dir),
     );
+    set_if_absent(
+        "XAVIER_DISK_WARN_PCT",
+        &settings.advanced.disk_warn_pct.to_string(),
+    );
+    set_if_absent(
+        "XAVIER_DISK_CRIT_PCT",
+        &settings.advanced.disk_crit_pct.to_string(),
+    );
 
     // Billing settings
     set_optional_if_absent("XAVIER_BILLING_URL", settings.billing.url.clone());

@@ -65,6 +65,8 @@
 
 | Variable | Type | Default | Description | Secret |
 |----------|------|---------|-------------|--------|
+| `XAVIER_DISK_CRIT_PCT` | `u8` | `92` | Disk critical threshold percentage for proactive alert | ❌ |
+| `XAVIER_DISK_WARN_PCT` | `u8` | `85` | Disk warning threshold percentage for proactive alert | ❌ |
 | `XAVIER_GC_DESTRUCTIVE` | `bool` | `—` | Opt-in scheduled maintenance job for garbage collection (destructive) | ❌ |
 | `XAVIER_SEMANTIC_COMPACTION` | `bool` | `—` | Opt-in scheduled maintenance job for semantic compaction | ❌ |
 | `XAVIER_TGD_SCHEDULER` | `bool` | `—` | Opt-in scheduled nightly TGD consolidation | ❌ |
