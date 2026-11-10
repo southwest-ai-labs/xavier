@@ -82,3 +82,6 @@ mod codegraph_indexed_symbol_project_root_e2e;
 
 #[path = "codegraph_multilang_reindex_e2e.rs"]
 mod codegraph_multilang_reindex_e2e;
+
+#[path = "integration/codegraph_dump_test.rs"]
+mod codegraph_dump_test;
