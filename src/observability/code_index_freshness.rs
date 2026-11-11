@@ -173,6 +173,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
         let sym2 = Symbol {
             id: None,
@@ -188,6 +189,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
         let sym3 = Symbol {
             id: None,
@@ -203,6 +205,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
         db.insert_symbol(&sym1).unwrap();
         db.insert_symbol(&sym2).unwrap();

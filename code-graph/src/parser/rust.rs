@@ -198,6 +198,7 @@ impl RustParser {
                         let start = name_node.start_position();
                         let end = name_node.end_position();
                         symbols.push(Symbol {
+                            project_root: None,
                             id: None,
                             stable_id: None,
                             name,
@@ -302,6 +303,7 @@ impl RustParser {
                                             let start = node.start_position();
                                             let end = node.end_position();
                                             symbols.push(Symbol {
+                                                project_root: None,
                                                 id: None,
                                                 stable_id: None,
                                                 name: route_path.to_string(),
@@ -360,6 +362,7 @@ impl RustParser {
                                         let start = child.start_position();
                                         let end = node.end_position();
                                         symbols.push(Symbol {
+                                            project_root: None,
                                             id: None,
                                             stable_id: None,
                                             name: path.to_string(),
@@ -468,6 +471,7 @@ impl RustParser {
             .then(|| cyclomatic_complexity(node, source));
 
         symbols.push(Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: name_node

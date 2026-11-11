@@ -563,6 +563,15 @@ impl CodeGraphDB {
 
     /// Insert a symbol
     pub fn insert_symbol(&self, symbol: &Symbol) -> Result<i64> {
+        self.insert_symbol_with_root(symbol, symbol.project_root.as_deref())
+    }
+
+    /// Insert a symbol with an explicit project root
+    pub fn insert_symbol_with_root(
+        &self,
+        symbol: &Symbol,
+        project_root: Option<&str>,
+    ) -> Result<i64> {
         let conn = self
             .conn
             .lock()
@@ -571,8 +580,8 @@ impl CodeGraphDB {
         let stable_id = symbol.stable_id.clone().unwrap_or_default();
 
         conn.execute(
-            r#"INSERT INTO symbols (stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity)
-               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+            r#"INSERT INTO symbols (stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root)
+               VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
                ON CONFLICT(stable_id) DO UPDATE SET
                  name=excluded.name,
                  kind=excluded.kind,
@@ -584,7 +593,8 @@ impl CodeGraphDB {
                  end_col=excluded.end_col,
                  signature=excluded.signature,
                  parent=excluded.parent,
-                 complexity=excluded.complexity"#,
+                 complexity=excluded.complexity,
+                 project_root=excluded.project_root"#,
             params![
                 &stable_id,
                 symbol.name,
@@ -598,6 +608,7 @@ impl CodeGraphDB {
                 symbol.signature,
                 symbol.parent,
                 symbol.complexity,
+                project_root,
             ],
         )
         .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -762,6 +773,15 @@ impl CodeGraphDB {
 
     /// Find symbols by name with hybrid ranking
     pub fn find_symbols(&self, query: &str, limit: usize) -> Result<QueryResult> {
+        self.find_symbols_with_root(query, limit, None)
+    }
+
+    pub fn find_symbols_with_root(
+        &self,
+        query: &str,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<QueryResult> {
         let start = std::time::Instant::now();
         let conn = self
             .conn
@@ -775,13 +795,13 @@ impl CodeGraphDB {
                 .prepare(
                     r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
                        FROM symbols
-                       WHERE name LIKE ?1"#,
+                       WHERE name LIKE ?1 AND (project_root = ?2 OR ?2 IS NULL)"#,
                 )
                 .map_err(|e| GraphError::Database(e.to_string()))?;
 
             let pattern = format!("%{}%", query);
             symbols = stmt
-                .query_map(params![pattern], |row| {
+                .query_map(params![pattern, project_root], |row| {
                     Ok(Symbol {
                         id: Some(row.get(0)?),
                         stable_id: Some(row.get(1)?),
@@ -796,6 +816,7 @@ impl CodeGraphDB {
                         signature: row.get(10)?,
                         parent: row.get(11)?,
                         complexity: row.get(12)?,
+                        project_root: None,
                     })
                 })
                 .map_err(|e| GraphError::Database(e.to_string()))?
@@ -808,14 +829,14 @@ impl CodeGraphDB {
                         r#"SELECT s.id, s.stable_id, s.name, s.kind, s.lang, s.file_path, s.start_line, s.end_line, s.start_col, s.end_col, s.signature, s.parent, s.complexity
                            FROM symbols s
                            JOIN symbols_fts ON s.stable_id = symbols_fts.stable_id
-                           WHERE symbols_fts MATCH ?1
+                           WHERE symbols_fts MATCH ?1 AND (s.project_root = ?3 OR ?3 IS NULL)
                            ORDER BY bm25(symbols_fts)
                            LIMIT ?2"#,
                     )
                     .map_err(|e| GraphError::Database(e.to_string()))?;
 
             symbols = stmt
-                .query_map(params![fts_query, limit as isize], |row| {
+                .query_map(params![fts_query, limit as isize, project_root], |row| {
                     Ok(Symbol {
                         id: Some(row.get(0)?),
                         stable_id: Some(row.get(1)?),
@@ -830,6 +851,7 @@ impl CodeGraphDB {
                         signature: row.get(10)?,
                         parent: row.get(11)?,
                         complexity: row.get(12)?,
+                        project_root: None,
                     })
                 })
                 .map_err(|e| GraphError::Database(e.to_string()))?
@@ -869,6 +891,15 @@ impl CodeGraphDB {
 
     /// Find symbols by exact name match
     pub fn find_by_name(&self, name: &str, limit: usize) -> Result<Vec<Symbol>> {
+        self.find_by_name_with_root(name, limit, None)
+    }
+
+    pub fn find_by_name_with_root(
+        &self,
+        name: &str,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
         let conn = self
             .conn
             .lock()
@@ -878,13 +909,13 @@ impl CodeGraphDB {
             .prepare(
                 r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
                    FROM symbols
-                   WHERE name = ?1
+                   WHERE name = ?1 AND (project_root = ?3 OR ?3 IS NULL)
                    LIMIT ?2"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         let symbols = stmt
-            .query_map(params![name, limit as isize], |row| {
+            .query_map(params![name, limit as isize, project_root], |row| {
                 Ok(Symbol {
                     id: Some(row.get(0)?),
                     stable_id: Some(row.get(1)?),
@@ -899,6 +930,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -939,6 +971,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -950,6 +983,15 @@ impl CodeGraphDB {
 
     /// Find symbols by kind
     pub fn find_by_kind(&self, kind: SymbolKind, limit: usize) -> Result<Vec<Symbol>> {
+        self.find_by_kind_with_root(kind, limit, None)
+    }
+
+    pub fn find_by_kind_with_root(
+        &self,
+        kind: SymbolKind,
+        limit: usize,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
         let conn = self
             .conn
             .lock()
@@ -959,14 +1001,14 @@ impl CodeGraphDB {
             .prepare(
                 r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
                    FROM symbols
-                   WHERE kind = ?1
+                   WHERE kind = ?1 AND (project_root = ?3 OR ?3 IS NULL)
                    LIMIT ?2"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         let kind_str = format!("{:?}", kind);
         let symbols = stmt
-            .query_map(params![kind_str, limit as isize], |row| {
+            .query_map(params![kind_str, limit as isize, project_root], |row| {
                 Ok(Symbol {
                     id: Some(row.get(0)?),
                     stable_id: Some(row.get(1)?),
@@ -981,6 +1023,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -992,37 +1035,70 @@ impl CodeGraphDB {
 
     /// Get statistics
     pub fn stats(&self) -> Result<IndexStats> {
+        self.stats_for_project(None)
+    }
+
+    /// Get statistics for a specific project
+    pub fn stats_for_project(&self, project_root: Option<&str>) -> Result<IndexStats> {
         let conn = self
             .conn
             .lock()
             .map_err(|e| GraphError::Database(format!("lock poisoned: {}", e)))?;
 
+        let (files_query, symbols_query, imports_query, lang_query, query_params): (
+            &str,
+            &str,
+            &str,
+            &str,
+            Vec<&str>,
+        ) = if let Some(root) = project_root {
+            (
+                "SELECT COUNT(DISTINCT file_path) FROM symbols WHERE project_root = ?1 OR ?1 IS NULL",
+                "SELECT COUNT(*) FROM symbols WHERE project_root = ?1 OR ?1 IS NULL",
+                "SELECT COUNT(*) FROM edges WHERE edge_type = 'Imports' AND (project_root = ?1 OR ?1 IS NULL)",
+                "SELECT lang, COUNT(*) FROM symbols WHERE project_root = ?1 OR ?1 IS NULL GROUP BY lang",
+                vec![root],
+            )
+        } else {
+            (
+                "SELECT COUNT(DISTINCT file_path) FROM symbols",
+                "SELECT COUNT(*) FROM symbols",
+                "SELECT COUNT(*) FROM edges WHERE edge_type = 'Imports'",
+                "SELECT lang, COUNT(*) FROM symbols GROUP BY lang",
+                vec![],
+            )
+        };
+
         let total_files: u64 = conn
-            .query_row("SELECT COUNT(DISTINCT file_path) FROM symbols", [], |row| {
-                row.get::<_, i64>(0).map(|v| v as u64)
-            })
+            .query_row(
+                files_query,
+                rusqlite::params_from_iter(query_params.iter()),
+                |row| row.get::<_, i64>(0).map(|v| v as u64),
+            )
             .unwrap_or(0);
 
         let total_symbols: u64 = conn
-            .query_row("SELECT COUNT(*) FROM symbols", [], |row| {
-                row.get::<_, i64>(0).map(|v| v as u64)
-            })
+            .query_row(
+                symbols_query,
+                rusqlite::params_from_iter(query_params.iter()),
+                |row| row.get::<_, i64>(0).map(|v| v as u64),
+            )
             .unwrap_or(0);
 
         let total_imports: u64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM edges WHERE edge_type = 'Imports'",
-                [],
+                imports_query,
+                rusqlite::params_from_iter(query_params.iter()),
                 |row| row.get::<_, i64>(0).map(|v| v as u64),
             )
             .unwrap_or(0);
 
         let mut stmt = conn
-            .prepare("SELECT lang, COUNT(*) FROM symbols GROUP BY lang")
+            .prepare(lang_query)
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         let languages = stmt
-            .query_map([], |row| {
+            .query_map(rusqlite::params_from_iter(query_params.iter()), |row| {
                 let lang_str: String = row.get(0)?;
                 let count: u64 = row.get::<_, i64>(1)? as u64;
                 Ok(LanguageCount {
@@ -1200,6 +1276,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1236,6 +1313,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1378,6 +1456,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -2044,6 +2123,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
+                    project_root: None,
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -2367,6 +2447,7 @@ mod tests {
             signature: Some("fn main()".to_string()),
             parent: None,
             complexity: Some(1.0),
+            project_root: None,
         };
 
         db.insert_symbol(&symbol).expect("first insert");
@@ -2426,6 +2507,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
 
         db.insert_symbol(&symbol).expect("failed to insert symbol");
@@ -2484,6 +2566,7 @@ mod tests {
             signature: Some("fn calculate_total()".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         };
 
         db.insert_symbol(&sym1).expect("insert sym1");
@@ -2503,6 +2586,7 @@ mod tests {
             signature: Some("fn calculate_running_total()".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         };
         db.insert_symbol(&sym2).expect("insert sym2");
 
@@ -2545,6 +2629,7 @@ mod tests {
             signature: Some("fn process_data()".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         };
 
         let sym2 = Symbol {
@@ -2561,6 +2646,7 @@ mod tests {
             signature: Some("fn calculate_total()".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         };
 
         db.insert_symbol(&sym1).expect("insert sym1");
@@ -2621,6 +2707,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: None,
+            project_root: None,
         };
         db1.insert_symbol(&sym).expect("insert via db1");
 
@@ -2663,6 +2750,7 @@ mod tests {
             signature: Some("fn init()".to_string()),
             parent: None,
             complexity: Some(1.0),
+            project_root: None,
         };
 
         let mut sym_b = sym_a.clone();
@@ -2704,6 +2792,7 @@ mod tests {
         // Insert symbols to generate WAL entries
         let symbols: Vec<Symbol> = (0..100)
             .map(|i| Symbol {
+                project_root: None,
                 id: None,
                 stable_id: None,
                 name: format!("sym_{}", i),

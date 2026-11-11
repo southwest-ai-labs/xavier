@@ -182,14 +182,47 @@ impl NodeIdentity {
         }
 
         if identity_file.exists() {
-            let raw = std::fs::read_to_string(identity_file)
-                .context("Failed to read mesh identity file")?;
-            let stored: StoredIdentity =
-                serde_json::from_str(&raw).context("Failed to parse mesh identity file")?;
-            return Self::from_stored(stored);
+            let load_attempt: Result<Self> = (|| {
+                let raw = std::fs::read_to_string(identity_file)
+                    .context("Failed to read mesh identity file")?;
+                let stored: StoredIdentity =
+                    serde_json::from_str(&raw).context("Failed to parse mesh identity file")?;
+                Self::from_stored(stored)
+            })();
+
+            match load_attempt {
+                Ok(identity) => return Ok(identity),
+                Err(e) => {
+                    let timestamp = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    let backup_filename = format!(
+                        "{}.corrupt.{}",
+                        identity_file
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("mesh_identity.json"),
+                        timestamp
+                    );
+                    let backup_path = identity_file
+                        .parent()
+                        .unwrap_or_else(|| std::path::Path::new("."))
+                        .join(&backup_filename);
+
+                    tracing::warn!(
+                        error = %e,
+                        corrupt_file = %identity_file.display(),
+                        backup_file = %backup_path.display(),
+                        "⚠️ Corrupted or redacted mesh identity detected. Backing up and auto-regenerating new node identity"
+                    );
+
+                    let _ = std::fs::rename(identity_file, &backup_path);
+                }
+            }
         }
 
-        // First time: generate and persist
+        // Generate and persist
         let identity = Self::generate();
         let stored = StoredIdentity {
             version: 1,
@@ -418,5 +451,45 @@ mod tests {
             let mode = meta.permissions().mode() & 0o777;
             assert_eq!(mode, 0o600, "identity file should be mode 0600");
         }
+    }
+
+    #[test]
+    fn test_corrupted_or_redacted_identity_file_auto_recovers() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("mesh_identity.json");
+
+        // Write a corrupt/redacted identity file
+        let corrupt_content = r#"{
+            "version": 1,
+            "node_id": "xv1-redactednode",
+            "public_key_hex": "abcd",
+            "private_key_hex": "REDACTED"
+        }"#;
+        std::fs::write(&path, corrupt_content).unwrap();
+
+        // Loading should gracefully recover, back up the corrupt file, and generate a new identity
+        let recovered = NodeIdentity::load_or_create_at(&path).unwrap();
+        assert!(recovered.node_id.as_str().starts_with("xv1-"));
+        assert_eq!(recovered.public_key.len(), 32);
+        assert_eq!(recovered.private_key.len(), 32);
+
+        // Verify the original path now contains a valid JSON
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let stored: StoredIdentity = serde_json::from_str(&raw).unwrap();
+        assert_ne!(stored.private_key_hex, "REDACTED");
+
+        // Verify backup file exists
+        let mut backup_found = false;
+        for entry in std::fs::read_dir(dir.path()).unwrap() {
+            let entry = entry.unwrap();
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with("mesh_identity.json.corrupt.") {
+                backup_found = true;
+                let backup_text = std::fs::read_to_string(entry.path()).unwrap();
+                assert_eq!(backup_text, corrupt_content);
+                break;
+            }
+        }
+        assert!(backup_found, "Corrupt identity backup file should exist");
     }
 }

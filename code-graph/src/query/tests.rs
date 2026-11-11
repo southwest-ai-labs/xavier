@@ -41,6 +41,7 @@ mod tests_inner {
 
         // Insert test symbols
         let sym1 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "main".to_string(),
@@ -58,6 +59,7 @@ mod tests_inner {
         db.insert_symbol(&sym1).expect("test assertion");
 
         let sym2 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "process_data".to_string(),
@@ -75,6 +77,7 @@ mod tests_inner {
         db.insert_symbol(&sym2).expect("test assertion");
 
         let sym3 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "User".to_string(),
@@ -92,6 +95,7 @@ mod tests_inner {
         db.insert_symbol(&sym3).expect("test assertion");
 
         let sym4 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "calculate_total".to_string(),
@@ -254,6 +258,7 @@ mod tests_inner {
     async fn test_semantic_search_finds_auth_logic() {
         let db = CodeGraphDB::in_memory().expect("db");
         let sym1 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "check_cli_token".to_string(),
@@ -271,6 +276,7 @@ mod tests_inner {
             complexity: None,
         };
         let sym2 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "require_permission".to_string(),
@@ -286,6 +292,7 @@ mod tests_inner {
             complexity: None,
         };
         let sym3 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "calculate_total".to_string(),
@@ -335,6 +342,7 @@ mod tests_inner {
     async fn test_hybrid_search_recall_higher_or_equal_to_bm25() {
         let db = CodeGraphDB::in_memory().expect("db");
         let sym1 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "check_cli_token".to_string(),
@@ -352,6 +360,7 @@ mod tests_inner {
             complexity: None,
         };
         let sym2 = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "require_permission".to_string(),
@@ -1147,6 +1156,7 @@ mod tests_inner {
     fn test_memories_for_symbol_linking() {
         let db = setup_test_db();
         let sym = Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: "require_permission".to_string(),
