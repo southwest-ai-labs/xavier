@@ -387,3 +387,64 @@ fn repeated_resolution_warns_once_per_invalid_path() {
     });
     assert_eq!(count.load(Ordering::Relaxed), 1);
 }
+
+#[test]
+#[serial_test::serial]
+fn inspect_candidates_skips_absent_and_nonexistent_paths_without_warning() {
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+    use tracing_subscriber::{
+        layer::{Context, SubscriberExt},
+        Layer,
+    };
+    struct Warnings(Arc<AtomicUsize>);
+    impl<S: tracing::Subscriber> Layer<S> for Warnings {
+        fn on_event(&self, event: &tracing::Event<'_>, _: Context<'_, S>) {
+            if *event.metadata().level() == tracing::Level::WARN {
+                self.0.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
+    let sandbox = Sandbox::new();
+    // Non-existent path should be skipped without warning or being flagged as invalid candidate.
+    let nonexistent = sandbox.root.path().join("does-not-exist");
+    std::env::set_var("XAVIER_CODEGRAPH_BIN", &nonexistent);
+    let count = Arc::new(AtomicUsize::new(0));
+    let subscriber = tracing_subscriber::registry().with(Warnings(count.clone()));
+    tracing::subscriber::with_default(subscriber, || {
+        let report = inspect_codegraph_candidates();
+        assert_eq!(report.bin_path, None);
+        assert!(report.invalid_candidates.is_empty());
+    });
+    assert_eq!(count.load(Ordering::Relaxed), 0);
+}
+
+#[test]
+fn is_absent_candidate_error_matches_expected_errors() {
+    assert!(is_absent_candidate_error(&std::io::Error::from(
+        std::io::ErrorKind::NotFound
+    )));
+    assert!(is_absent_candidate_error(&std::io::Error::from(
+        std::io::ErrorKind::InvalidFilename
+    )));
+    assert!(is_absent_candidate_error(
+        &std::io::Error::from_raw_os_error(123)
+    ));
+    assert!(is_absent_candidate_error(
+        &std::io::Error::from_raw_os_error(2)
+    ));
+    assert!(is_absent_candidate_error(
+        &std::io::Error::from_raw_os_error(3)
+    ));
+    assert!(is_absent_candidate_error(
+        &std::io::Error::from_raw_os_error(53)
+    ));
+    assert!(is_absent_candidate_error(
+        &std::io::Error::from_raw_os_error(161)
+    ));
+    assert!(!is_absent_candidate_error(&std::io::Error::from(
+        std::io::ErrorKind::PermissionDenied
+    )));
+}
