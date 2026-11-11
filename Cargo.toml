@@ -226,7 +226,7 @@ zeroize = "1"
 
 # HTTP Server
 axum = { version = "0.8", features = ["ws"] }
-axum-server = { version = "0.8", features = ["tls-rustls"] }
+axum-server = { version = "0.9", features = ["tls-rustls"] }
 tower = "0.5"
 tower-http = { version = "0.7", features = ["cors", "trace"] }
 
