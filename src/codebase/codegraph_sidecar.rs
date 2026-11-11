@@ -75,6 +75,24 @@ fn validate_binary(path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn candidate_names(base_names: &[&str]) -> Vec<String> {
+    let mut names = Vec::new();
+    let suffix = std::env::consts::EXE_SUFFIX;
+    for &base in base_names {
+        if !suffix.is_empty() {
+            // On Windows (or platforms with EXE_SUFFIX), prioritize the .exe variant first,
+            // while still retaining the bare name.
+            if !base.ends_with(suffix) {
+                names.push(format!("{base}{suffix}"));
+            }
+            names.push(base.to_string());
+        } else {
+            names.push(base.to_string());
+        }
+    }
+    names
+}
+
 fn sidecar_candidates() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(path) = std::env::var_os("XAVIER_CODEGRAPH_BIN") {
@@ -93,20 +111,22 @@ fn sidecar_candidates() -> Vec<PathBuf> {
         });
     for root in [target_dir, cwd.join("target")] {
         for profile in ["release", "debug"] {
-            candidates.push(root.join(profile).join("code-graph"));
+            for name in candidate_names(&["code-graph"]) {
+                candidates.push(root.join(profile).join(name));
+            }
         }
     }
     if let Some(home) = dirs::home_dir() {
         for dir in [home.join(".local/bin"), home.join(".xavier/plugins")] {
-            for name in ["codegraph", "code-graph"] {
+            for name in candidate_names(&["codegraph", "code-graph"]) {
                 candidates.push(dir.join(name));
             }
         }
     }
     if let Some(path) = std::env::var_os("PATH") {
         // Preserve the existing preference for codegraph over code-graph on PATH.
-        for name in ["codegraph", "code-graph"] {
-            candidates.extend(std::env::split_paths(&path).map(|dir| dir.join(name)));
+        for name in candidate_names(&["codegraph", "code-graph"]) {
+            candidates.extend(std::env::split_paths(&path).map(|dir| dir.join(&name)));
         }
     }
     candidates
@@ -128,6 +148,24 @@ fn warn_invalid_candidate(candidate: &InvalidSidecarCandidate) {
     }
 }
 
+pub(crate) fn is_absent_candidate_error(error: &std::io::Error) -> bool {
+    if error.kind() == std::io::ErrorKind::NotFound {
+        return true;
+    }
+    if error.kind() == std::io::ErrorKind::InvalidFilename {
+        return true;
+    }
+    // On Windows, ERROR_INVALID_NAME (123), ERROR_FILE_NOT_FOUND (2), ERROR_PATH_NOT_FOUND (3),
+    // ERROR_BAD_NETPATH (53), ERROR_BAD_PATHNAME (161), etc. can be returned when encountering
+    // malformed paths or bad volume identifiers.
+    if let Some(code) = error.raw_os_error() {
+        if matches!(code, 2 | 3 | 53 | 123 | 161) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Inspects every candidate without executing it, reporting invalid files once per path.
 pub fn inspect_codegraph_candidates() -> SidecarResolution {
     let mut report = SidecarResolution {
@@ -140,9 +178,7 @@ pub fn inspect_codegraph_candidates() -> SidecarResolution {
         if !seen.insert(path.clone()) {
             continue;
         }
-        if std::fs::symlink_metadata(&path)
-            .is_err_and(|error| error.kind() == std::io::ErrorKind::NotFound)
-        {
+        if std::fs::symlink_metadata(&path).is_err_and(|error| is_absent_candidate_error(&error)) {
             continue;
         }
         match validate_binary(&path) {
@@ -332,19 +368,26 @@ pub async fn install_codegraph_sidecar(from_source: bool) -> Result<PathBuf> {
                 }
             });
 
-        let built_binary = if target_dir.join("release").join("code-graph").exists() {
-            target_dir.join("release").join("code-graph")
-        } else if Path::new("target")
-            .join("release")
-            .join("code-graph")
-            .exists()
-        {
-            Path::new("target").join("release").join("code-graph")
-        } else if target_dir.join("debug").join("code-graph").exists() {
-            target_dir.join("debug").join("code-graph")
-        } else {
-            Path::new("target").join("debug").join("code-graph")
+        let find_built_binary = |dir: &Path| -> Option<PathBuf> {
+            for profile in ["release", "debug"] {
+                for name in candidate_names(&["code-graph"]) {
+                    let path = dir.join(profile).join(name);
+                    if path.exists() {
+                        return Some(path);
+                    }
+                }
+            }
+            None
         };
+
+        let built_binary = find_built_binary(&target_dir)
+            .or_else(|| find_built_binary(Path::new("target")))
+            .unwrap_or_else(|| {
+                let suffix = std::env::consts::EXE_SUFFIX;
+                target_dir
+                    .join("release")
+                    .join(format!("code-graph{suffix}"))
+            });
 
         ensure!(
             built_binary.exists(),
@@ -662,6 +705,47 @@ mod tests {
             }
             let _ = std::env::set_current_dir(&self.cwd);
         }
+    }
+
+    #[test]
+    fn test_candidate_names_includes_exe_suffix_when_present() {
+        let names = candidate_names(&["codegraph", "code-graph"]);
+        if !std::env::consts::EXE_SUFFIX.is_empty() {
+            let suffix = std::env::consts::EXE_SUFFIX;
+            assert!(names.contains(&format!("codegraph{suffix}")));
+            assert!(names.contains(&"codegraph".to_string()));
+            assert!(names.contains(&format!("code-graph{suffix}")));
+            assert!(names.contains(&"code-graph".to_string()));
+        } else {
+            assert_eq!(names, vec!["codegraph", "code-graph"]);
+        }
+    }
+
+    #[test]
+    fn test_is_absent_candidate_error() {
+        let not_found = std::io::Error::from(std::io::ErrorKind::NotFound);
+        assert!(is_absent_candidate_error(&not_found));
+
+        let invalid_filename = std::io::Error::from(std::io::ErrorKind::InvalidFilename);
+        assert!(is_absent_candidate_error(&invalid_filename));
+
+        let win_err_123 = std::io::Error::from_raw_os_error(123);
+        assert!(is_absent_candidate_error(&win_err_123));
+
+        let win_err_2 = std::io::Error::from_raw_os_error(2);
+        assert!(is_absent_candidate_error(&win_err_2));
+
+        let win_err_3 = std::io::Error::from_raw_os_error(3);
+        assert!(is_absent_candidate_error(&win_err_3));
+
+        let win_err_53 = std::io::Error::from_raw_os_error(53);
+        assert!(is_absent_candidate_error(&win_err_53));
+
+        let win_err_161 = std::io::Error::from_raw_os_error(161);
+        assert!(is_absent_candidate_error(&win_err_161));
+
+        let permission_denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+        assert!(!is_absent_candidate_error(&permission_denied));
     }
 
     #[test]
