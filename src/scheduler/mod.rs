@@ -6,9 +6,14 @@ pub mod daemon;
 pub mod job;
 pub mod night_trainer;
 pub mod retry;
+pub mod vault_sync;
 
 #[cfg(test)]
 mod retry_tests;
+
+pub mod disk_monitor;
+#[cfg(test)]
+pub mod disk_monitor_tests;
 
 pub use daemon::MemoryDaemon;
 pub use job::{RecoveryConfig, ScheduledJob};

@@ -20,11 +20,11 @@
   },
   "dependencies": {
     "@swal/maloca-embed": "workspace:*",
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "2.8.4",
     "lucide-react": "1.70.0",
-    "motion": "14.9.0",
+    "motion": "14.10.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-force-graph-2d": "1.29.2",
@@ -34,7 +34,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.4",
+    "@biomejs/biome": "^2.6.6",
     "@playwright/test": "^1.65.0",
     "@tauri-apps/cli": "2.12.4",
     "@testing-library/dom": "^10.4.2",

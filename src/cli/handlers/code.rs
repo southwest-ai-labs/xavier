@@ -2697,6 +2697,7 @@ fn map_edges_to_graph(
                         signature: None,
                         parent: None,
                         complexity: None,
+                        project_root: None,
                     })
                 } else {
                     None
@@ -2842,6 +2843,7 @@ mod tests {
             signature: Some("struct CacheStore".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         }];
 
         // The query "cache store" now matches because it is split into words "cache" and "store"
@@ -2865,6 +2867,7 @@ mod tests {
             signature: Some("struct CacheStore".to_string()),
             parent: None,
             complexity: None,
+            project_root: None,
         }];
 
         filter_symbols_by_query(&mut symbols, "cache");
@@ -2888,6 +2891,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: Some(1.5),
+            project_root: None,
         };
         let s2 = Symbol {
             id: Some(2),
@@ -2903,6 +2907,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: Some(2.5),
+            project_root: None,
         };
         db.insert_symbol(&s1).unwrap();
         db.insert_symbol(&s2).unwrap();
@@ -2934,6 +2939,7 @@ mod tests {
             signature: None,
             parent: Some("struct_two".to_string()),
             complexity: Some(1.0),
+            project_root: None,
         };
         db.insert_symbol(&s3).unwrap();
 
@@ -2981,6 +2987,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: Some(1.5),
+            project_root: None,
         };
 
         let s2 = Symbol {
@@ -2997,6 +3004,7 @@ mod tests {
             signature: None,
             parent: None,
             complexity: Some(2.5),
+            project_root: None,
         };
 
         db.insert_symbol(&s1).unwrap();
@@ -3078,6 +3086,7 @@ mod tests {
                 signature: Some("pub fn require_permission(...)".to_string()),
                 parent: None,
                 complexity: None,
+                project_root: None,
             })
             .unwrap();
         }
@@ -3249,6 +3258,7 @@ mod tests {
                 signature: None,
                 parent: None,
                 complexity: None,
+                project_root: None,
             })
             .unwrap();
         }
@@ -3422,6 +3432,7 @@ mod tests {
                     signature: None,
                     parent: None,
                     complexity: None,
+                    project_root: None,
                 })
                 .unwrap();
             cm.unload_code_graph_db(&legacy_db_path);
@@ -4248,6 +4259,7 @@ mod tests {
                 signature: None,
                 parent: None,
                 complexity: None,
+                project_root: None,
             };
             let call = |from: &str, to: &str| CodeEdge {
                 id: None,

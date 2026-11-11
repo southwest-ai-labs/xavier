@@ -229,6 +229,8 @@ impl Default for AdvancedSettings {
             audit_chain_enabled: true,
             panel_store_dir: String::new(),
             minhash_threshold: 0.85,
+            disk_warn_pct: 85,
+            disk_crit_pct: 92,
         }
     }
 }

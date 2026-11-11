@@ -65,6 +65,8 @@
 
 | Variable | Type | Default | Description | Secret |
 |----------|------|---------|-------------|--------|
+| `XAVIER_DISK_CRIT_PCT` | `u8` | `92` | Disk critical threshold percentage for proactive alert | ❌ |
+| `XAVIER_DISK_WARN_PCT` | `u8` | `85` | Disk warning threshold percentage for proactive alert | ❌ |
 | `XAVIER_GC_DESTRUCTIVE` | `bool` | `—` | Opt-in scheduled maintenance job for garbage collection (destructive) | ❌ |
 | `XAVIER_SEMANTIC_COMPACTION` | `bool` | `—` | Opt-in scheduled maintenance job for semantic compaction | ❌ |
 | `XAVIER_TGD_SCHEDULER` | `bool` | `—` | Opt-in scheduled nightly TGD consolidation | ❌ |
@@ -156,6 +158,8 @@
 | `XAVIER_R2_TOKEN` | `string` | (unset) | Bearer authorization token for Cloudflare R2 capsule storage uploads | ✅ |
 | `XAVIER_R2_URL` | `string` | (unset) | Endpoint URL for Cloudflare R2 context capsule storage | ❌ |
 | `XAVIER_TENANT` | `string` | `default` | Tenant identifier used in Cloudflare R2 capsule path isolation | ❌ |
+| `XAVIER_VAULT_SYNC_ENABLED` | `bool` | `false` | Enables the background hourly sync of the node vault to a remote server. When set to true, VaultSyncTask will run periodically. | ❌ |
+| `XAVIER_VAULT_SYNC_URL` | `string` | (none) | The target endpoint URL for the vault sync upload. The daemon posts the encrypted local vault to this URL, authenticated with an Ed25519 signature. | ❌ |
 
 ## Synchronization
 
@@ -471,3 +475,15 @@
 | `XAVIER_WORKSPACE_ID` | `string` | `"default"` | Legacy fallback workspace ID | ❌ |
 
 <!-- END AUTOGEN -->
+
+## Vault Sync Settings
+
+- **`XAVIER_VAULT_SYNC_ENABLED`**
+  - **Type:** `bool`
+  - **Default:** `false`
+  - **Description:** Enables the background hourly sync of the node vault to a remote server. When set to `true`, the `VaultSyncTask` will run periodically.
+
+- **`XAVIER_VAULT_SYNC_URL`**
+  - **Type:** `String`
+  - **Default:** None
+  - **Description:** The target endpoint for the vault sync upload. The daemon posts the encrypted local vault to this URL, authenticated with an Ed25519 signature from the node's identity.

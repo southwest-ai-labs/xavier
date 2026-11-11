@@ -168,6 +168,7 @@ impl JavaParser {
             .is_function_like()
             .then(|| cyclomatic_complexity(args.node, args.source));
         symbols.push(Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: args.name,

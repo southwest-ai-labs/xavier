@@ -494,6 +494,7 @@ mod arbitration_tests {
 
     fn make_dummy_symbol(name: &str, lang: Language) -> Symbol {
         Symbol {
+            project_root: None,
             id: None,
             stable_id: None,
             name: name.to_string(),

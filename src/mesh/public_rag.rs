@@ -399,6 +399,7 @@ mod tests {
             signature: Some("pub struct IrohTransport".to_string()),
             parent: None,
             complexity: Some(1.2),
+            project_root: None,
         };
         db.insert_symbol(&symbol).unwrap();
 

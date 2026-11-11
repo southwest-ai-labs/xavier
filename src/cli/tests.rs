@@ -30,6 +30,7 @@ fn test_code_query() -> code_graph::query::QueryEngine {
         ),
         parent: None,
         complexity: Some(1.0),
+        project_root: None,
     })
     .unwrap();
     db.insert_symbol(&Symbol {
@@ -48,6 +49,7 @@ fn test_code_query() -> code_graph::query::QueryEngine {
         ),
         parent: None,
         complexity: Some(1.0),
+                        project_root: None,
 
     })
     .unwrap();

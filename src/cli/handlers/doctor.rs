@@ -64,7 +64,7 @@ pub const DOCTOR_CHECK_TIMEOUT: std::time::Duration = std::time::Duration::from_
 /// Total deadline budget for the entire doctor diagnostic run.
 pub const DOCTOR_TOTAL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(25);
 /// Timeout specifically for system scan.
-pub const DOCTOR_SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+pub const DOCTOR_SCAN_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub const DOCTOR_DATABASE_TIMEOUT: std::time::Duration = DOCTOR_CHECK_TIMEOUT;
 pub const DOCTOR_EMBEDDINGS_TIMEOUT: std::time::Duration = DOCTOR_CHECK_TIMEOUT;

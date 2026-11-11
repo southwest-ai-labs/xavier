@@ -33,6 +33,7 @@ fn sym(name: &str, file: &str, start_line: u32, end_line: u32) -> Symbol {
         signature: Some(format!("fn {name}()")),
         parent: None,
         complexity: None,
+        project_root: None,
     }
 }
 

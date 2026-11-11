@@ -635,6 +635,8 @@ const ENV_BINDINGS: &[(&str, &str)] = &[
     ),
     ("advanced.audit_chain_enabled", "XAVIER_AUDIT_CHAIN_ENABLED"),
     ("advanced.panel_store_dir", "XAVIER_PANEL_STORE_DIR"),
+    ("advanced.disk_warn_pct", "XAVIER_DISK_WARN_PCT"),
+    ("advanced.disk_crit_pct", "XAVIER_DISK_CRIT_PCT"),
     (
         "pgheart.instance_id",
         "PGHEART_INSTANCE_ID|XAVIER_PGHEART_INSTANCE_ID",

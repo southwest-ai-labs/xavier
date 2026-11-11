@@ -273,6 +273,22 @@ category = "Maintenance Jobs"
 secret = false
 
 [[variables]]
+name = "XAVIER_DISK_WARN_PCT"
+type = "u8"
+default = "85"
+description = "Disk warning threshold percentage for proactive alert"
+category = "Maintenance Jobs"
+secret = false
+
+[[variables]]
+name = "XAVIER_DISK_CRIT_PCT"
+type = "u8"
+default = "92"
+description = "Disk critical threshold percentage for proactive alert"
+category = "Maintenance Jobs"
+secret = false
+
+[[variables]]
 name = "XAVIER_DATA_DIR"
 type = "string"
 default = "\"data\""
@@ -2821,6 +2837,22 @@ name = "XAVIER_TENANT"
 type = "string"
 default = "default"
 description = "Tenant identifier used in Cloudflare R2 capsule path isolation"
+category = "Sync & Cloud"
+secret = false
+
+[[variables]]
+name = "XAVIER_VAULT_SYNC_ENABLED"
+type = "bool"
+default = "false"
+description = "Enables the background hourly sync of the node vault to a remote server. When set to true, VaultSyncTask will run periodically."
+category = "Sync & Cloud"
+secret = false
+
+[[variables]]
+name = "XAVIER_VAULT_SYNC_URL"
+type = "string"
+default = "(none)"
+description = "The target endpoint URL for the vault sync upload. The daemon posts the encrypted local vault to this URL, authenticated with an Ed25519 signature."
 category = "Sync & Cloud"
 secret = false
 

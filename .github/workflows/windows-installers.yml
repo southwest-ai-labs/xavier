@@ -109,6 +109,7 @@ jobs:
           $proc = Start-Process -FilePath $BinPath -ArgumentList "http $TestPort --host 127.0.0.1 --no-ui" -PassThru -NoNewWindow -Environment @{
             XAVIER_STATE_DIR = $TempState.FullName
             XAVIER_DATA_DIR = $TempState.FullName
+            XAVIER_TOKEN = "e2e-windows-test-token"
           }
           try {
             Start-Sleep -Seconds 4

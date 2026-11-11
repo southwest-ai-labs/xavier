@@ -12,6 +12,7 @@ mod benchmarks_inner {
         // Insert 1000 symbols for benchmarking
         for i in 0..1000 {
             let sym = Symbol {
+                project_root: None,
                 id: None,
                 stable_id: None,
                 name: format!("function_{}", i),
@@ -69,6 +70,7 @@ mod benchmarks_inner {
         let start = Instant::now();
         for i in 0..100 {
             let sym = Symbol {
+                project_root: None,
                 id: None,
                 stable_id: None,
                 name: format!("bench_{}", i),
@@ -114,6 +116,7 @@ mod benchmarks_inner {
 
         let symbols: Vec<Symbol> = (0..500)
             .map(|i| Symbol {
+                project_root: None,
                 id: None,
                 stable_id: None,
                 name: format!("bench_sym_{}", i),

@@ -211,6 +211,7 @@ mod tests {
             signature: Some(format!("fn {name}()")),
             parent: None,
             complexity: None,
+            project_root: None,
         }
     }
 

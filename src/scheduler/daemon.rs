@@ -9,6 +9,7 @@ use crate::memory::qmd::QmdMemory;
 use crate::retrieval::eval::{is_hit, CaseResult, EvalDataset, RetrievalMetrics};
 use crate::retrieval::history::{self, HistoryEntry};
 use crate::retrieval::tuner::{detect_recall_drift, tune, RetrievalConfig};
+use crate::scheduler::disk_monitor::DiskMonitor;
 use crate::scheduler::retry::{CircuitBreaker, RetryPolicy};
 
 /// Interval between auto-tune passes. Mirrors the decay loop's 6h cadence: the
@@ -82,6 +83,16 @@ impl MemoryDaemon {
                 }
             });
         }
+
+        // Run Proactive Disk Monitoring every hour
+        tokio::spawn(async move {
+            info!("MemoryDaemon: Scheduled disk monitoring loop started (1h interval)");
+            let mut disk_monitor = DiskMonitor::new();
+            loop {
+                sleep(Duration::from_secs(3600)).await;
+                disk_monitor.check_and_notify();
+            }
+        });
 
         // Run Memory Decay every 6 hours
         let manager_decay = self.manager.clone();

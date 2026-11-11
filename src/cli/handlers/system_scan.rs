@@ -116,15 +116,37 @@ pub async fn scan_system(detailed: bool) -> SystemScanResult {
 async fn detect_ollama() -> OllamaStatus {
     let base_url =
         std::env::var("OLLAMA_HOST").unwrap_or_else(|_| "http://localhost:11434".to_string());
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_millis(500))
+        .timeout(std::time::Duration::from_millis(1500))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
 
-    // Try to get version
-    let version = match client.get(format!("{}/api/version", base_url)).send().await {
-        Ok(resp) => resp.json::<serde_json::Value>().await.ok().and_then(|v| {
-            v.get("version")
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-        }),
-        Err(_) => None,
+    // Try to get version with fail-fast check
+    let version_resp = client.get(format!("{}/api/version", base_url)).send().await;
+    let version = match version_resp {
+        Ok(resp) if resp.status().is_success() => {
+            resp.json::<serde_json::Value>().await.ok().and_then(|v| {
+                v.get("version")
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
+            })
+        }
+        _ => {
+            // Fail fast: if /api/version fails or times out, Ollama is not running.
+            // Do not trigger subsequent calls to /api/tags and /v1/models.
+            let installed = Command::new("ollama")
+                .arg("--version")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            return OllamaStatus {
+                installed,
+                running: false,
+                version: None,
+                models: vec![],
+                url: base_url,
+            };
+        }
     };
 
     // Try to list models using /api/tags (Ollama native)
@@ -717,6 +739,43 @@ mod scanner_tests {
         let status = detect_ollama().await;
         assert!(status.running);
         assert!(status.models.contains(&"test-model".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_ollama_fail_fast_when_offline() {
+        let mut server = mockito::Server::new_async().await;
+        let url = server.url();
+        std::env::set_var("OLLAMA_HOST", &url);
+
+        let _v_mock = server
+            .mock("GET", "/api/version")
+            .with_status(500)
+            .create_async()
+            .await;
+
+        // /api/tags and /v1/models should not even be called
+        let m_tags_mock = server
+            .mock("GET", "/api/tags")
+            .with_status(200)
+            .with_body(r#"{"models": [{"name": "should-not-reach"}]}"#)
+            .expect(0)
+            .create_async()
+            .await;
+
+        let m_v1_mock = server
+            .mock("GET", "/v1/models")
+            .with_status(200)
+            .with_body(r#"{"data": [{"id": "should-not-reach"}]}"#)
+            .expect(0)
+            .create_async()
+            .await;
+
+        let status = detect_ollama().await;
+        assert!(!status.running);
+        assert!(status.version.is_none());
+        assert!(status.models.is_empty());
+        m_tags_mock.assert_async().await;
+        m_v1_mock.assert_async().await;
     }
 
     #[test]
