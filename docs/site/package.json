@@ -12,7 +12,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.42.9",
+    "@astrojs/starlight": "^0.42.10",
     "astro": "^7.4.5",
     "destr": "^2.0.5",
     "ufo": "^1.6.3"
