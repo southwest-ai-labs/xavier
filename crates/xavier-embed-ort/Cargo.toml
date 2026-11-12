@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 ort = { version = "=2.0.0-rc.12", default-features = false, features = ["load-dynamic", "api-18"] }
-tokenizers = { version = "0.22", default-features = false, features = ["onig"] }
+tokenizers = { version = "0.23", default-features = false, features = ["onig"] }
 ndarray = "0.16"
 thiserror = "2"
 serde = { version = "1", features = ["derive"] }
