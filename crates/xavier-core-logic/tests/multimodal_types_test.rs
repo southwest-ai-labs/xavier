@@ -17,18 +17,20 @@ fn test_default_serialization() {
 
 #[test]
 fn test_multimodal_serialization() {
-    let mut doc = MemoryDocument::default();
-    doc.modality = ModalityType::VideoScene;
-    doc.spatial = Some(SpatialRegion {
-        x: 0.1,
-        y: 0.2,
-        width: 0.3,
-        height: 0.4,
-    });
-    doc.temporal = Some(TemporalRange {
-        start_ms: 1000,
-        end_ms: 5000,
-    });
+    let doc = MemoryDocument {
+        modality: ModalityType::VideoScene,
+        spatial: Some(SpatialRegion {
+            x: 0.1,
+            y: 0.2,
+            width: 0.3,
+            height: 0.4,
+        }),
+        temporal: Some(TemporalRange {
+            start_ms: 1000,
+            end_ms: 5000,
+        }),
+        ..Default::default()
+    };
 
     let json = serde_json::to_string(&doc).unwrap();
     let parsed: MemoryDocument = serde_json::from_str(&json).unwrap();
