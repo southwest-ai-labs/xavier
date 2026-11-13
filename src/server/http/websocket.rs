@@ -74,10 +74,7 @@ impl WsSubscriptions {
                 _ => return false,
             }
         }
-        if !self.event_types.is_empty() && !self.event_types.contains(&event.event_type) {
-            return false;
-        }
-        true
+        self.event_types.is_empty() || self.event_types.contains(&event.event_type)
     }
 }
 

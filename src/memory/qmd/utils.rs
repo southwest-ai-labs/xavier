@@ -87,10 +87,7 @@ pub fn is_likely_speaker(s: &str) -> bool {
         "Sorry", "Who", "What", "When", "Where", "Why", "How", "Did", "Was", "Were", "Are", "She",
         "He", "It",
     ];
-    if common.contains(&s) {
-        return false;
-    }
-    true
+    !common.contains(&s)
 }
 
 /// Is female name.
