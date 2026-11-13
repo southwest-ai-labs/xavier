@@ -75,8 +75,11 @@ fn sandboxed_file(root: &Path, var: &str) -> PathBuf {
 }
 
 /// True when the current executable is a cargo test/bench binary
-/// (`target/<profile>/deps/<name>-<hash>`).
+/// (`target/<profile>/deps/<name>-<hash>`) or when running under `cargo test` / `cargo nextest`.
 pub fn running_under_cargo_test() -> bool {
+    if std::env::var_os("NEXTEST").is_some() || std::env::var_os("CARGO_MANIFEST_DIR").is_some() {
+        return true;
+    }
     std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().and_then(|d| d.file_name().map(|n| n == "deps")))

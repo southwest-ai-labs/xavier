@@ -182,9 +182,6 @@ impl ModelDownloader {
         dir: &Path,
         _required_bytes: u64,
     ) -> Result<bool, io::Error> {
-        if dir.to_string_lossy().contains("full_disk") {
-            return Ok(false);
-        }
-        Ok(true)
+        Ok(!dir.to_string_lossy().contains("full_disk"))
     }
 }

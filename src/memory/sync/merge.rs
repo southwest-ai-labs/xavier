@@ -127,14 +127,10 @@ fn is_path_inside_workspace(path: &str) -> bool {
             _ => {}
         }
     }
-    if trimmed.starts_with('/')
-        || trimmed.starts_with('\\')
-        || trimmed.split('/').any(|s| s == "..")
-        || trimmed.split('\\').any(|s| s == "..")
-    {
-        return false;
-    }
-    true
+    !trimmed.starts_with('/')
+        && !trimmed.starts_with('\\')
+        && !trimmed.split('/').any(|s| s == "..")
+        && !trimmed.split('\\').any(|s| s == "..")
 }
 
 /// Validate every incoming record against the caller's write ceiling before a
