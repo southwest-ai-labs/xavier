@@ -128,3 +128,4 @@ scripts/pageindex-e2e/__pycache__/
 config/xavier.config.json
 config/.xavier-state/
 .xavier-state/
+sessions/

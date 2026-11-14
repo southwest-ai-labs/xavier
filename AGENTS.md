@@ -35,26 +35,17 @@ cargo test --workspace                         # full suite
 cargo clippy --all-targets -- -D warnings      # warnings are errors
 ```
 
-### Remote agents (Jules, cloud sandboxes)
+### Canonical execution provider (Google Antigravity & agy CLI)
 
-Do **not** run the setup commands above in a remote sandbox: a full release build of this
-workspace exceeds typical sandbox limits (Jules fails while "preparing the virtual machine
-environment"). Remote agents only need `rustfmt`; they write code and tests, and CI verifies
-every PR (fmt, clippy `-D warnings`, tests). Use a light setup: `rustup component add rustfmt`.
+Google Antigravity and the `agy` CLI are the sole canonical execution provider for Xavier waves and implementation tasks. All wave development is executed locally or via Antigravity workflows with strict verification standards.
 
-**Jules PRs (owner rule, 2026-10-03):** all Xavier implementation goes through Jules; the owner's
-machine never builds. PRs must be mergeable as-is:
-- Base branch = the branch named in the task (today `sprint/xavier-2026-10`), never `main`.
-- Touch ONLY the files the task lists; no lockfile, formatting-only or drive-by changes elsewhere.
-- Run ONLY `cargo fmt -- <files you touched>` (rustfmt does not compile). **NEVER run `cargo build`,
-  `cargo check`, `cargo test`, `cargo clippy` or `cargo run` in a remote VM**: a cold build of this workspace
-  outlasts and exhausts the sandbox, and the session dies ~10 min later with "Jules encountered an error when
-  working on the task" (measured on 102 failed sessions, 2026-09). Write the code and the tests, open the PR,
-  and let CI compile and test it.
-- CI runs on PRs to `main` and `sprint/**`. If it fails, a bot comment `@jules` brings the failing log
-  to the PR: fix only what the log shows, on the same branch.
+Prior to pushing changes or opening PRs, all changes must pass the standard pre-push checks:
+- Code formatting: `cargo fmt --all -- --check`
+- Compiler & type checks: `cargo check --package xavier --all-targets --features ci-safe`
+- Linter verification: `cargo clippy --package xavier --all-targets --features ci-safe -- -D warnings`
+- Test validation: `cargo test --package xavier --lib --features ci-safe -- --test-threads=1` (or relevant unit/integration suites)
 
-### panel-ui / UI tasks for Jules (owner rule, 2026-11-06)
+### panel-ui / UI tasks (owner rule, 2026-11-06)
 
 - Package manager is **pnpm** (`pnpm install`, `pnpm run build`, `pnpm exec vitest run`, `pnpm exec playwright test`). Never `npm install` / `npx` installs that write a `package-lock.json`.
 - Base branch for UI work is **`integration/core-100`** (unless the task names another); open the PR against it.
@@ -119,8 +110,7 @@ machine never builds. PRs must be mergeable as-is:
 
 ## 10. Canonical Directory Protocol & Agent Hygiene
 
-All autonomous agents (Jules, Hermes, Antigravity, Claude, etc.) MUST strictly respect directory boundaries. **DO NOT invent arbitrary root-level dot-directories or config folders.**
-- **Jules memory / learnings**: MUST only be recorded in lowercase `.jules/` (e.g. `.jules/palette.md`). Never create uppercase `.Jules/`.
+All autonomous agents (Google Antigravity, Hermes, Claude, etc.) MUST strictly respect directory boundaries. **DO NOT invent arbitrary root-level dot-directories or config folders.**
 - **Git Hooks**: The repository strictly uses `.husky/` via Husky 9. Never create or restore `.githooks/`.
 - **GitCore Ledger**: All wave management, issue definitions, chronicles, and specs live under `.gitcore/`. Do not create competing tracking directories.
 - **Skills**: Global skills reside in `~/.hermes/skills/` (authoritative canonical store until migration completes) and project skills in `skills/` (never commit ephemeral skill files directly to repo root). The canonical store is configurable via `XAVIER_SKILL_STORE` (e.g. `$HOME/.local/share/xavier/skill-store`); Hermes remains authoritative until an approved migration completes (docs/design/skill-controller/05-DECISIONS-AND-SCOPE.md D1, D5).

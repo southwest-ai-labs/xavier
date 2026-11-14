@@ -2,28 +2,26 @@
 """
 dispatch.py — Orquestador unico de subagents para Xavier como cerebro.
 
-Dos tipos de subagent:
+Subagents soportados:
   1. AGI CLIs (sincrono): codex / opencode / gemini / claude / qwen
      - Lanzados via subprocess con wiring MCP (config en mcp/GENERATED/)
      - Bloquean hasta terminar; capturan stdout.
-  2. Google Jules (asincrono): se activa poniendo el label `jules` en un GitHub issue.
-     - Crea el issue via `gh issue create --label jules`
-     - Retorna inmediatamente; Jules abre un PR despues (se monitoriza aparte).
+  2. Google Antigravity & agy CLI:
+     - Runner canonico activo para Xavier waves y tareas locales.
+     - Nota: Jules service ha sido desmantelado / decommissioned.
 
-Flujo comun (Xavier como cerebro) para AMBOS:
+Flujo comun (Xavier como cerebro):
   RECALL  -> mem_search en Xavier (path_prefix del namespace) para contexto previo
-  DISPATCH-> lanza el subagent (sync o async) con el contexto inyectado
-  PERSIST -> create_memory con el resultado/decision (solo aplicable a sync; para Jules
-             se persiste un record del dispatch + issue creado)
+  DISPATCH-> lanza el subagent con el contexto inyectado
+  PERSIST -> create_memory con el resultado/decision
 
 Uso:
   python dispatch.py agi --cli opencode --task "..." --project xavier
-  python dispatch.py jules --task "..." --project xavier [--title "..."]
-  python dispatch.py jules-status            # lista issues con label jules y sus PRs
+  python dispatch.py jules                   # [DEPRECATED] Jules decommissioned, usar Antigravity/agy
+  python dispatch.py jules-status            # [DEPRECATED]
 
 Requisitos:
   - Xavier HTTP corriendo en :8006 (modo cloud embedding)
-  - gh CLI autenticado (para Jules)
   - configs MCP generados: python generate_mcp_configs.py
 """
 from __future__ import annotations
@@ -230,105 +228,41 @@ def dispatch_agi(cli: str, task: str, project: str | None, agent_id: str, timeou
 
 
 # ---------------------------------------------------------------------------
-# Jules dispatcher (asincrono via GitHub issue + label jules)
+# Jules dispatcher (DEPRECATED - Decommissioned)
 # ---------------------------------------------------------------------------
-def dispatch_jules(task: str, project: str | None, title: str | None, extra_labels: list[str], repo: str) -> dict:
-    """Crea un issue con label 'jules' para que Google Jules lo procese async."""
-    agent_id = "jules"
-
-    # 1. RECALL — contexto previo para inyectar en el cuerpo del issue
-    print(f"[recall] buscando contexto previo en Xavier (project={project or 'global'})...")
-    ctx = recall(task, project)
-
-    # 2. construir cuerpo del issue (formato que Jules espera: Qué hacer / Archivos / etc.)
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    labels = ["jules"] + (extra_labels or [])
-    body = f"""## Tarea para Jules (dispatch {ts})
-
-**Generado por:** Xavier brain dispatcher (agent_id=jules, project={project or 'global'})
-
-### Contexto recuperado de Xavier (MEMORIA — leer ANTES de implementar)
-{ctx}
-
-### Qué hacer
-{task}
-
-### Recordatorio para Jules
-- **ANTES** de implementar: si necesitas más contexto, consulta Xavier (HTTP en http://localhost:8006 si tienes acceso, o los docs del repo).
-- **DESPUÉS** de implementar: documenta la decisión en el PR.
-- Namespace de este dispatch: project=`{project or 'global'}`, agent_id=`jules`.
-
-### PR debe incluir
-- Implementación de la tarea descrita arriba.
-- Tests si aplica.
-- Referencia a este issue.
-"""
-    # 3. crear issue via gh
-    title_str = title or (task[:70] + ("..." if len(task) > 70 else ""))
-    print(f"[jules] creando issue en {repo} con labels={labels}...")
-    args = ["gh", "issue", "create", "--repo", repo, "--title", title_str, "--body", body]
-    for lbl in labels:
-        args += ["--label", lbl]
-    try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=30)
-        if r.returncode != 0:
-            return {"error": f"gh issue create fallo: {r.stderr}", "rc": r.returncode}
-        issue_url = r.stdout.strip()
-        issue_num = issue_url.rstrip("/").split("/")[-1]
-        print(f"[jules] issue creado: {issue_url} (label jules aplicado — Jules se activara)")
-    except FileNotFoundError:
-        return {"error": "gh CLI no encontrado. Instala e autentica gh."}
-    except subprocess.TimeoutExpired:
-        return {"error": "gh issue create timeout"}
-
-    # 4. PERSIST — registrar el dispatch en Xavier
-    persist_path = f"dispatch/{project or 'global'}/jules/{issue_num}"
-    summary = f"Dispatch Jules (issue #{issue_num}): {title_str}. Tarea: {task[:300]}"
-    mem_id = persist(persist_path, summary, "task", project, agent_id)
-    print(f"[persist] dispatch guardado en Xavier: {persist_path} (id={mem_id})")
-
+def dispatch_jules(task: str = "", project: str | None = None, title: str | None = None, extra_labels: list[str] | None = None, repo: str = DEFAULT_REPO) -> dict:
+    """[DEPRECATED] Jules service is decommissioned. Google Antigravity & agy CLI is the active canonical runner."""
+    msg = (
+        "Jules service has been decommissioned and removed from Xavier. "
+        "Google Antigravity and the 'agy' CLI are the active canonical runners for all implementation waves and tasks."
+    )
+    print(f"\n[DEPRECATED] {msg}\n")
     return {
-        "type": "jules", "agent_id": "jules", "project": project,
-        "task": task, "title": title_str, "repo": repo,
-        "issue_url": issue_url, "issue_number": issue_num, "labels": labels,
-        "persisted_path": persist_path, "persisted_id": mem_id, "ts": ts,
-        "note": "Jules es async. Monitorea el PR con: python dispatch.py jules-status",
+        "status": "deprecated",
+        "error": msg,
+        "active_runner": "Google Antigravity & agy CLI",
     }
 
 
-def jules_status(repo: str) -> dict:
-    """Lista issues abiertos con label jules y sus PRs asociados."""
-    print(f"[jules-status] issues abiertos con label 'jules' en {repo}:")
-    r = subprocess.run(
-        ["gh", "issue", "list", "--repo", repo, "--label", "jules", "--state", "open",
-         "--json", "number,title,url,createdAt", "--limit", "30"],
-        capture_output=True, text=True, timeout=30,
+def jules_status(repo: str = DEFAULT_REPO) -> dict:
+    """[DEPRECATED] Jules service is decommissioned. Google Antigravity & agy CLI is the active canonical runner."""
+    msg = (
+        "Jules service has been decommissioned and removed from Xavier. "
+        "Google Antigravity and the 'agy' CLI are the active canonical runners for all implementation waves and tasks."
     )
-    if r.returncode != 0:
-        return {"error": r.stderr}
-    issues = json.loads(r.stdout or "[]")
-    print(f"  {len(issues)} issues abiertos con label jules")
-    for it in issues:
-        print(f"   #{it['number']:4d}  {it['title'][:60]}")
-
-    # PRs recientes de jules-bot
-    print(f"\n[jules-status] PRs recientes de jules-bot en {repo}:")
-    r2 = subprocess.run(
-        ["gh", "pr", "list", "--repo", repo, "--author", "jules-bot", "--state", "all",
-         "--json", "number,title,state,url", "--limit", "10"],
-        capture_output=True, text=True, timeout=30,
-    )
-    prs = json.loads(r2.stdout or "[]") if r2.returncode == 0 else []
-    for pr in prs:
-        print(f"   #{pr['number']:4d} [{pr['state']:6s}] {pr['title'][:55]}")
-    return {"open_jules_issues": len(issues), "jules_bot_prs": len(prs), "issues": issues, "prs": prs}
+    print(f"\n[DEPRECATED] {msg}\n")
+    return {
+        "status": "deprecated",
+        "error": msg,
+        "active_runner": "Google Antigravity & agy CLI",
+    }
 
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def main():
-    ap = argparse.ArgumentParser(description="Xavier brain — subagent dispatcher (AGI CLIs + Jules)")
+    ap = argparse.ArgumentParser(description="Xavier brain — subagent dispatcher (AGI CLIs + Antigravity)")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_agi = sub.add_parser("agi", help="Dispatch a un AGI CLI sincrono (codex/opencode/gemini/claude/qwen)")
@@ -338,15 +272,15 @@ def main():
     p_agi.add_argument("--agent-id", default=None, help="Identidad del subagent (default: <cli>-dispatch)")
     p_agi.add_argument("--timeout", type=int, default=300, help="Timeout en segundos (AGI CLIs son sincronos)")
 
-    p_jules = sub.add_parser("jules", help="Dispatch async a Google Jules via issue + label jules")
-    p_jules.add_argument("--task", required=True, help="Descripcion de la tarea para Jules")
-    p_jules.add_argument("--title", default=None, help="Titulo del issue (default: truncado de --task)")
-    p_jules.add_argument("--project", default=None)
-    p_jules.add_argument("--label", action="append", default=[], help="Labels extra (ademas de 'jules')")
-    p_jules.add_argument("--repo", default=DEFAULT_REPO, help="Repo GitHub (default: iberi22/xavier)")
+    p_jules = sub.add_parser("jules", help="[DEPRECATED] Jules is decommissioned; use Google Antigravity / agy")
+    p_jules.add_argument("--task", default="", nargs="?", help="Descripcion de la tarea (deprecated)")
+    p_jules.add_argument("--title", default=None, help="Titulo (deprecated)")
+    p_jules.add_argument("--project", default=None, help="Namespace project (deprecated)")
+    p_jules.add_argument("--label", action="append", default=[], help="Labels extra (deprecated)")
+    p_jules.add_argument("--repo", default=DEFAULT_REPO, help="Repo GitHub (deprecated)")
 
-    p_status = sub.add_parser("jules-status", help="Lista issues con label jules y PRs de jules-bot")
-    p_status.add_argument("--repo", default=DEFAULT_REPO)
+    p_status = sub.add_parser("jules-status", help="[DEPRECATED] Jules is decommissioned")
+    p_status.add_argument("--repo", default=DEFAULT_REPO, help="Repo GitHub (deprecated)")
 
     args = ap.parse_args()
 
