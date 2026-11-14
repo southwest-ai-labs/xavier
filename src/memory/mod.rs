@@ -57,7 +57,6 @@ pub mod sync;
 pub mod sync_scheduler;
 pub mod telemetry;
 pub mod tgd;
-pub mod video_segmenter;
 pub mod virtual_memory;
 pub mod working;
 pub use connection_provider::*;

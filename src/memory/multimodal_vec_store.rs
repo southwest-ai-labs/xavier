@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use crate::memory::sqlite_vec_store::vector;
 pub use xavier_core_logic::types::{SpatialRegion, TemporalRange};
 
+#[path = "video_segmenter.rs"]
+pub mod video_segmenter;
+pub use video_segmenter::{VideoSceneChunk, VideoSceneSegmenter, VideoSegmenterConfig};
+
 /// Modality types for isolated vector tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

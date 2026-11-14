@@ -326,9 +326,8 @@ async fn test_multimodal_video_segmentation_retrieval() {
     use rusqlite::Connection;
     use xavier::memory::multimodal_vec_store::{
         DataTypeKind, MultimodalVecManager, SpatiotemporalFilter, SpatiotemporalMetadata,
-        TemporalRange,
+        TemporalRange, VideoSceneSegmenter, VideoSegmenterConfig,
     };
-    use xavier::memory::video_segmenter::{VideoSceneSegmenter, VideoSegmenterConfig};
 
     let segmenter = VideoSceneSegmenter::new(VideoSegmenterConfig {
         target_duration_ms: 5000,
