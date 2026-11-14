@@ -233,3 +233,90 @@ async fn test_multimodal_storage_tables() {
     assert_eq!(audio_results.len(), 1);
     assert_eq!(audio_results[0].item_id, "audio_clip_1");
 }
+
+#[tokio::test]
+async fn test_multimodal_spatiotemporal_filtering() {
+    use rusqlite::Connection;
+    use xavier::memory::multimodal_vec_store::{
+        DataTypeKind, MultimodalVecManager, SpatialRegion, SpatiotemporalFilter,
+        SpatiotemporalMetadata, TemporalRange,
+    };
+
+    let manager = MultimodalVecManager::new();
+    let conn = Connection::open_in_memory().unwrap();
+
+    manager
+        .ensure_modality_table(&conn, DataTypeKind::Video, 768)
+        .unwrap();
+
+    let vec_clip = vec![0.036_084_39_f32; 768];
+
+    // Clip 1: Scene at 10s - 25s (10,000ms - 25,000ms) with a face bounding box
+    manager
+        .insert_spatiotemporal_embedding(
+            &conn,
+            DataTypeKind::Video,
+            "scene_interview",
+            &vec_clip,
+            SpatiotemporalMetadata::new(
+                Some(SpatialRegion {
+                    x: 100.0,
+                    y: 100.0,
+                    width: 200.0,
+                    height: 200.0,
+                }),
+                Some(TemporalRange {
+                    start_ms: 10_000,
+                    end_ms: 25_000,
+                }),
+            ),
+        )
+        .unwrap();
+
+    // Clip 2: Scene at 40s - 60s (40,000ms - 60,000ms) with bottom subtitle region
+    manager
+        .insert_spatiotemporal_embedding(
+            &conn,
+            DataTypeKind::Video,
+            "scene_credits",
+            &vec_clip,
+            SpatiotemporalMetadata::new(
+                Some(SpatialRegion {
+                    x: 0.0,
+                    y: 800.0,
+                    width: 1920.0,
+                    height: 200.0,
+                }),
+                Some(TemporalRange {
+                    start_ms: 40_000,
+                    end_ms: 60_000,
+                }),
+            ),
+        )
+        .unwrap();
+
+    // Query 1: Filter temporal range around 15s - 20s (matches scene_interview)
+    let temp_filter = SpatiotemporalFilter::temporal(TemporalRange {
+        start_ms: 15_000,
+        end_ms: 20_000,
+    });
+    let temp_results = manager
+        .search_spatiotemporal(&conn, DataTypeKind::Video, &vec_clip, &temp_filter, 5)
+        .unwrap();
+    assert_eq!(temp_results.len(), 1);
+    assert_eq!(temp_results[0].item_id, "scene_interview");
+
+    // Query 2: Filter spatial region matching subtitle area
+    let mut spatial_filter = SpatiotemporalFilter::spatial(SpatialRegion {
+        x: 0.0,
+        y: 800.0,
+        width: 1920.0,
+        height: 200.0,
+    });
+    spatial_filter.min_iou = Some(0.9);
+    let spatial_results = manager
+        .search_spatiotemporal(&conn, DataTypeKind::Video, &vec_clip, &spatial_filter, 5)
+        .unwrap();
+    assert_eq!(spatial_results.len(), 1);
+    assert_eq!(spatial_results[0].item_id, "scene_credits");
+}
