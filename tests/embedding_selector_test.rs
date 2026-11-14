@@ -320,3 +320,63 @@ async fn test_multimodal_spatiotemporal_filtering() {
     assert_eq!(spatial_results.len(), 1);
     assert_eq!(spatial_results[0].item_id, "scene_credits");
 }
+
+#[tokio::test]
+async fn test_multimodal_video_segmentation_retrieval() {
+    use rusqlite::Connection;
+    use xavier::memory::multimodal_vec_store::{
+        DataTypeKind, MultimodalVecManager, SpatiotemporalFilter, SpatiotemporalMetadata,
+        TemporalRange,
+    };
+    use xavier::memory::video_segmenter::{VideoSceneSegmenter, VideoSegmenterConfig};
+
+    let segmenter = VideoSceneSegmenter::new(VideoSegmenterConfig {
+        target_duration_ms: 5000,
+        min_scene_duration_ms: 1000,
+        max_scene_duration_ms: 10000,
+        frames_per_scene: 3,
+    });
+
+    let manager = MultimodalVecManager::new();
+    let conn = Connection::open_in_memory().unwrap();
+    manager
+        .ensure_modality_table(&conn, DataTypeKind::Video, 768)
+        .unwrap();
+
+    let chunks = segmenter.segment_uniform(15000);
+    assert_eq!(chunks.len(), 3);
+
+    // Insert embeddings for all 3 chunks
+    let dummy_vec = vec![0.036_084_39_f32; 768];
+    for chunk in &chunks {
+        let item_id = format!("scene_{}", chunk.scene_index);
+        let metadata = SpatiotemporalMetadata::new(
+            None,
+            Some(TemporalRange {
+                start_ms: chunk.start_ms,
+                end_ms: chunk.end_ms,
+            }),
+        );
+        manager
+            .insert_spatiotemporal_embedding(
+                &conn,
+                DataTypeKind::Video,
+                &item_id,
+                &dummy_vec,
+                metadata,
+            )
+            .unwrap();
+    }
+
+    // Query for a moment at 7500 ms (belongs strictly to chunk 1: [5000, 10000])
+    let query_filter = SpatiotemporalFilter::temporal(TemporalRange {
+        start_ms: 7000,
+        end_ms: 8000,
+    });
+    let results = manager
+        .search_spatiotemporal(&conn, DataTypeKind::Video, &dummy_vec, &query_filter, 5)
+        .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].item_id, "scene_1");
+}
