@@ -618,7 +618,7 @@ jobs:
       - name: Run Smoke Tests (Cross-Platform)
         run: "cargo test --package xavier --lib --features ci-safe -- cli::commands::login settings"
 
-      - name: Report Cross-Platform Failure to Jules
+      - name: Report Cross-Platform Failure Incident
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -732,7 +732,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Report Frontend / Playwright E2E Failure to Jules
+      - name: Report Frontend / Playwright E2E Failure Incident
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

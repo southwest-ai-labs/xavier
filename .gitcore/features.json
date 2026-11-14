@@ -4709,7 +4709,7 @@
       "name": "Multimodal Video & Image RAG Storage and Spatiotemporal Retrieval",
       "category": "storage / search",
       "status": "in_progress",
-      "progress_pct": 60,
+      "progress_pct": 100,
       "description": "Multi-modal vector memory and indexing core supporting spatial bounding boxes for images and keyframe millisecond timestamps for video scenes, with PureRAG UI preview adapters.",
       "steps": [
         "Extend MemoryDocument and metadata schema with ModalityType, spatial, and temporal attributes",
@@ -4718,12 +4718,12 @@
         "Add multimodal edge relations to Knowledge Graph view",
         "Add unit and integration tests"
       ],
-      "passes": false,
+      "passes": true,
       "verified_by": "automated",
-      "github_issue": 4025,
+      "github_issue": 4027,
       "last_tested": "2026-11-14",
-      "notes": "Wave 22 Step 4: video scene segmentation & keyframe sample extraction added in src/memory/video_segmenter.rs. Implements VideoSceneSegmenter (uniform windowing with tail merge, boundary-based scene subdivision, keyframe proportional sampling) and integration test in tests/embedding_selector_test.rs.",
-      "implemented_in": "crates/xavier-core-logic/src/multimodal.rs, crates/xavier-core-logic/src/types.rs, src/memory/multimodal_vec_store.rs, src/memory/video_segmenter.rs, src/memory/schema.rs",
+      "notes": "Wave 22 Complete (Steps 1-5): PureRAG UI multimodal preview adapters for image bounding boxes and video scenes added to panel-ui/src/components/PureRag/PureRagDetailCard.tsx with AST symbol and linked file cross-graph connections.",
+      "implemented_in": "crates/xavier-core-logic/src/multimodal.rs, crates/xavier-core-logic/src/types.rs, src/memory/multimodal_vec_store.rs, src/memory/video_segmenter.rs, src/memory/schema.rs, panel-ui/src/components/PureRag/PureRagDetailCard.tsx, panel-ui/src/components/PureRag/contentParser.ts",
       "tests": [
         "test_l2_normalize_unit_norm",
         "test_l2_normalize_zero_vector",
@@ -4759,7 +4759,9 @@
         "test_uniform_tail_merging",
         "test_sample_keyframes_distribution",
         "test_boundary_segmentation_with_subdivision",
-        "test_multimodal_video_segmentation_retrieval"
+        "test_multimodal_video_segmentation_retrieval",
+        "renders PureRagDetailCard with multimodal spatial metadata, bounding box, detected labels, and OCR",
+        "renders PureRagDetailCard with multimodal temporal metadata, time window, keyframe, and transcript"
       ],
       "req_ids": [
         "REQ-089"

@@ -65,6 +65,19 @@ export function formatHumanDate(dateStr?: string): string {
 }
 
 /**
+ * Formatea milisegundos a una marca de tiempo legible estilo mm:ss o mm:ss.S
+ */
+export function formatTimeMs(ms: number): string {
+  if (typeof ms !== "number" || isNaN(ms) || ms < 0) return "00:00";
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const remainderMs = Math.floor((ms % 1000) / 100);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(minutes)}:${pad(seconds)}.${remainderMs}`;
+}
+
+/**
  * Extrae un fragmento de texto (snippet) centrado en la palabra buscada
  */
 export function extractKeywordSnippet(

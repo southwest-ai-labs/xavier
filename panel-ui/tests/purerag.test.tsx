@@ -142,6 +142,94 @@ describe("PureRAG Components Suite", () => {
     expect(navigatedNodeId).toBe("mem_target");
   });
 
+  it("renders PureRagDetailCard with multimodal spatial metadata, bounding box, detected labels, and OCR", () => {
+    const spatialItem: PureRagItem = {
+      id: "spatial_node_01",
+      path: "assets/diagrams/arch_overview.png",
+      content: "System architecture high-level diagram illustrating vector store flow.",
+      score: 0.942,
+      similarityPercent: 94.2,
+      modality: "image",
+      title: "arch_overview.png",
+      thumbnailUrl: "https://example.com/thumbnails/arch_01.png",
+      spatial: {
+        boundingBox: [0.1, 0.2, 0.5, 0.4],
+        detectedLabels: ["architecture_diagram", "vector_pipeline"],
+        ocrText: "Xavier Memory Store -> SigLIP Embedding -> SQLite Vec",
+      },
+      connections: {
+        parentId: "DOC-202",
+        clusterId: "Cluster_Multimodal",
+        tags: ["spatial", "diagram"],
+        symbols: ["MultimodalVecManager", "search_spatiotemporal"],
+        relatedFiles: ["src/memory/multimodal_vec_store.rs"],
+      },
+    };
+
+    render(
+      <PureRagDetailCard
+        item={spatialItem}
+        onNavigateToGraph={() => {}}
+      />
+    );
+
+    // Multimodal Spatial Viewer assertions
+    expect(screen.getByTestId("purerag-spatial-preview")).toBeDefined();
+    expect(screen.getByText(/Visor Multimodal: Espacial \/ Imagen/i)).toBeDefined();
+    expect(screen.getByText(/BBox: \[0.10, 0.20, 0.50, 0.40\]/i)).toBeDefined();
+    expect(screen.getByText("architecture_diagram")).toBeDefined();
+    expect(screen.getByText("vector_pipeline")).toBeDefined();
+    expect(screen.getByText(/Xavier Memory Store -> SigLIP Embedding -> SQLite Vec/i)).toBeDefined();
+
+    // AST symbols & related files in connections
+    expect(screen.getByText("MultimodalVecManager")).toBeDefined();
+    expect(screen.getByText("search_spatiotemporal")).toBeDefined();
+    expect(screen.getByText("src/memory/multimodal_vec_store.rs")).toBeDefined();
+  });
+
+  it("renders PureRagDetailCard with multimodal temporal metadata, time window, keyframe, and transcript", () => {
+    const temporalItem: PureRagItem = {
+      id: "video_scene_chunk_01",
+      path: "recordings/tech_talk_siglip_rag.mp4#t=12.5,45.0",
+      content: "Detailed walkthrough of cross-modal attention mechanisms in video scene chunking.",
+      score: 0.915,
+      similarityPercent: 91.5,
+      modality: "video",
+      title: "tech_talk_siglip_rag.mp4 [Scene 01]",
+      temporal: {
+        startTimeMs: 12500,
+        endTimeMs: 45000,
+        durationMs: 32500,
+        keyframeTimestampMs: 28000,
+        transcriptSegment: "Here we project the visual tokens alongside text query embeddings into the joint space.",
+      },
+      connections: {
+        parentId: "WAVE-22",
+        clusterId: "Cluster_Video_RAG",
+        tags: ["video", "keyframes"],
+        symbols: ["VideoSceneSegmenter", "VideoSceneChunk"],
+      },
+    };
+
+    render(
+      <PureRagDetailCard
+        item={temporalItem}
+        onNavigateToGraph={() => {}}
+      />
+    );
+
+    // Multimodal Temporal Viewer assertions
+    expect(screen.getByTestId("purerag-temporal-preview")).toBeDefined();
+    expect(screen.getByText(/Visor Multimodal: Escena Temporal \/ Vídeo/i)).toBeDefined();
+    expect(screen.getByText(/Intervalo: 00:12.5 - 00:45.0 \(32.5s\)/i)).toBeDefined();
+    expect(screen.getByText(/Keyframe: 00:28.0/i)).toBeDefined();
+    expect(screen.getByText(/Here we project the visual tokens alongside text query embeddings/i)).toBeDefined();
+
+    // AST symbols in connections
+    expect(screen.getByText("VideoSceneSegmenter")).toBeDefined();
+    expect(screen.getByText("VideoSceneChunk")).toBeDefined();
+  });
+
   it("renders PureRagFilterSidebar with sort select and handles filter changes", () => {
     let currentFilters = {
       workspaceId: "",

@@ -848,7 +848,7 @@ jobs:
           fi
           echo "E2E gate PASSED: all 13 waves reported no failing targets"
 
-      - name: Report E2E Segmented Failure to Jules
+      - name: Report E2E Segmented Failure Incident
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
