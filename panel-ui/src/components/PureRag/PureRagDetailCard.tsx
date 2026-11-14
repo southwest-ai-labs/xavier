@@ -1,17 +1,24 @@
 import {
+  Box,
   Calendar,
   Check,
   Clock,
+  Code2,
   Copy,
   ExternalLink,
+  Film,
   GitBranch,
+  Image,
   Layers,
   MapPin,
   Network,
+  Play,
+  Scan,
   Shield,
   User,
 } from "lucide-react";
 import React, { useState } from "react";
+import { formatTimeMs } from "./contentParser";
 import type { PureRagItem } from "./types";
 
 interface PureRagDetailCardProps {
@@ -118,6 +125,135 @@ export const PureRagDetailCard: React.FC<PureRagDetailCardProps> = ({
         <ExternalLink className="w-3.5 h-3.5 text-emerald-400/70 group-hover:translate-x-0.5 transition-transform" />
       </button>
 
+      {/* Multimodal: Spatial & Image Preview */}
+      {(item.modality === "image" || item.spatial) && (
+        <div
+          className="flex flex-col gap-2.5 bg-black/40 p-3.5 rounded-xl border border-purple-500/20 font-mono text-[11px]"
+          data-testid="purerag-spatial-preview"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-purple-300 font-bold flex items-center gap-1.5">
+              <Image className="w-4 h-4 text-purple-400" />
+              <span>Visor Multimodal: Espacial / Imagen</span>
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              image/spatial
+            </span>
+          </div>
+
+          {/* Imagen / Thumbnail o Canvas Placeholder */}
+          {item.thumbnailUrl || item.mediaUrl ? (
+            <div className="relative rounded-lg overflow-hidden border border-white/10 max-h-48 bg-black/60 flex items-center justify-center">
+              <img
+                src={item.thumbnailUrl || item.mediaUrl}
+                alt={item.title || "Previsualización espacial"}
+                className="w-full object-contain max-h-48"
+              />
+              {item.spatial?.boundingBox && (
+                <div
+                  className="absolute border-2 border-emerald-400 bg-emerald-500/20 pointer-events-none rounded-sm"
+                  style={{
+                    left: `${item.spatial.boundingBox[0] * 100}%`,
+                    top: `${item.spatial.boundingBox[1] * 100}%`,
+                    width: `${item.spatial.boundingBox[2] * 100}%`,
+                    height: `${item.spatial.boundingBox[3] * 100}%`,
+                  }}
+                  title={`Bounding Box: [${item.spatial.boundingBox.join(", ")}]`}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center p-3 rounded-lg bg-white/5 border border-white/5 text-[var(--foreground)]/50 gap-2">
+              <Box className="w-4 h-4 text-purple-400/60" />
+              <span>Región Espacial Indexada</span>
+            </div>
+          )}
+
+          {/* Metadatos Espaciales: Bounding Box & Labels */}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-[10px]">
+            {item.spatial?.boundingBox && (
+              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-emerald-300 font-mono flex items-center gap-1">
+                <Scan className="w-3 h-3 text-emerald-400" />
+                <span>
+                  BBox: [
+                  {item.spatial.boundingBox
+                    .map((v) => (typeof v === "number" ? v.toFixed(2) : v))
+                    .join(", ")}
+                  ]
+                </span>
+              </span>
+            )}
+            {item.spatial?.detectedLabels && item.spatial.detectedLabels.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[var(--foreground)]/50">Etiquetas:</span>
+                {item.spatial.detectedLabels.map((lbl) => (
+                  <span
+                    key={lbl}
+                    className="px-1.5 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-purple-200 text-[10px]"
+                  >
+                    {lbl}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Texto OCR Extraído */}
+          {item.spatial?.ocrText && (
+            <div className="flex flex-col gap-1 p-2 rounded bg-black/60 border border-white/5">
+              <span className="text-[var(--foreground)]/60 text-[10px] font-bold">OCR Extraído:</span>
+              <p className="text-[var(--foreground)]/80 text-[11px] italic">"{item.spatial.ocrText}"</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Multimodal: Temporal & Video Scene Preview */}
+      {(item.modality === "video" || item.modality === "audio" || item.temporal) && (
+        <div
+          className="flex flex-col gap-2.5 bg-black/40 p-3.5 rounded-xl border border-cyan-500/20 font-mono text-[11px]"
+          data-testid="purerag-temporal-preview"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-cyan-300 font-bold flex items-center gap-1.5">
+              <Film className="w-4 h-4 text-cyan-400" />
+              <span>Visor Multimodal: Escena Temporal / Vídeo</span>
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+              {item.modality}
+            </span>
+          </div>
+
+          {/* Ventana de Tiempo y Keyframe */}
+          <div className="flex flex-wrap items-center gap-2 text-[10px]">
+            {item.temporal && (
+              <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-200 font-mono flex items-center gap-1.5">
+                <Play className="w-3 h-3 text-cyan-400 fill-cyan-400/30" />
+                <span>
+                  Intervalo: {formatTimeMs(item.temporal.startTimeMs)} - {formatTimeMs(item.temporal.endTimeMs)} (
+                  {((item.temporal.endTimeMs - item.temporal.startTimeMs) / 1000).toFixed(1)}s)
+                </span>
+              </span>
+            )}
+            {typeof item.temporal?.keyframeTimestampMs === "number" && (
+              <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-amber-300 font-mono">
+                Keyframe: {formatTimeMs(item.temporal.keyframeTimestampMs)}
+              </span>
+            )}
+          </div>
+
+          {/* Transcripción Sincronizada del Segmento */}
+          {item.temporal?.transcriptSegment && (
+            <div className="flex flex-col gap-1 p-2 rounded bg-black/60 border border-white/5">
+              <span className="text-[var(--foreground)]/60 text-[10px] font-bold">Transcripción Sincronizada:</span>
+              <p className="text-[var(--foreground)]/90 text-[11px] leading-relaxed">
+                {item.temporal.transcriptSegment}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Grid de Metadatos de Trazabilidad */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-black/30 p-3.5 rounded-xl border border-white/5 font-mono text-[11px]">
         {/* Dónde está (Location) */}
@@ -222,6 +358,33 @@ export const PureRagDetailCard: React.FC<PureRagDetailCardProps> = ({
                   className="px-1.5 py-0.5 rounded bg-white/5 border border-[var(--border-subtle)] text-emerald-400 text-[10px]"
                 >
                   #{t}
+                </span>
+              ))}
+            </div>
+          )}
+          {item.connections?.symbols && item.connections.symbols.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              <span className="text-[var(--foreground)]/50">Símbolos AST:</span>
+              {item.connections.symbols.map((sym) => (
+                <span
+                  key={sym}
+                  className="px-1.5 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-mono flex items-center gap-1"
+                >
+                  <Code2 className="w-2.5 h-2.5 text-cyan-400" />
+                  <span>{sym}</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {item.connections?.relatedFiles && item.connections.relatedFiles.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              <span className="text-[var(--foreground)]/50">Archivos Vinculados:</span>
+              {item.connections.relatedFiles.map((f) => (
+                <span
+                  key={f}
+                  className="px-1.5 py-0.5 rounded bg-white/5 border border-[var(--border-subtle)] text-[var(--foreground)]/70 text-[10px] font-mono"
+                >
+                  {f}
                 </span>
               ))}
             </div>

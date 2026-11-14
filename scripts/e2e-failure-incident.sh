@@ -1,9 +1,9 @@
 #!/bin/bash
 # scripts/e2e-failure-incident.sh
-# Upsert a structured GitHub issue for Jules when an E2E test or build fails in GitHub Actions
+# Upsert a structured GitHub issue when an E2E test or build fails in GitHub Actions
 # (or close it automatically when the same pipeline goes green again).
 #
-# Conforms to GitCore Jules Issues template v3.1 (gitcore-jules-issues / issue-creation-protocol).
+# Conforms to GitCore Issues template v3.8.
 #
 # Required env:
 #   CONCLUSION, HEAD_SHA, RUN_ID, RUN_URL, WORKFLOW_NAME
@@ -35,7 +35,6 @@ TITLE="[fix(ci-e2e)] ${JOB_NAME} failed on ${RUNNER_OS} (${WORKFLOW_NAME})"
 
 # Ensure labels exist in the repository
 gh label create "$LABEL" --color B60205 --description "E2E test failure in CI runner VM" 2>/dev/null || true
-gh label create "jules" --color 5319E7 --description "Delegable to Jules autonomous agent" 2>/dev/null || true
 gh label create "bug" --color D73A4A --description "Something isn't working" 2>/dev/null || true
 
 find_open_issue() {
@@ -101,15 +100,15 @@ if [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "cancelled" ] || [ "$CONCL
       echo "$ERROR_LOG"
       echo '```'
       echo ""
-      echo "@jules The E2E test failure persists in the latest run. Please review and provide a fix."
+      echo "@agent-core The CI test failure persists in the latest run. Please review and provide a fix via local execution (Google Antigravity & agy CLI)."
     } > /tmp/e2e-comment.md
     gh issue comment "$EXISTING" --body-file /tmp/e2e-comment.md
   else
-    echo "Creating new structured Jules task issue for E2E failure..."
+    echo "Creating new structured task issue for CI/E2E failure..."
     {
       echo "# [fix(ci-e2e)] ${JOB_NAME} failed on ${RUNNER_OS}"
       echo ""
-      echo "> Automated E2E failure incident report for Jules."
+      echo "> Automated CI/E2E failure incident report."
       echo "> Workflow: \`${WORKFLOW_NAME}\` | Job: \`${JOB_NAME}\` | OS: \`${RUNNER_OS}\` | Ref: \`${HEAD_BRANCH}\`"
       echo ""
       echo "---"
@@ -151,14 +150,14 @@ if [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "cancelled" ] || [ "$CONCL
       echo "## PR Delivery Requirements (ANTI-EMPTY-PR)"
       echo "- [ ] \`git status --porcelain\` shows modified/added files before pushing"
       echo "- [ ] \`git diff --stat HEAD\` is non-empty and contains substantive code changes"
-      echo "- [ ] PR targets base branch \`sprint/xavier-2026-10\` (or task branch)"
+      echo "- [ ] PR targets base branch \`main\`"
       echo "- [ ] PR touches ONLY the declared file islands"
       echo ""
       echo "## Notes / Assumptions"
-      echo "- Autonomous execution delegated to Jules."
+      echo "- Execution via Google Antigravity & agy CLI."
       echo "- If failure is due to missing native system packages or headless display settings, adapt the runner configuration accordingly."
       echo ""
-      echo "@jules Please inspect the failure above, create a branch \`sprint/xavier-2026-10-<task>\`, implement the fix with tests, and submit a PR to resolve this E2E failure."
+      echo "Please inspect the failure above, create a branch for the fix, implement with tests, and submit a PR to resolve this CI/E2E failure."
       echo ""
       echo "$MARKER"
     } > /tmp/e2e-issue-body.md
@@ -169,7 +168,7 @@ if [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "cancelled" ] || [ "$CONCL
       cat /tmp/e2e-issue-body.md
       echo "--- END ISSUE BODY ---"
     else
-      CREATED_URL=$(gh issue create --title "$TITLE" --body-file /tmp/e2e-issue-body.md --label "$LABEL,jules,bug")
+      CREATED_URL=$(gh issue create --title "$TITLE" --body-file /tmp/e2e-issue-body.md --label "$LABEL,bug")
       echo "Created issue: $CREATED_URL"
     fi
   fi

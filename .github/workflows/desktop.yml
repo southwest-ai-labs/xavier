@@ -176,7 +176,7 @@ jobs:
           path: dist-desktop/*
           retention-days: 14
 
-      - name: Report E2E Failure to Jules
+      - name: Report E2E Failure Incident
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
