@@ -2202,17 +2202,19 @@
         "Report the repo in the explain response"
       ],
       "tests": [
-        "explain::history::tests::explained_file_uses_commits_of_its_own_repo_only",
-        "explain::history::tests::locate_repo_names_the_innermost_repo",
-        "explain::codegraph::tests::lookup_uses_path_relative_to_the_containing_repo",
-        "server::explain_route::tests::explain_reports_the_repo_that_contains_the_file"
+        "explained_file_uses_commits_of_its_own_repo_only",
+        "locate_repo_names_the_innermost_repo",
+        "lookup_uses_path_relative_to_the_containing_repo",
+        "explain_reports_the_repo_that_contains_the_file",
+        "tests/explain_render_route_e2e.rs::explain_resolves_nested_repo"
       ],
       "user_stories": [],
       "files": [
         "src/explain/history.rs",
-        "src/server/explain_route.rs"
+        "src/server/explain_route.rs",
+        "tests/explain_render_route_e2e.rs"
       ],
-      "notes": "progress 100: verified 2026-11-01 by tests [explain::history::tests::explained_file_uses_commits_of_its_own_repo_only, explain::history::tests::locate_repo_names_the_innermost_repo, explain::codegraph::tests::lookup_uses_path_relative_to_the_containing_repo, server::explain_route::tests::explain_reports_the_repo_that_contains_the_file]"
+      "notes": "progress 100: verified 2026-11-01 by tests [explained_file_uses_commits_of_its_own_repo_only, locate_repo_names_the_innermost_repo, lookup_uses_path_relative_to_the_containing_repo, explain_reports_the_repo_that_contains_the_file, tests/explain_render_route_e2e.rs::explain_resolves_nested_repo]"
     },
     "feat-vault-hardening": {
       "id": "feat-vault-hardening",
@@ -4694,11 +4696,14 @@
       "verified_by": "automated",
       "github_issue": null,
       "last_tested": null,
-      "notes": "Spec: docs/features/specs/FEATURE-purerag-explorer.md. SRS mapping: REQ-088. Never hand-promoted; status promotes to stable only via green verify-pipeline execution.",
-      "implemented_in": "panel-ui/src/components/PureRag/, panel-ui/src/App.tsx",
+      "notes": "Spec: docs/features/specs/FEATURE-purerag-explorer.md. SRS mapping: REQ-088. PureRAG backend APIs verified by typed search, snippet mode, cap limits, and espacio isolation integration suite.",
+      "implemented_in": "panel-ui/src/components/PureRag/, panel-ui/src/App.tsx, src/server/v1_api.rs",
       "tests": [
-        "tests/purerag.test.tsx",
-        "tests/e2e/purerag.spec.ts"
+        "test_v1_memories_search_supports_typed_filters_and_user_namespace",
+        "test_v1_memories_search_snippet_mode",
+        "test_v1_memories_search_modes_and_hard_cap",
+        "test_v1_memories_graph_and_export",
+        "tests/espacio_isolation_memory.rs::http_memory_is_isolated_per_space"
       ],
       "req_ids": [
         "REQ-088"
