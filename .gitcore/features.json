@@ -4709,7 +4709,7 @@
       "name": "Multimodal Video & Image RAG Storage and Spatiotemporal Retrieval",
       "category": "storage / search",
       "status": "in_progress",
-      "progress_pct": 20,
+      "progress_pct": 40,
       "description": "Multi-modal vector memory and indexing core supporting spatial bounding boxes for images and keyframe millisecond timestamps for video scenes, with PureRAG UI preview adapters.",
       "steps": [
         "Extend MemoryDocument and metadata schema with ModalityType, spatial, and temporal attributes",
@@ -4721,8 +4721,8 @@
       "passes": false,
       "verified_by": "automated",
       "github_issue": null,
-      "last_tested": "2026-11-13",
-      "notes": "Wave 22 Step 2: vector primitives module added to crates/xavier-core-logic/src/multimodal.rs. Implements cosine_similarity, euclidean_distance, l2_normalize, pool_frames_l2, cross_modal_score, validate_modality_dim with 20 unit tests. Next: integrate with memory schema (src/memory/schema.rs) and add spatiotemporal query path.",
+      "last_tested": "2026-11-14",
+      "notes": "Wave 22 Step 3: spatiotemporal schema & querying added to src/memory/multimodal_vec_store.rs. Implements SpatiotemporalFilter (bounding box IoU + temporal range overlap matching), SpatiotemporalMetadata, insert_spatiotemporal_embedding, search_spatiotemporal and integration tests in tests/embedding_selector_test.rs.",
       "implemented_in": "crates/xavier-core-logic/src/multimodal.rs, crates/xavier-core-logic/src/types.rs, src/memory/multimodal_vec_store.rs, src/memory/schema.rs",
       "tests": [
         "test_l2_normalize_unit_norm",
@@ -4745,7 +4745,14 @@
         "test_validate_dim_audio_wrong_dim_err",
         "test_cross_modal_score_text_text_is_cosine",
         "test_cross_modal_score_image_positive",
-        "test_cross_modal_weight_ordering"
+        "test_cross_modal_weight_ordering",
+        "test_insert_and_search_spatiotemporal",
+        "test_iou_calculation_disjoint",
+        "test_iou_calculation_identical",
+        "test_iou_calculation_partial_overlap",
+        "test_spatiotemporal_filter_spatial_matching",
+        "test_spatiotemporal_filter_temporal_matching",
+        "test_multimodal_spatiotemporal_filtering"
       ],
       "req_ids": [
         "REQ-089"

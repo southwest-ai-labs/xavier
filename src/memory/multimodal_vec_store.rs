@@ -12,6 +12,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
 use crate::memory::sqlite_vec_store::vector;
+pub use xavier_core_logic::types::{SpatialRegion, TemporalRange};
 
 /// Modality types for isolated vector tables.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -57,6 +58,134 @@ pub struct VectorSearchResult {
     pub item_id: String,
     pub distance: f32,
     pub payload_json: String,
+}
+
+/// Query filter for spatiotemporal attributes.
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct SpatiotemporalFilter {
+    pub spatial: Option<SpatialRegion>,
+    pub temporal: Option<TemporalRange>,
+    /// Minimum Intersection-over-Union (IoU) overlap when spatial filter is set.
+    /// Defaults to 0.0 (any overlap or containment).
+    pub min_iou: Option<f32>,
+}
+
+/// Optional spatiotemporal metadata attributes for multimodal embeddings.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SpatiotemporalMetadata {
+    pub spatial: Option<SpatialRegion>,
+    pub temporal: Option<TemporalRange>,
+    pub extra: Option<serde_json::Value>,
+}
+
+impl SpatiotemporalMetadata {
+    /// Creates metadata with a spatial region.
+    pub fn spatial(region: SpatialRegion) -> Self {
+        Self {
+            spatial: Some(region),
+            temporal: None,
+            extra: None,
+        }
+    }
+
+    /// Creates metadata with a temporal range.
+    pub fn temporal(range: TemporalRange) -> Self {
+        Self {
+            spatial: None,
+            temporal: Some(range),
+            extra: None,
+        }
+    }
+
+    /// Creates metadata with both spatial and temporal attributes.
+    pub fn new(spatial: Option<SpatialRegion>, temporal: Option<TemporalRange>) -> Self {
+        Self {
+            spatial,
+            temporal,
+            extra: None,
+        }
+    }
+}
+
+impl SpatiotemporalFilter {
+    /// Creates a filter with spatial region only.
+    pub fn spatial(region: SpatialRegion) -> Self {
+        Self {
+            spatial: Some(region),
+            temporal: None,
+            min_iou: None,
+        }
+    }
+
+    /// Creates a filter with temporal range only.
+    pub fn temporal(range: TemporalRange) -> Self {
+        Self {
+            spatial: None,
+            temporal: Some(range),
+            min_iou: None,
+        }
+    }
+
+    /// Calculates IoU between two bounding boxes.
+    pub fn calculate_iou(a: &SpatialRegion, b: &SpatialRegion) -> f32 {
+        let x1 = a.x.max(b.x);
+        let y1 = a.y.max(b.y);
+        let x2 = (a.x + a.width).min(b.x + b.width);
+        let y2 = (a.y + a.height).min(b.y + b.height);
+
+        let intersection_width = (x2 - x1).max(0.0);
+        let intersection_height = (y2 - y1).max(0.0);
+        let intersection_area = intersection_width * intersection_height;
+
+        let area_a = a.width * a.height;
+        let area_b = b.width * b.height;
+        let union_area = area_a + area_b - intersection_area;
+
+        if union_area <= 0.0 {
+            0.0
+        } else {
+            intersection_area / union_area
+        }
+    }
+
+    /// Checks if a payload satisfies this filter.
+    pub fn matches(&self, payload_val: &serde_json::Value) -> bool {
+        if let Some(target_spatial) = &self.spatial {
+            let spatial_obj = payload_val.get("spatial");
+            let Some(spatial_val) = spatial_obj else {
+                return false;
+            };
+            if let Ok(item_spatial) = serde_json::from_value::<SpatialRegion>(spatial_val.clone()) {
+                let iou = Self::calculate_iou(target_spatial, &item_spatial);
+                let min_threshold = self.min_iou.unwrap_or(0.0);
+                if iou < min_threshold {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        if let Some(target_temporal) = &self.temporal {
+            let temporal_obj = payload_val.get("temporal");
+            let Some(temporal_val) = temporal_obj else {
+                return false;
+            };
+            if let Ok(item_temporal) = serde_json::from_value::<TemporalRange>(temporal_val.clone())
+            {
+                // Overlap check: start_a <= end_b && start_b <= end_a
+                if target_temporal.start_ms > item_temporal.end_ms
+                    || item_temporal.start_ms > target_temporal.end_ms
+                {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 /// Manages multi-modal virtual vector tables isolated per modality dimension.
@@ -293,6 +422,59 @@ impl MultimodalVecManager {
 
         Ok(scored_items)
     }
+
+    /// Inserts an embedding along with spatial bounding box and/or temporal range into payload JSON.
+    pub fn insert_spatiotemporal_embedding(
+        &self,
+        conn: &Connection,
+        modality: DataTypeKind,
+        item_id: &str,
+        vector: &[f32],
+        meta: SpatiotemporalMetadata,
+    ) -> Result<()> {
+        let mut map = serde_json::Map::new();
+        if let Some(sp) = meta.spatial {
+            map.insert("spatial".to_string(), serde_json::to_value(sp)?);
+        }
+        if let Some(tp) = meta.temporal {
+            map.insert("temporal".to_string(), serde_json::to_value(tp)?);
+        }
+        if let Some(serde_json::Value::Object(extra)) = meta.extra {
+            for (k, v) in extra {
+                map.insert(k, v);
+            }
+        }
+        let payload_json = serde_json::to_string(&serde_json::Value::Object(map))?;
+        self.insert_modality_embedding(conn, modality, item_id, vector, &payload_json)
+    }
+
+    /// Searches for nearest vector neighbors that satisfy a spatiotemporal filter.
+    pub fn search_spatiotemporal(
+        &self,
+        conn: &Connection,
+        modality: DataTypeKind,
+        query_vector: &[f32],
+        filter: &SpatiotemporalFilter,
+        top_k: usize,
+    ) -> Result<Vec<VectorSearchResult>> {
+        // Query an overfetched candidate pool to allow post-filtering
+        let candidate_k = (top_k * 5).max(50);
+        let candidates = self.search_modality(conn, modality, query_vector, candidate_k)?;
+
+        let mut filtered = Vec::new();
+        for item in candidates {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&item.payload_json) {
+                if filter.matches(&val) {
+                    filtered.push(item);
+                    if filtered.len() == top_k {
+                        break;
+                    }
+                }
+            }
+        }
+
+        Ok(filtered)
+    }
 }
 
 /// Computes Cosine Distance (1.0 - cosine_similarity) between two vectors.
@@ -316,4 +498,184 @@ pub fn compute_cosine_distance(a: &[f32], b: &[f32]) -> f32 {
 
     let similarity = dot / (norm_a.sqrt() * norm_b.sqrt());
     (1.0 - similarity).clamp(0.0, 2.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_iou_calculation_identical() {
+        let r1 = SpatialRegion {
+            x: 10.0,
+            y: 10.0,
+            width: 20.0,
+            height: 20.0,
+        };
+        let r2 = SpatialRegion {
+            x: 10.0,
+            y: 10.0,
+            width: 20.0,
+            height: 20.0,
+        };
+        let iou = SpatiotemporalFilter::calculate_iou(&r1, &r2);
+        assert!((iou - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_iou_calculation_disjoint() {
+        let r1 = SpatialRegion {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let r2 = SpatialRegion {
+            x: 20.0,
+            y: 20.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let iou = SpatiotemporalFilter::calculate_iou(&r1, &r2);
+        assert_eq!(iou, 0.0);
+    }
+
+    #[test]
+    fn test_iou_calculation_partial_overlap() {
+        // Box A: 0..10 x 0..10, Area = 100
+        // Box B: 5..15 x 0..10, Area = 100
+        // Intersection: 5..10 x 0..10 = 5 * 10 = 50
+        // Union: 100 + 100 - 50 = 150
+        // IoU: 50 / 150 = 1/3 ~ 0.33333
+        let r1 = SpatialRegion {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let r2 = SpatialRegion {
+            x: 5.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        let iou = SpatiotemporalFilter::calculate_iou(&r1, &r2);
+        assert!((iou - (1.0 / 3.0)).abs() < 1e-4);
+    }
+
+    #[test]
+    fn test_spatiotemporal_filter_spatial_matching() {
+        let target_box = SpatialRegion {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
+        let mut filter = SpatiotemporalFilter::spatial(target_box);
+        filter.min_iou = Some(0.2);
+
+        // Matching box
+        let item_payload = serde_json::json!({
+            "spatial": { "x": 10.0, "y": 10.0, "width": 80.0, "height": 80.0 }
+        });
+        assert!(filter.matches(&item_payload));
+
+        // Outside box
+        let non_matching_payload = serde_json::json!({
+            "spatial": { "x": 200.0, "y": 200.0, "width": 50.0, "height": 50.0 }
+        });
+        assert!(!filter.matches(&non_matching_payload));
+
+        // Missing spatial field
+        let empty_payload = serde_json::json!({});
+        assert!(!filter.matches(&empty_payload));
+    }
+
+    #[test]
+    fn test_spatiotemporal_filter_temporal_matching() {
+        let filter = SpatiotemporalFilter::temporal(TemporalRange {
+            start_ms: 1000,
+            end_ms: 5000,
+        });
+
+        // Solapamiento total o parcial
+        let overlapping_1 = serde_json::json!({ "temporal": { "start_ms": 2000, "end_ms": 3000 } });
+        let overlapping_2 = serde_json::json!({ "temporal": { "start_ms": 500, "end_ms": 1500 } });
+        let overlapping_3 = serde_json::json!({ "temporal": { "start_ms": 4500, "end_ms": 6000 } });
+        assert!(filter.matches(&overlapping_1));
+        assert!(filter.matches(&overlapping_2));
+        assert!(filter.matches(&overlapping_3));
+
+        // Sin solapamiento
+        let disjoint_before = serde_json::json!({ "temporal": { "start_ms": 0, "end_ms": 999 } });
+        let disjoint_after =
+            serde_json::json!({ "temporal": { "start_ms": 5001, "end_ms": 8000 } });
+        assert!(!filter.matches(&disjoint_before));
+        assert!(!filter.matches(&disjoint_after));
+    }
+
+    #[test]
+    fn test_insert_and_search_spatiotemporal() {
+        let manager = MultimodalVecManager::new();
+        let conn = Connection::open_in_memory().unwrap();
+
+        manager
+            .ensure_modality_table(&conn, DataTypeKind::Image, 1152)
+            .unwrap();
+
+        // 3 image embeddings: query vector is all 1.0s normalized
+        let mut v1 = vec![0.0f32; 1152];
+        v1[0] = 1.0;
+        let mut v2 = vec![0.0f32; 1152];
+        v2[1] = 1.0;
+
+        let region_target = SpatialRegion {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
+        let region_other = SpatialRegion {
+            x: 500.0,
+            y: 500.0,
+            width: 50.0,
+            height: 50.0,
+        };
+
+        manager
+            .insert_spatiotemporal_embedding(
+                &conn,
+                DataTypeKind::Image,
+                "img_target",
+                &v1,
+                SpatiotemporalMetadata::spatial(region_target.clone()),
+            )
+            .unwrap();
+
+        manager
+            .insert_spatiotemporal_embedding(
+                &conn,
+                DataTypeKind::Image,
+                "img_other",
+                &v1,
+                SpatiotemporalMetadata::spatial(region_other),
+            )
+            .unwrap();
+
+        // Búsqueda sin filtro retorna ambos
+        let all_res = manager
+            .search_modality(&conn, DataTypeKind::Image, &v1, 10)
+            .unwrap();
+        assert_eq!(all_res.len(), 2);
+
+        // Búsqueda con filtro espacial IoU >= 0.5
+        let mut filter = SpatiotemporalFilter::spatial(region_target);
+        filter.min_iou = Some(0.5);
+
+        let filtered_res = manager
+            .search_spatiotemporal(&conn, DataTypeKind::Image, &v1, &filter, 10)
+            .unwrap();
+        assert_eq!(filtered_res.len(), 1);
+        assert_eq!(filtered_res[0].item_id, "img_target");
+    }
 }
