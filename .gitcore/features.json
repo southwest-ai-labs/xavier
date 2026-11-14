@@ -4759,9 +4759,7 @@
         "test_uniform_tail_merging",
         "test_sample_keyframes_distribution",
         "test_boundary_segmentation_with_subdivision",
-        "test_multimodal_video_segmentation_retrieval",
-        "renders PureRagDetailCard with multimodal spatial metadata, bounding box, detected labels, and OCR",
-        "renders PureRagDetailCard with multimodal temporal metadata, time window, keyframe, and transcript"
+        "test_multimodal_video_segmentation_retrieval"
       ],
       "req_ids": [
         "REQ-089"
