@@ -5,7 +5,7 @@
 Current product label: `0.0.1` — **Status computed from the ledger: 70 stable, 17 beta, 2 in_progress, 28 planned. See [Implementation Audit](plans/IMPLEMENTATION-AUDIT_2026-10-28.md) for details.**
 
 <!-- ledger:summary:start -->
-Ledger: 97 stable, 10 beta, 0 in_progress, 1 planned (124 total, 78.2% stable). Generated from .gitcore/features.json by scripts/ledger-docs-sync.py; do not edit by hand.
+Ledger: 100 stable, 10 beta, 1 in_progress, 2 planned (129 total, 77.5% stable). Generated from .gitcore/features.json by scripts/ledger-docs-sync.py; do not edit by hand.
 
 | category | stable | beta | in_progress | planned | other | total |
 |---|---|---|---|---|---|---|
@@ -31,7 +31,7 @@ Ledger: 97 stable, 10 beta, 0 in_progress, 1 planned (124 total, 78.2% stable). 
 | marketplace | 0 | 0 | 0 | 0 | 1 | 1 |
 | mcp | 1 | 0 | 0 | 0 | 0 | 1 |
 | memory | 4 | 0 | 0 | 0 | 0 | 4 |
-| mesh | 0 | 0 | 0 | 0 | 4 | 4 |
+| mesh | 1 | 0 | 0 | 0 | 4 | 5 |
 | observability | 2 | 0 | 0 | 0 | 0 | 2 |
 | packaging | 1 | 0 | 0 | 0 | 0 | 1 |
 | platform | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -39,13 +39,15 @@ Ledger: 97 stable, 10 beta, 0 in_progress, 1 planned (124 total, 78.2% stable). 
 | retrieval | 3 | 0 | 0 | 0 | 0 | 3 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
 | search | 5 | 0 | 0 | 0 | 0 | 5 |
-| security | 9 | 3 | 0 | 0 | 0 | 12 |
+| security | 11 | 3 | 0 | 0 | 0 | 14 |
 | self-manage | 2 | 0 | 0 | 0 | 0 | 2 |
 | self-management | 1 | 0 | 0 | 0 | 0 | 1 |
 | server | 1 | 0 | 0 | 0 | 0 | 1 |
 | skills | 6 | 0 | 0 | 0 | 0 | 6 |
+| storage / search | 0 | 0 | 1 | 0 | 0 | 1 |
 | testing | 2 | 0 | 0 | 0 | 0 | 2 |
 | ui | 2 | 0 | 0 | 0 | 0 | 2 |
+| ui / search | 0 | 0 | 0 | 1 | 0 | 1 |
 | uncategorized | 3 | 0 | 0 | 0 | 0 | 3 |
 <!-- ledger:summary:end -->
 
