@@ -228,7 +228,7 @@ class PromoterTests(unittest.TestCase):
         self.features['features']['beta']['notes'] = notes
         self.assertTrue(self.run_promoter()['eligible'])
 
-    def test_real_incomplete_features_block_even_with_green_evidence(self):
+    def test_real_sanitized_features_are_eligible_with_green_evidence(self):
         ledger = json.loads((SCRIPTS.parent / '.gitcore' / 'features.json').read_text())
         for fid in ('feat-encryption-at-rest', 'feat-vault-hardening'):
             with self.subTest(feature=fid):
@@ -240,11 +240,20 @@ class PromoterTests(unittest.TestCase):
                     declared=declared, passed=declared, failed=[],
                     integration_targets_by_test={test: ['integration'] for test in declared})
                 result = self.run_promoter()
-                self.assertFalse(result['eligible'])
-                if feature['progress_pct'] < 100:
-                    self.assertIn(f"progress_pct {feature['progress_pct']} < 100", result['reasons'])
-                self.assertTrue(any(reason.startswith('open honesty note:')
-                                    for reason in result['reasons']))
+                self.assertTrue(result['eligible'])
+                self.assertEqual(result['reasons'], [])
+
+    def test_incomplete_features_block_even_with_green_evidence(self):
+        feature = self.features['features']['beta']
+        feature.update(notes='Historical downgrade: still plaintext pending migration.')
+        declared = feature['tests']
+        self.evidence['per_feature_test_results']['beta'] = dict(
+            declared=declared, passed=declared, failed=[],
+            integration_targets_by_test={test: ['integration'] for test in declared})
+        result = self.run_promoter()
+        self.assertFalse(result['eligible'])
+        self.assertTrue(any(reason.startswith('open honesty note:')
+                            for reason in result['reasons']))
 
     def test_failed_or_missing_test(self):
         for change in ({'passed': []}, {'failed': ['test_roundtrip']}, {'declared': []}):
