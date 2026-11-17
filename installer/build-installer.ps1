@@ -2,7 +2,7 @@
 # This script builds the Windows installers (MSI and Inno Setup EXE) for Xavier.
 
 param(
-    [string]$Version = "0.2.5",
+    [string]$Version = "0.2.20",
     [string]$TargetTriple = "x86_64-pc-windows-msvc"
 )
 
@@ -52,13 +52,8 @@ if (-not (Test-Path "..\config\xavier.config.json")) {
 if (-not (Test-Path "..\panel-ui\build")) {
     Write-Warning "Panel UI build not found. Attempting to build..."
     Push-Location ..\panel-ui
-    if (Get-Command pnpm -ErrorAction SilentlyContinue) {
-        pnpm install
-        pnpm build
-    } else {
-        npm install
-        npm run build
-    }
+    pnpm install
+    pnpm build
     Pop-Location
 }
 

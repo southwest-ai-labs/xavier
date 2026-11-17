@@ -105,7 +105,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Runs WiX (candle/light/heat) and Inno Setup (iscc) to produce XavierInstaller.msi and XavierSetup.exe in dist/
-          $Version = if ("${{ github.ref_name }}" -like "v*") { "${{ github.ref_name }}".Substring(1) } else { "0.2.5" }
+          $Version = if ("${{ github.ref_name }}" -like "v*") { "${{ github.ref_name }}".Substring(1) } else { "0.2.20" }
           & ./installer/build-installer.ps1 -Version $Version -TargetTriple ${{ matrix.target }}
         shell: pwsh
 

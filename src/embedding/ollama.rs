@@ -116,13 +116,25 @@ struct OllamaEmbedResponse {
 #[async_trait]
 impl Embedder for OllamaEmbedder {
     async fn encode(&self, text: &str) -> Result<Vec<f32>, EmbeddingError> {
+        // Clamp text to safe context boundary (~16,384 chars / ~4,000 tokens)
+        // to prevent Ollama context length overflow (HTTP 400 Bad Request).
+        let safe_text = if text.len() > 16384 {
+            let mut end = 16384;
+            while end > 0 && !text.is_char_boundary(end) {
+                end -= 1;
+            }
+            &text[..end]
+        } else {
+            text
+        };
+
         let response = self
             .client
             .post(&self.endpoint)
             .header("Content-Type", "application/json")
             .json(&OllamaEmbedRequest {
                 model: &self.model,
-                input: text,
+                input: safe_text,
             })
             .send()
             .await
@@ -505,5 +517,41 @@ mod tests {
         // Idempotency check: running query for un-embedded records returns 0
         let un_embedded: i64 = conn.query_row("SELECT COUNT(*) FROM memory_records WHERE (embedding IS NULL OR length(embedding) < 100)", [], |r| r.get(0)).unwrap();
         assert_eq!(un_embedded, 0);
+    }
+
+    #[tokio::test]
+    async fn test_ollama_clamps_large_text_to_safe_boundary() {
+        let mut server = mockito::Server::new_async().await;
+        let mock_url = format!("{}/api/embed", server.url());
+
+        let fake_vector: Vec<f32> = vec![0.1; 768];
+        let body_json = serde_json::json!({
+            "model": "nomic-embed-text",
+            "embeddings": [fake_vector]
+        });
+
+        // The mock expects input of at most 16384 characters
+        let mock = server
+            .mock("POST", "/api/embed")
+            .match_body(mockito::Matcher::Regex(r#""input":"[a-z]{16384}""#.to_string()))
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(body_json.to_string())
+            .create_async()
+            .await;
+
+        let embedder = OllamaEmbedder::new(
+            "nomic-embed-text".to_string(),
+            mock_url,
+            768,
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let huge_text = "a".repeat(50000);
+        let result = embedder.encode(&huge_text).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 768);
+        mock.assert_async().await;
     }
 }
