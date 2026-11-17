@@ -7,12 +7,12 @@
     "created": "2026-03-05",
     "last_verified": "2026-11-17",
     "total_features": 113,
-    "features_complete": 110,
-    "features_beta": 3,
+    "features_complete": 113,
+    "features_beta": 0,
     "features_draft": 0,
     "features_planned": 0,
     "features_designed": 0,
-    "features_stable": 110,
+    "features_stable": 113,
     "overall_progress_pct": 100.0,
     "complete": 6,
     "percent": 90.0,
@@ -2241,11 +2241,11 @@
       "description": "Code explanations resolve the git repository that contains the explained file inside a multi-repo workspace: git history runs in that repo with a repo-relative path, code-graph lookups use the repo-relative path, and the response names the repo.",
       "id": "fix-explain-repo-resolution",
       "name": "Explain Repo Resolution",
-      "passes": false,
+      "passes": true,
       "progress_pct": 100,
       "req_ids": [],
       "spec_reference": "https://github.com/iberi22/xavier/issues/3559",
-      "status": "beta",
+      "status": "stable",
       "steps": [
         "Locate the innermost git repo from the file's directory with GIT_* cleared",
         "Run git log -L in that repo with a repo-relative path",
@@ -2264,7 +2264,14 @@
         "src/server/explain_route.rs",
         "tests/explain_render_route_e2e.rs"
       ],
-      "notes": "progress 100: verified 2026-11-01 by tests [explained_file_uses_commits_of_its_own_repo_only, locate_repo_names_the_innermost_repo, lookup_uses_path_relative_to_the_containing_repo, explain_reports_the_repo_that_contains_the_file, tests/explain_render_route_e2e.rs::explain_resolves_nested_repo]\npromoted planned->beta by ledger promoter on 8a58a7dc2065fbfdef847453e7685c125953713c (2026-11-17)"
+      "notes": "progress 100: verified 2026-11-01 by tests [explained_file_uses_commits_of_its_own_repo_only, locate_repo_names_the_innermost_repo, lookup_uses_path_relative_to_the_containing_repo, explain_reports_the_repo_that_contains_the_file, tests/explain_render_route_e2e.rs::explain_resolves_nested_repo]\npromoted planned->beta by ledger promoter on 8a58a7dc2065fbfdef847453e7685c125953713c (2026-11-17)",
+      "last_tested": "2026-11-17",
+      "ledger": {
+        "promoted_by": "post-merge-ci",
+        "full_verifier_run": "https://github.com/southwest-ai-labs/xavier/actions/runs/44171905295",
+        "sha": "c59da11422c086d14dfe112c9c264c7d7b4c34a8",
+        "promoted_at": "2026-11-17T22:36:35Z"
+      }
     },
     "feat-vault-hardening": {
       "id": "feat-vault-hardening",
@@ -4743,7 +4750,7 @@
       "id": "feat-purerag-explorer",
       "name": "PureRAG Real-Time Retrieval Explorer & Graph Traceability",
       "category": "ui / search",
-      "status": "beta",
+      "status": "stable",
       "progress_pct": 100,
       "description": "Zero-AI real-time retrieval explorer embedded in the primary chat UI with an inverted layout (search at top, results below), descending similarity ranking, lateral filters (workspace, project, user, kind), dual-pane text & provenance inspector, and one-click Information Graph bridge.",
       "steps": [
@@ -4754,10 +4761,10 @@
         "Wire one-click Information Graph navigation bridge linking DetailCard to GraphView focused node",
         "Add unit and component integration tests"
       ],
-      "passes": false,
+      "passes": true,
       "verified_by": "automated",
       "github_issue": null,
-      "last_tested": null,
+      "last_tested": "2026-11-17",
       "notes": "Spec: docs/features/specs/FEATURE-purerag-explorer.md. SRS mapping: REQ-088. PureRAG backend APIs verified by typed search, snippet mode, cap limits, and espacio isolation integration suite.\npromoted planned->beta by ledger promoter on 8a58a7dc2065fbfdef847453e7685c125953713c (2026-11-17)",
       "implemented_in": "panel-ui/src/components/PureRag/, panel-ui/src/App.tsx, src/server/v1_api.rs",
       "tests": [
@@ -4769,13 +4776,19 @@
       ],
       "req_ids": [
         "REQ-088"
-      ]
+      ],
+      "ledger": {
+        "promoted_by": "post-merge-ci",
+        "full_verifier_run": "https://github.com/southwest-ai-labs/xavier/actions/runs/44171905295",
+        "sha": "c59da11422c086d14dfe112c9c264c7d7b4c34a8",
+        "promoted_at": "2026-11-17T22:36:35Z"
+      }
     },
     "feat-multimodal-rag-core": {
       "id": "feat-multimodal-rag-core",
       "name": "Multimodal Video & Image RAG Storage and Spatiotemporal Retrieval",
       "category": "storage / search",
-      "status": "beta",
+      "status": "stable",
       "progress_pct": 100,
       "description": "Multi-modal vector memory and indexing core supporting spatial bounding boxes for images and keyframe millisecond timestamps for video scenes, with PureRAG UI preview adapters.",
       "steps": [
@@ -4788,7 +4801,7 @@
       "passes": true,
       "verified_by": "automated",
       "github_issue": 4027,
-      "last_tested": "2026-11-14",
+      "last_tested": "2026-11-17",
       "notes": "Wave 22 Complete (Steps 1-5): PureRAG UI multimodal preview adapters for image bounding boxes and video scenes added to panel-ui/src/components/PureRag/PureRagDetailCard.tsx with AST symbol and linked file cross-graph connections.\npromoted in_progress->beta by ledger promoter on 8a58a7dc2065fbfdef847453e7685c125953713c (2026-11-17)",
       "implemented_in": "crates/xavier-core-logic/src/multimodal.rs, crates/xavier-core-logic/src/types.rs, src/memory/multimodal_vec_store.rs, src/memory/video_segmenter.rs, src/memory/schema.rs, panel-ui/src/components/PureRag/PureRagDetailCard.tsx, panel-ui/src/components/PureRag/contentParser.ts",
       "tests": [
@@ -4830,7 +4843,13 @@
       ],
       "req_ids": [
         "REQ-089"
-      ]
+      ],
+      "ledger": {
+        "promoted_by": "post-merge-ci",
+        "full_verifier_run": "https://github.com/southwest-ai-labs/xavier/actions/runs/44171905295",
+        "sha": "c59da11422c086d14dfe112c9c264c7d7b4c34a8",
+        "promoted_at": "2026-11-17T22:36:35Z"
+      }
     }
   },
   "verification_commands": {
