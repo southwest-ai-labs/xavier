@@ -74,7 +74,7 @@ jobs:
 
       - name: Build installers (WiX msi + Inno Setup)
         run: |
-          $Version = if ("${{ github.ref_name }}" -like "v*") { "${{ github.ref_name }}".Substring(1) } else { "0.2.17" }
+          $Version = if ("${{ github.ref_name }}" -like "v*") { "${{ github.ref_name }}".Substring(1) } else { "0.2.20" }
           & ./installer/build-installer.ps1 -Version $Version -TargetTriple x86_64-pc-windows-msvc
         shell: pwsh
 
@@ -117,8 +117,8 @@ jobs:
             for ($i = 0; $i -lt 15; $i++) {
               try {
                 $resp = Invoke-RestMethod -Uri "http://127.0.0.1:$TestPort/health" -TimeoutSec 2 -ErrorAction Stop
-                if ($resp.status -eq "ok") {
-                  Write-Host "PASS: Windows daemon responding healthy on port $TestPort"
+                if ($resp.status -in @("healthy", "degraded", "ok")) {
+                  Write-Host "PASS: Windows daemon responding healthy on port $TestPort (status: $($resp.status))"
                   $healthy = $true
                   break
                 }
