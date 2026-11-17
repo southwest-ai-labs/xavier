@@ -3,6 +3,7 @@
 pub mod bm25;
 pub mod builder;
 pub mod classifier;
+pub mod dossier;
 pub mod executor;
 pub mod graph_retriever;
 pub mod hybrid;

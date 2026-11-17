@@ -55,6 +55,7 @@ pub mod usage;
 pub mod users;
 pub mod verify;
 pub mod wallet;
+pub mod wiki;
 
 // Re-export for backward compatibility
 pub use enums::*;
@@ -592,6 +593,7 @@ impl Cli {
                 follow,
                 json,
             } => service::run_logs_cmd(since, grep, lines, *follow, *json).await,
+            Command::Wiki { cmd } => wiki::handle_wiki_command(cmd.clone()).await,
         }
     }
 }

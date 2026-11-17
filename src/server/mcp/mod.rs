@@ -14,6 +14,7 @@ pub mod tools_memory;
 #[cfg(feature = "pageindex")]
 pub mod tools_pageindex;
 pub mod tools_secrets;
+pub mod tools_wiki;
 pub mod transport;
 pub mod types;
 

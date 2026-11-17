@@ -607,6 +607,47 @@ pub enum Command {
         #[arg(long, default_value_t = false)]
         json: bool,
     },
+
+    /// Living Knowledge Wiki operations (compile, lint, status, export)
+    Wiki {
+        #[command(subcommand)]
+        cmd: WikiCommand,
+    },
+}
+
+/// Living Knowledge Wiki subcommands.
+#[derive(Subcommand, Debug, Clone)]
+pub enum WikiCommand {
+    /// Compiles codebase AST and docs into living wiki markdown dossiers
+    Compile {
+        /// Target codebase or wiki path (defaults to current directory)
+        path: Option<PathBuf>,
+        /// Rebuild all entities even if up to date
+        #[arg(long, short)]
+        force: bool,
+    },
+    /// Runs integrity linter over living wiki (detects broken links, orphans, drift)
+    Lint {
+        /// Target wiki path (defaults to .xavier/wiki or current directory)
+        path: Option<PathBuf>,
+        /// Output findings as structured JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Displays living wiki health, entity counts, hubs, and status
+    Status {
+        /// Target wiki path
+        path: Option<PathBuf>,
+        /// Output as JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Exports wiki from SQLite container to flat Markdown files for Obsidian/Git
+    Export {
+        /// Output directory (defaults to .xavier/wiki)
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+    },
 }
 
 /// Zero-Handoff context capsule subcommands (`xavier capsule push|pull`).

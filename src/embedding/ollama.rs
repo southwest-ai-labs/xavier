@@ -533,7 +533,9 @@ mod tests {
         // The mock expects input of at most 16384 characters
         let mock = server
             .mock("POST", "/api/embed")
-            .match_body(mockito::Matcher::Regex(r#""input":"[a-z]{16384}""#.to_string()))
+            .match_body(mockito::Matcher::Regex(
+                r#""input":"[a-z]{16384}""#.to_string(),
+            ))
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(body_json.to_string())

@@ -22,7 +22,7 @@ use crate::cli::state::CodeGraphState;
 
 pub const SYNC_CHECKPOINT_FILE: &str = "codegraph-sync-commit";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GitSyncOptions {
     pub workspace: PathBuf,
     pub base: Option<String>,
@@ -83,6 +83,47 @@ pub async fn sync_codegraph_from_git(opts: GitSyncOptions) -> Result<GitSyncResu
     // Ensure head/checkpoint reflect the local HEAD we resolved up-front.
     let _ = head;
     Ok(result)
+}
+
+/// Programmatic entry point: checks if git HEAD differs from `.xavier/codegraph-sync-commit`.
+/// If HEAD has changed (or on first sync), triggers incremental git-driven sync automatically.
+/// Fails open (returns Ok(None)) if the workspace is not a git repository or git fails.
+pub async fn check_and_sync_if_head_changed(workspace: &Path) -> Result<Option<GitSyncResult>> {
+    let workspace = std::path::absolute(workspace).unwrap_or_else(|_| workspace.to_path_buf());
+    let Some(repo_root) = find_git_root(&workspace) else {
+        tracing::debug!(workspace = %workspace.display(), "Workspace is not a git repository; skipping auto-sync");
+        return Ok(None);
+    };
+
+    let current_head = match git_rev_parse(&repo_root, "HEAD") {
+        Ok(head) => head,
+        Err(e) => {
+            tracing::debug!(repo = %repo_root.display(), "Failed to resolve git HEAD: {e}; skipping auto-sync");
+            return Ok(None);
+        }
+    };
+
+    let last_checkpoint = read_checkpoint(&repo_root);
+    if last_checkpoint.as_deref() == Some(&current_head) {
+        tracing::debug!(head = %current_head, "CodeGraph already up to date with git HEAD");
+        return Ok(None);
+    }
+
+    tracing::info!(
+        previous = ?last_checkpoint,
+        current = %current_head,
+        "Git HEAD changed; triggering CodeGraph auto-sync"
+    );
+
+    let opts = GitSyncOptions {
+        workspace: repo_root.clone(),
+        base: last_checkpoint,
+        staged: false,
+        with_memory: false,
+    };
+
+    let sync_result = sync_codegraph_from_git(opts).await?;
+    Ok(Some(sync_result))
 }
 
 /// Apply path deltas using an already-open [`CodeGraphState`] (CLI local or HTTP).

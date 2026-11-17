@@ -793,7 +793,7 @@ impl CodeGraphDB {
         if query.is_empty() {
             let mut stmt = conn
                 .prepare(
-                    r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                    r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                        FROM symbols
                        WHERE name LIKE ?1 AND (project_root = ?2 OR ?2 IS NULL)"#,
                 )
@@ -816,7 +816,7 @@ impl CodeGraphDB {
                         signature: row.get(10)?,
                         parent: row.get(11)?,
                         complexity: row.get(12)?,
-                        project_root: None,
+                        project_root: row.get(13).ok(),
                     })
                 })
                 .map_err(|e| GraphError::Database(e.to_string()))?
@@ -826,7 +826,7 @@ impl CodeGraphDB {
             // MATCH query with BM25 rank
             let mut stmt = conn
                     .prepare(
-                        r#"SELECT s.id, s.stable_id, s.name, s.kind, s.lang, s.file_path, s.start_line, s.end_line, s.start_col, s.end_col, s.signature, s.parent, s.complexity
+                        r#"SELECT s.id, s.stable_id, s.name, s.kind, s.lang, s.file_path, s.start_line, s.end_line, s.start_col, s.end_col, s.signature, s.parent, s.complexity, s.project_root
                            FROM symbols s
                            JOIN symbols_fts ON s.stable_id = symbols_fts.stable_id
                            WHERE symbols_fts MATCH ?1 AND (s.project_root = ?3 OR ?3 IS NULL)
@@ -851,7 +851,7 @@ impl CodeGraphDB {
                         signature: row.get(10)?,
                         parent: row.get(11)?,
                         complexity: row.get(12)?,
-                        project_root: None,
+                        project_root: row.get(13).ok(),
                     })
                 })
                 .map_err(|e| GraphError::Database(e.to_string()))?
@@ -907,7 +907,7 @@ impl CodeGraphDB {
 
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols
                    WHERE name = ?1 AND (project_root = ?3 OR ?3 IS NULL)
                    LIMIT ?2"#,
@@ -930,7 +930,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -949,7 +949,7 @@ impl CodeGraphDB {
 
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols
                    WHERE file_path = ?1"#,
             )
@@ -971,7 +971,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -999,7 +999,7 @@ impl CodeGraphDB {
 
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols
                    WHERE kind = ?1 AND (project_root = ?3 OR ?3 IS NULL)
                    LIMIT ?2"#,
@@ -1023,7 +1023,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -1256,7 +1256,7 @@ impl CodeGraphDB {
             .map_err(|e| GraphError::Database(format!("lock poisoned: {}", e)))?;
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols WHERE file_path = ?1"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1276,7 +1276,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1293,7 +1293,7 @@ impl CodeGraphDB {
             .map_err(|e| GraphError::Database(format!("lock poisoned: {}", e)))?;
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols WHERE stable_id = ?1"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1313,7 +1313,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1435,7 +1435,7 @@ impl CodeGraphDB {
 
         let mut stmt = conn
             .prepare(
-                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -1456,7 +1456,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -2100,7 +2100,7 @@ impl CodeGraphDB {
 
         let mut stmt = conn
             .prepare(
-                r#"SELECT DISTINCT s.id, s.stable_id, s.name, s.kind, s.lang, s.file_path, s.start_line, s.end_line, s.start_col, s.end_col, s.signature, s.parent, s.complexity
+                r#"SELECT DISTINCT s.id, s.stable_id, s.name, s.kind, s.lang, s.file_path, s.start_line, s.end_line, s.start_col, s.end_col, s.signature, s.parent, s.complexity, s.project_root
                    FROM symbols s
                    JOIN memory_symbol_links msl ON (msl.symbol_id = s.stable_id OR msl.symbol_id = s.name)
                    WHERE msl.memory_id = ?1"#,
@@ -2123,7 +2123,7 @@ impl CodeGraphDB {
                     signature: row.get(10)?,
                     parent: row.get(11)?,
                     complexity: row.get(12)?,
-                    project_root: None,
+                    project_root: row.get(13).ok(),
                 })
             })
             .map_err(|e| GraphError::Database(e.to_string()))?
@@ -2309,15 +2309,19 @@ mod tests {
     fn test_insert_symbols_project_root() {
         let db = CodeGraphDB::in_memory().unwrap();
 
-        let mut sym1 = Symbol::default();
-        sym1.stable_id = Some("func1".to_string());
-        sym1.name = "func1".to_string();
-        sym1.file_path = "src/lib.rs".to_string();
+        let sym1 = Symbol {
+            stable_id: Some("func1".to_string()),
+            name: "func1".to_string(),
+            file_path: "src/lib.rs".to_string(),
+            ..Default::default()
+        };
 
-        let mut sym2 = Symbol::default();
-        sym2.stable_id = Some("func2".to_string());
-        sym2.name = "func2".to_string();
-        sym2.file_path = "src/lib.rs".to_string();
+        let sym2 = Symbol {
+            stable_id: Some("func2".to_string()),
+            name: "func2".to_string(),
+            file_path: "src/lib.rs".to_string(),
+            ..Default::default()
+        };
 
         // 1. insert_symbols leaves it NULL
         db.insert_symbols(&[sym1.clone()]).unwrap();
@@ -2359,6 +2363,34 @@ mod tests {
             )
             .unwrap();
         assert_eq!(root1_updated, Some("/new/root".to_string()));
+        drop(conn);
+
+        // 4. verify symbols preserve project_root via db query methods
+        assert_eq!(
+            db.find_by_name("func2", 10).unwrap()[0].project_root,
+            Some("/path/to/proj".to_string())
+        );
+        assert_eq!(
+            db.symbol_by_stable_id("func2")
+                .unwrap()
+                .unwrap()
+                .project_root,
+            Some("/path/to/proj".to_string())
+        );
+        assert_eq!(
+            db.find_by_name("func1", 10).unwrap()[0].project_root,
+            Some("/new/root".to_string())
+        );
+        assert!(db
+            .find_by_file("src/lib.rs")
+            .unwrap()
+            .iter()
+            .any(|s| s.project_root.as_deref() == Some("/path/to/proj")));
+        assert!(db
+            .find_by_file("src/lib.rs")
+            .unwrap()
+            .iter()
+            .any(|s| s.project_root.as_deref() == Some("/new/root")));
     }
 
     #[test]
@@ -2373,10 +2405,10 @@ mod tests {
             conn.execute_batch("
                 DROP TABLE symbols;
                 CREATE TABLE symbols (
-                    id TEXT, stable_id TEXT, name TEXT, kind TEXT, lang TEXT, file_path TEXT, start_line TEXT, end_line TEXT, start_col TEXT, end_col TEXT, signature TEXT, parent TEXT, complexity TEXT
+                    id TEXT, stable_id TEXT, name TEXT, kind TEXT, lang TEXT, file_path TEXT, start_line TEXT, end_line TEXT, start_col TEXT, end_col TEXT, signature TEXT, parent TEXT, complexity TEXT, project_root TEXT
                 );
-                INSERT INTO symbols (id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity)
-                VALUES ('this_should_be_an_int', 'stable_id', 'name', 'Function', 'Rust', 'test.rs', 'not_int', 'not_int', 'not_int', 'not_int', 'fn()', 'parent', 'not_float');
+                INSERT INTO symbols (id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root)
+                VALUES ('this_should_be_an_int', 'stable_id', 'name', 'Function', 'Rust', 'test.rs', 'not_int', 'not_int', 'not_int', 'not_int', 'fn()', 'parent', 'not_float', NULL);
             ").unwrap();
         }
 

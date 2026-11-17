@@ -11,9 +11,11 @@ use std::sync::Arc;
 use xavier::app::security_service::SecurityService;
 use xavier::server::mcp::transport::start_mcp_http_server;
 use xavier::server::mcp_stdio::run_stdio_loop;
+use xavier::settings::XavierSettings;
 use xavier::workspace::{WorkspaceConfig, WorkspaceRegistry, WorkspaceState};
 use xavier::AppState;
 
+use crate::cli::codegraph_sync::find_git_root;
 use crate::cli::config::resolve_http_bind_host;
 
 /// Default port for the MCP HTTP+SSE server.
@@ -32,16 +34,35 @@ pub async fn build_mcp_state() -> Result<(AppState, xavier::workspace::Workspace
     let workspace_registry = Arc::new(WorkspaceRegistry::new());
 
     let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+    // Check canonical workspace locations in order:
+    // 0) Explicit XAVIER_CODE_GRAPH_DB_PATH override (if set and exists)
+    // a) Local workspace `.xavier/code_graph.db`
+    // b) `XavierSettings::resolve_data_dir().join("code_graph.db")`
+    // c) If in a git repository, `<git_root>/.xavier/code_graph.db`
+    let env_code_db = std::env::var("XAVIER_CODE_GRAPH_DB_PATH")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .map(std::path::PathBuf::from);
     let local_code_db = cwd.join(".xavier").join("code_graph.db");
-    let resolved_code_db = xavier::codebase::codegraph_paths::code_graph_db_path_for(&cwd);
-    let code_db_path = if local_code_db.exists() {
-        local_code_db
+    let data_dir_code_db = XavierSettings::resolve_data_dir().join("code_graph.db");
+    let git_root_code_db =
+        find_git_root(&cwd).map(|git_root| git_root.join(".xavier").join("code_graph.db"));
+
+    let found_code_db_path = if env_code_db.as_ref().is_some_and(|p| p.exists()) {
+        env_code_db.clone()
+    } else if local_code_db.exists() {
+        Some(local_code_db.clone())
+    } else if data_dir_code_db.exists() {
+        Some(data_dir_code_db)
+    } else if git_root_code_db.as_ref().is_some_and(|p| p.exists()) {
+        git_root_code_db
     } else {
-        resolved_code_db
+        None
     };
 
-    let code_db = if code_db_path.exists() {
-        match code_graph::db::CodeGraphDB::new(&code_db_path) {
+    let code_db = if let Some(ref code_db_path) = found_code_db_path {
+        match code_graph::db::CodeGraphDB::new(code_db_path) {
             Ok(db) => {
                 tracing::info!(
                     "MCP loaded persistent CodeGraphDB from {}",
@@ -59,6 +80,12 @@ pub async fn build_mcp_state() -> Result<(AppState, xavier::workspace::Workspace
             }
         }
     } else {
+        let warning_path = env_code_db.unwrap_or(local_code_db);
+        tracing::warn!(
+            path = %warning_path.display(),
+            "No persistent CodeGraphDB found at {}; initializing empty in-memory graph. Run 'xavier code scan .' to index this workspace",
+            warning_path.display()
+        );
         Arc::new(code_graph::db::CodeGraphDB::in_memory()?)
     };
     let code_indexer = Arc::new(code_graph::indexer::Indexer::new(Arc::clone(&code_db)));
@@ -130,4 +157,90 @@ pub async fn start_mcp_http(port: u16) -> Result<()> {
     let bind_addr = format!("{bind_host}:{port}");
     tracing::info!("Starting Xavier MCP HTTP+SSE server on {}", bind_addr);
     start_mcp_http_server(state, workspace, bind_addr).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct TestEnvGuard {
+        prev_cwd: Option<std::path::PathBuf>,
+        vars: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl TestEnvGuard {
+        fn new(keys: &[&'static str]) -> Self {
+            let vars = keys.iter().map(|&k| (k, std::env::var(k).ok())).collect();
+            Self {
+                prev_cwd: std::env::current_dir().ok(),
+                vars,
+            }
+        }
+    }
+
+    impl Drop for TestEnvGuard {
+        fn drop(&mut self) {
+            if let Some(ref cwd) = self.prev_cwd {
+                let _ = std::env::set_current_dir(cwd);
+            }
+            for (k, v) in &self.vars {
+                if let Some(v) = v {
+                    std::env::set_var(k, v);
+                } else {
+                    std::env::remove_var(k);
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_build_mcp_state_missing_db_fallback_warning() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let _guard = TestEnvGuard::new(&[
+            "XAVIER_CODE_GRAPH_DB_PATH",
+            "XAVIER_EMBEDDER",
+            "XAVIER_TOKEN",
+        ]);
+        std::env::remove_var("XAVIER_CODE_GRAPH_DB_PATH");
+        std::env::set_var("XAVIER_EMBEDDER", "disabled");
+        std::env::set_var("XAVIER_TOKEN", "mcp-token");
+        std::env::set_current_dir(temp.path()).expect("set_current_dir");
+
+        let res = build_mcp_state().await;
+        assert!(
+            res.is_ok(),
+            "build_mcp_state should succeed when DB is missing: {:?}",
+            res.err()
+        );
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_build_mcp_state_loads_local_db() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let xavier_dir = temp.path().join(".xavier");
+        std::fs::create_dir_all(&xavier_dir).expect("create_dir_all");
+        let db_path = xavier_dir.join("code_graph.db");
+        {
+            let _db = code_graph::db::CodeGraphDB::new(&db_path).expect("create db");
+        }
+
+        let _guard = TestEnvGuard::new(&[
+            "XAVIER_CODE_GRAPH_DB_PATH",
+            "XAVIER_EMBEDDER",
+            "XAVIER_TOKEN",
+        ]);
+        std::env::remove_var("XAVIER_CODE_GRAPH_DB_PATH");
+        std::env::set_var("XAVIER_EMBEDDER", "disabled");
+        std::env::set_var("XAVIER_TOKEN", "mcp-token");
+        std::env::set_current_dir(temp.path()).expect("set_current_dir");
+
+        let res = build_mcp_state().await;
+        assert!(
+            res.is_ok(),
+            "build_mcp_state should load local DB: {:?}",
+            res.err()
+        );
+    }
 }
