@@ -7,10 +7,10 @@
     "docs/site"
   ],
   "scripts": {
-    "install:all": "npm install --workspaces",
-    "build": "npm run build --workspace panel-ui && npm run build --workspace docs/site",
-    "build:panel": "npm run build --workspace panel-ui",
-    "build:docs": "npm run build --workspace docs/site",
+    "install:all": "pnpm install -r",
+    "build": "pnpm --filter xavier-panel-ui run build && pnpm --filter xavier-docs-site run build",
+    "build:panel": "pnpm --filter xavier-panel-ui run build",
+    "build:docs": "pnpm --filter xavier-docs-site run build",
     "lint": "pnpm --filter xavier-panel-ui run biome:check && pnpm --filter xavier-panel-ui run typecheck",
     "prepare": "husky",
     "verify:rust": "bash scripts/verify-rust.sh",

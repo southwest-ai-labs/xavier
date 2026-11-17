@@ -25,7 +25,6 @@ pub mod graph_traversal;
 pub mod hermes_importer;
 pub mod hierarchy;
 pub mod ingest_cursor;
-pub mod jules_importer;
 pub mod languages;
 pub mod layers_config;
 pub mod manager;

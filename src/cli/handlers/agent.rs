@@ -162,21 +162,15 @@ pub async fn codex_index_handler(
     }
 }
 
-/// Jules index handler.
+/// Jules index handler (decommissioned in Wave 22).
 pub async fn jules_index_handler(
-    State(state): State<CliState>,
+    State(_state): State<CliState>,
 ) -> impl axum::response::IntoResponse {
-    let importer = crate::memory::jules_importer::JulesImporter::new();
-    match importer.import_all(state.store.as_ref()).await {
-        Ok(records) => axum::Json(serde_json::json!({
-            "status": "ok",
-            "indexed_count": records.len(),
-        })),
-        Err(e) => axum::Json(serde_json::json!({
-            "status": "error",
-            "message": format!("Failed to index Jules sessions: {}", e),
-        })),
-    }
+    axum::Json(serde_json::json!({
+        "status": "decommissioned",
+        "message": "Jules service has been decommissioned. Google Antigravity & agy CLI is the active canonical runner.",
+        "indexed_count": 0,
+    }))
 }
 
 /// Antigravity index handler.
