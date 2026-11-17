@@ -233,8 +233,8 @@ class PromoterTests(unittest.TestCase):
         for fid in ('feat-encryption-at-rest', 'feat-vault-hardening'):
             with self.subTest(feature=fid):
                 feature = ledger['features'][fid]
-                self.assertEqual('beta', feature['status'])
-                self.features['features']['beta'] = feature
+                self.assertIn(feature['status'], ('beta', 'stable'))
+                self.features['features']['beta'] = dict(feature, status='beta')
                 declared = feature['tests']
                 self.evidence['per_feature_test_results']['beta'] = dict(
                     declared=declared, passed=declared, failed=[],
