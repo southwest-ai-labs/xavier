@@ -16,6 +16,8 @@ updates:
       - "quarantine"  # All new deps go to quarantine first
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      - dependency-name: "ort"
     # Group minor/patch updates to reduce noise
     groups:
       rust-minor:
