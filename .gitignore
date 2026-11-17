@@ -75,6 +75,7 @@ metrics.db*
 xavier_memory.db*
 
 # Internal agent indexing caches & test results
+scratch/
 .xavier/*
 !.xavier/maturity-anchors.json
 **/.xavier/*
