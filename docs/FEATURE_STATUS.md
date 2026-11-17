@@ -5,23 +5,23 @@
 Current product label: `0.0.1` — **Status computed from the ledger: 70 stable, 17 beta, 2 in_progress, 28 planned. See [Implementation Audit](plans/IMPLEMENTATION-AUDIT_2026-10-28.md) for details.**
 
 <!-- ledger:summary:start -->
-Ledger: 100 stable, 10 beta, 1 in_progress, 2 planned (129 total, 77.5% stable). Generated from .gitcore/features.json by scripts/ledger-docs-sync.py; do not edit by hand.
+Ledger: 110 stable, 3 beta, 0 in_progress, 0 planned (129 total, 85.3% stable). Generated from .gitcore/features.json by scripts/ledger-docs-sync.py; do not edit by hand.
 
 | category | stable | beta | in_progress | planned | other | total |
 |---|---|---|---|---|---|---|
 | ai | 2 | 0 | 0 | 0 | 0 | 2 |
 | auto-improvement | 1 | 0 | 0 | 0 | 0 | 1 |
-| cli | 2 | 1 | 0 | 0 | 0 | 3 |
+| cli | 3 | 0 | 0 | 0 | 0 | 3 |
 | code-graph | 7 | 0 | 0 | 0 | 0 | 7 |
 | cognitive | 4 | 0 | 0 | 0 | 0 | 4 |
 | context | 5 | 0 | 0 | 0 | 0 | 5 |
-| core | 6 | 4 | 0 | 0 | 0 | 10 |
+| core | 10 | 0 | 0 | 0 | 0 | 10 |
 | cost | 1 | 0 | 0 | 0 | 0 | 1 |
 | data | 1 | 0 | 0 | 0 | 0 | 1 |
 | docs | 1 | 0 | 0 | 0 | 0 | 1 |
 | documentation | 2 | 0 | 0 | 0 | 0 | 2 |
 | enterprise | 3 | 0 | 0 | 0 | 2 | 5 |
-| explain | 4 | 2 | 0 | 1 | 0 | 7 |
+| explain | 6 | 1 | 0 | 0 | 0 | 7 |
 | governance | 2 | 0 | 0 | 0 | 1 | 3 |
 | identity | 1 | 0 | 0 | 0 | 3 | 4 |
 | infra | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -39,15 +39,15 @@ Ledger: 100 stable, 10 beta, 1 in_progress, 2 planned (129 total, 77.5% stable).
 | retrieval | 3 | 0 | 0 | 0 | 0 | 3 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
 | search | 5 | 0 | 0 | 0 | 0 | 5 |
-| security | 11 | 3 | 0 | 0 | 0 | 14 |
+| security | 14 | 0 | 0 | 0 | 0 | 14 |
 | self-manage | 2 | 0 | 0 | 0 | 0 | 2 |
 | self-management | 1 | 0 | 0 | 0 | 0 | 1 |
 | server | 1 | 0 | 0 | 0 | 0 | 1 |
 | skills | 6 | 0 | 0 | 0 | 0 | 6 |
-| storage / search | 0 | 0 | 1 | 0 | 0 | 1 |
+| storage / search | 0 | 1 | 0 | 0 | 0 | 1 |
 | testing | 2 | 0 | 0 | 0 | 0 | 2 |
 | ui | 2 | 0 | 0 | 0 | 0 | 2 |
-| ui / search | 0 | 0 | 0 | 1 | 0 | 1 |
+| ui / search | 0 | 1 | 0 | 0 | 0 | 1 |
 | uncategorized | 3 | 0 | 0 | 0 | 0 | 3 |
 <!-- ledger:summary:end -->
 
