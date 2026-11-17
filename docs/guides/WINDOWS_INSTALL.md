@@ -26,6 +26,10 @@ Prebuilt official installers are published with every release on [GitHub Release
   ```
   This starts the core memory daemon and serves the visual administration dashboard at:
   👉 **`http://localhost:8006`**
+- **1-Click Web Panel Shortcut**:
+  The installer automatically creates a **`Xavier Web Panel`** shortcut on your Desktop and Start Menu that opens directly in your default browser with official branding and zero console popup window.
+- **Local Offline Embeddings (Zero API Keys)**:
+  Xavier automatically integrates with local [Ollama](https://ollama.com) via `http://localhost:11434` using `nomic-embed-text` (768 dimensions, 8,192 token window). Once Ollama is running (`ollama serve`), Xavier vectorizes all memories and agent contexts 100% locally with zero cloud API keys or monthly costs.
 - **Terminal Monitor (TUI)**:
   Launch `Xavier TUI` from the Start Menu or run `xavier-tui` in PowerShell for live CPU/RAM and memory metrics.
 - **Headless Server (No UI)**:
@@ -41,7 +45,7 @@ Prebuilt official installers are published with every release on [GitHub Release
 You can install Xavier with a single PowerShell command without installing Rust or compiling from source. The installer automatically downloads prebuilt binaries and Web UI assets from GitHub Releases:
 
 ```powershell
-irm https://raw.githubusercontent.com/iberi22/xavier/main/scripts/install.ps1 | iex
+irm https://raw.githubusercontent.com/southwest-ai-labs/xavier/main/scripts/install.ps1 | iex
 ```
 
 ### Script Options & Silent Installation
@@ -123,10 +127,12 @@ Edit `%LOCALAPPDATA%\Xavier\config\.env` with your values:
 | `XAVIER_MODEL_PROVIDER` | LLM provider | `local` |
 | `RUST_LOG` | Logging level | `info` |
 
-## Docker (alternative)
+## Docker (Containerized Alternative)
+
+If you prefer running in Docker on Windows via WSL2:
 
 ```powershell
-docker compose --profile core up -d
+docker run -d --name xavier -p 8006:8006 -p 8100:8100 -v xavier_data:/data ghcr.io/southwest-ai-labs/xavier:latest
 ```
 
 ## Uninstall
