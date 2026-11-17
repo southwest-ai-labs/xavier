@@ -2,11 +2,41 @@
 
 ## Requirements
 
-- Windows 10/11
-- Optional: Rust toolchain (only needed if building from source) → https://rustup.rs
-- Optional: Ollama (for local embeddings) → https://ollama.com
+- Windows 10/11 (64-bit)
+- Optional: Ollama (for offline local embeddings) → https://ollama.com
 
-## Quick Install (No Rust / C++ Compiler Required)
+---
+
+## 1. Official Graphical Installers (Recommended)
+
+Prebuilt official installers are published with every release on [GitHub Releases](https://github.com/southwest-ai-labs/xavier/releases/latest):
+
+| Installer | Format | Best For | Description |
+|---|---|---|---|
+| **[XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierSetup.exe)** | `.exe` (Inno Setup) | Desktop users & Developers | Full graphical setup wizard. Installs `xavier.exe`, `xavier-tui.exe`, and Panel Web UI assets. Automatically creates Start Menu shortcuts and configures PATH. |
+| **[XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierInstaller.msi)** | `.msi` (WiX) | Enterprise & Automated CI | Machine-wide MSI installer with support for silent GPO/MDM deployment (`msiexec /i XavierInstaller.msi /qn`). |
+| **[xavier-v0.2.19-x86_64-pc-windows-msvc.zip](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-x86_64-pc-windows-msvc.zip)** | `.zip` | Portable / Ad-hoc | Unpack and run `xavier.exe` without installation. |
+
+### How Xavier Runs in Windows (CLI vs Web Panel)
+
+- **Starting the Server & Web Panel**:
+  Launch `Xavier` from the Start Menu or run in terminal:
+  ```powershell
+  xavier http 8006
+  ```
+  This starts the core memory daemon and serves the visual administration dashboard at:
+  👉 **`http://localhost:8006`**
+- **Terminal Monitor (TUI)**:
+  Launch `Xavier TUI` from the Start Menu or run `xavier-tui` in PowerShell for live CPU/RAM and memory metrics.
+- **Headless Server (No UI)**:
+  If you are embedding Xavier into automated pipelines and do not need the Web UI:
+  ```powershell
+  xavier http --no-ui
+  ```
+
+---
+
+## 2. Quick Command-Line Install (PowerShell Script)
 
 You can install Xavier with a single PowerShell command without installing Rust or compiling from source. The installer automatically downloads prebuilt binaries and Web UI assets from GitHub Releases:
 

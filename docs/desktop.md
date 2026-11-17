@@ -1,10 +1,29 @@
-# Xavier desktop app (Linux)
+# Xavier Desktop Apps (Linux & Windows)
+
+Xavier provides graphical desktop interfaces and installation packages for both Linux and Windows environments.
+
+## 1. Windows Installation & Desktop Experience
+
+On Windows, Xavier is distributed as both an Inno Setup wizard (`XavierSetup.exe`) and a WiX MSI package (`XavierInstaller.msi`):
+
+1. **Download**: Grab `XavierSetup.exe` or `XavierInstaller.msi` from the [latest release](https://github.com/southwest-ai-labs/xavier/releases/latest).
+2. **Install**: Run the installer to deploy `xavier.exe`, `xavier-tui.exe`, and the visual Panel Web UI assets.
+3. **Usage**:
+   - Starting **Xavier** launches the memory runtime daemon and serves the visual administration dashboard at **`http://localhost:8006`**.
+   - Launching **Xavier TUI** opens an interactive terminal monitor for memory usage, cache state, and vector latency.
+   - For headless execution (no web assets served), run `xavier http --no-ui`.
+
+See [docs/guides/WINDOWS_INSTALL.md](guides/WINDOWS_INSTALL.md) for full Windows configuration details.
+
+---
+
+## 2. Linux Desktop App (Tauri 2 Shell)
 
 A double-click desktop app: the Tauri shell (`panel-ui/src-tauri`) plus the panel UI and a bundled `xavier` binary.
 
-## Install
+### Install (Ubuntu / Debian / Generic Linux)
 
-1. Download `Xavier_<version>_amd64.AppImage` (or the `.deb`) from the [latest release](https://github.com/iberi22/xavier/releases/latest).
+1. Download `Xavier_<version>_amd64.AppImage` (or the `.deb`) from the [latest release](https://github.com/southwest-ai-labs/xavier/releases/latest).
 2. `chmod +x Xavier_*.AppImage`, then double-click it (or run it from a terminal).
 3. `.deb`: `sudo apt install ./Xavier_*_amd64.deb`.
 
