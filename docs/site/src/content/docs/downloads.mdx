@@ -1,27 +1,39 @@
 ---
 title: Downloads
-description: Download Xavier binaries and verify checksums
+description: Download Xavier binaries, Windows installers, and verify checksums
 ---
 
 # Downloads
 
-Latest release: **v0.0.1** — [GitHub Releases](https://github.com/iberi22/xavier/releases/latest)
+Latest release: **v0.2.19** — [GitHub Releases](https://github.com/southwest-ai-labs/xavier/releases/latest)
 
-| OS | Arch | Artifact | SHA256 |
+## Windows Installers & Binaries
+
+| Package | Format | Description | Download |
 |---|---|---|---|
-| Linux | x86_64 | `xavier-v0.0.1-x86_64-unknown-linux-gnu.tar.gz` | `xavier-v0.0.1-x86_64-unknown-linux-gnu.tar.gz.sha256` |
-| macOS | arm64 (Apple Silicon) | `xavier-v0.0.1-aarch64-apple-darwin.tar.gz` | same `.sha256` |
-| Windows | x86_64 | `xavier-v0.0.1-x86_64-pc-windows-msvc.zip` | same `.sha256` |
+| **Xavier Setup** | `.exe` | Graphical Inno Setup installer with shortcuts & PATH | [XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierSetup.exe) |
+| **Xavier Enterprise** | `.msi` | WiX machine-wide Windows Installer | [XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierInstaller.msi) |
+| **Xavier Portable** | `.zip` | Portable CLI binary package (`xavier.exe`) | [xavier-v0.2.19-x86_64-pc-windows-msvc.zip](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-x86_64-pc-windows-msvc.zip) |
+
+## Linux & macOS Packages
+
+| OS | Arch | Format | Artifact |
+|---|---|---|---|
+| Linux (Desktop) | x86_64 | AppImage | [Xavier_0.2.19_amd64.AppImage](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.AppImage) |
+| Linux (Debian/Ubuntu) | x86_64 | `.deb` | [Xavier_0.2.19_amd64.deb](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.deb) |
+| Linux (RHEL/Fedora) | x86_64 | `.rpm` | [xavier-server-0.2.19-1.x86_64.rpm](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-0.2.19-1.x86_64.rpm) |
+| Linux (Server) | x86_64 | `.tar.gz` | [xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz) |
+| macOS | Apple Silicon (arm64) | `.tar.gz` | [xavier-v0.2.19-aarch64-apple-darwin.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-aarch64-apple-darwin.tar.gz) |
 
 ```bash
-# Example Linux
-curl -L https://github.com/iberi22/xavier/releases/latest/download/xavier-v0.0.1-x86_64-unknown-linux-gnu.tar.gz -o xavier.tar.gz
-curl -L https://github.com/iberi22/xavier/releases/latest/download/xavier-v0.0.1-x86_64-unknown-linux-gnu.tar.gz.sha256 -o xavier.sha256
+# Example verification on Linux/macOS
+curl -L https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz -o xavier.tar.gz
+curl -L https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz.sha256 -o xavier.sha256
 sha256sum -c xavier.sha256
 tar -xzf xavier.tar.gz
 ./xavier --help
 ```
 
-Docker: `ghcr.io/iberi22/xavier:0.0.1` (pending release workflow `docker-publish`).
+Docker image: `ghcr.io/southwest-ai-labs/xavier:0.2.19` (also `:latest`).
 
-See also `README.md` 📦 Downloads.
+See also `README.md` for full quickstart guide and MCP configuration.

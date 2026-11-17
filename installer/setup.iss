@@ -46,11 +46,14 @@ Source: "..\panel-ui\build\*"; DestDir: "{app}\panel-ui\build"; Flags: ignorever
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "http 8006 --mcp-port 0"; WorkingDir: "{app}"
+Name: "{autoprograms}\{#MyAppName} Web Panel"; Filename: "http://127.0.0.1:8006"
 Name: "{autoprograms}\{#MyAppName} TUI"; Filename: "{app}\xavier-tui.exe"; Check: FileExists(ExpandConstant('{app}\xavier-tui.exe'))
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "http 8006 --mcp-port 0"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName} Web Panel"; Filename: "http://127.0.0.1:8006"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "http 8006 --mcp-port 0"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall
+Filename: "http://127.0.0.1:8006"; Description: "Open Xavier Web Panel in browser"; Flags: shellexec runasoriginaluser postinstall nowait unchecked
 
 [Code]
 const

@@ -3,7 +3,7 @@
 > Some features are experimental or beta — see [Experimental and beta features](#-experimental-and-beta-features).
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Version](https://img.shields.io/badge/version-0.2.17-brightgreen.svg)](https://github.com/iberi22/xavier)
+[![Version](https://img.shields.io/badge/version-0.2.20-brightgreen.svg)](https://github.com/iberi22/xavier)
 [![CI Build Status](https://github.com/iberi22/xavier/actions/workflows/ci.yml/badge.svg)](https://github.com/iberi22/xavier/actions/workflows/ci.yml)
 [![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
 
@@ -104,17 +104,25 @@ swal-preflight check --cwd .
 
 ## 📦 Downloads
 
-Latest release: **[v0.2.17](https://github.com/iberi22/xavier/releases/tag/v0.2.17)** — built via `.github/workflows/release.yml` (3 targets + SHA256, plus the `XavierSetup.exe` Windows installer).
+Latest release: **[v0.2.19](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.19)** — built via `.github/workflows/release.yml` and `.github/workflows/windows-installers.yml`.
 
+### Windows Installers & Packages
+| Type | Artifact | Description |
+|---|---|---|
+| **Installer (EXE)** | [XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierSetup.exe) | Graphical Inno Setup installer with Start Menu shortcuts and PATH setup |
+| **Enterprise (MSI)** | [XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierInstaller.msi) | WiX machine-wide installer for unattended/enterprise deployment |
+| **Portable (ZIP)** | [xavier-v0.2.19-x86_64-pc-windows-msvc.zip](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-x86_64-pc-windows-msvc.zip) | Standalone CLI binary (`xavier.exe`) |
+
+### Linux & macOS Packages
 | OS | Arch | Artifact |
 |---|---|---|
-| Linux | x86_64 | `xavier-v0.2.17-x86_64-unknown-linux-gnu.tar.gz` |
-| macOS | aarch64 (Apple Silicon) | `xavier-v0.2.17-aarch64-apple-darwin.tar.gz` |
-| Windows | x86_64 | `xavier-v0.2.17-x86_64-pc-windows-msvc.zip` |
+| Linux (Desktop) | x86_64 | [Xavier_0.2.19_amd64.AppImage](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.AppImage) / [.deb](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.deb) |
+| Linux (Server) | x86_64 | [xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz) / [.rpm](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-0.2.19-1.x86_64.rpm) |
+| macOS | aarch64 | [xavier-v0.2.19-aarch64-apple-darwin.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-aarch64-apple-darwin.tar.gz) |
 
-Each artifact has a `.sha256` sidecar.
+Each artifact has a `.sha256` sidecar on the [Releases page](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.19).
 
-**Linux desktop app:** download `Xavier_<version>_amd64.AppImage` from the release, `chmod +x`, double-click (or a `.deb`). See [docs/desktop.md](docs/desktop.md).
+> **UI vs CLI**: Starting Xavier with `xavier http 8006` serves the visual Web Panel at **`http://localhost:8006`** (with PureRAG and memory explorer) and Model Context Protocol (MCP) server. To run purely in headless mode without UI assets, use `xavier http --no-ui`. For the interactive terminal monitor, run `xavier-tui`.
 
 ```bash
 # Linux example
