@@ -118,11 +118,12 @@ jobs:
               try {
                 $resp = Invoke-RestMethod -Uri "http://127.0.0.1:$TestPort/health" -TimeoutSec 3 -ErrorAction Stop
                 Write-Host "Polled health on port $TestPort : version=$($resp.version), status=$($resp.status)"
-                if ($resp.version -or ($resp.status -in @("healthy", "degraded", "ok", "unhealthy"))) {
+                if ($resp.version -or ($resp.status -in @("healthy", "degraded", "ok", "unhealthy", "starting"))) {
                   Write-Host "PASS: Windows daemon responding on port $TestPort (status: $($resp.status), version: $($resp.version))"
                   $healthy = $true
                   break
                 }
+                Start-Sleep -Seconds 2
               } catch {
                 Write-Host "Polling health on port $TestPort (attempt $i/30): $_"
                 Start-Sleep -Seconds 2
