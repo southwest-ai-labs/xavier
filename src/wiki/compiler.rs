@@ -3,7 +3,7 @@
 //! Transforms Tree-sitter AST symbols and call graph edges into rich Markdown dossiers
 //! with structured YAML frontmatter under `.xavier/wiki/entities/<lang>/`.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -38,6 +38,35 @@ pub fn sanitize_symbol_filename(name: &str) -> String {
         "symbol".to_string()
     } else {
         trimmed.to_string()
+    }
+}
+
+/// Computes a safe, unambiguous filename stem for an entity markdown dossier.
+///
+/// Disambiguates homonymous symbols (e.g. `new`, `default`, `init`) across structs,
+/// classes, and modules by prefixing the parent namespace or module name.
+pub fn compute_entity_filename(sym: &Symbol) -> String {
+    let safe_name = sanitize_symbol_filename(&sym.name);
+    let parent_prefix = sym
+        .parent
+        .as_ref()
+        .map(|p| sanitize_symbol_filename(p))
+        .filter(|p| !p.is_empty() && p != "symbol");
+
+    match (&sym.kind, parent_prefix) {
+        (_, Some(parent)) => format!("{parent}__{safe_name}"),
+        (SymbolKind::Method, None) => {
+            let file_stem = Path::new(&sym.file_path)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            if !file_stem.is_empty() {
+                format!("{}__{safe_name}", sanitize_symbol_filename(file_stem))
+            } else {
+                safe_name
+            }
+        }
+        _ => safe_name,
     }
 }
 
@@ -80,6 +109,7 @@ impl EntityCompiler {
         }
 
         let mut written_count = 0;
+        let mut seen_paths: HashSet<PathBuf> = HashSet::new();
 
         for sym in symbols {
             // Filter: focus on key architectural symbols (functions, structs, traits, classes, interfaces, modules)
@@ -93,13 +123,22 @@ impl EntityCompiler {
                 .unwrap_or_else(|| sym.deterministic_id("wiki"));
 
             let lang_str = format!("{:?}", sym.lang).to_lowercase();
-            let safe_name = sanitize_symbol_filename(&sym.name);
+            let base_name = compute_entity_filename(sym);
             let target_dir = entities_dir.join(&lang_str);
             std::fs::create_dir_all(&target_dir).with_context(|| {
                 format!("Failed to create entity dir: {}", target_dir.display())
             })?;
 
-            let target_path = target_dir.join(format!("{safe_name}.md"));
+            let mut target_path = target_dir.join(format!("{base_name}.md"));
+            if seen_paths.contains(&target_path) {
+                let short_hash = if sym_id.len() >= 8 {
+                    &sym_id[..8]
+                } else {
+                    &sym_id
+                };
+                target_path = target_dir.join(format!("{base_name}_{short_hash}.md"));
+            }
+            seen_paths.insert(target_path.clone());
 
             let calls = outgoing_calls
                 .get(sym_id.as_str())
@@ -285,5 +324,123 @@ mod tests {
         assert!(parsed
             .wikilinks
             .contains(&"[[stable_get_rates]]".to_string()));
+    }
+
+    #[test]
+    fn test_compute_entity_filename_disambiguates_homonyms() {
+        let sym_method = Symbol {
+            id: None,
+            stable_id: Some("id1".to_string()),
+            name: "new".to_string(),
+            kind: SymbolKind::Method,
+            lang: Language::Rust,
+            file_path: "src/wiki/compiler.rs".to_string(),
+            start_line: 10,
+            end_line: 20,
+            start_col: 0,
+            end_col: 1,
+            signature: None,
+            parent: Some("EntityCompiler".to_string()),
+            complexity: None,
+            project_root: None,
+        };
+        assert_eq!(compute_entity_filename(&sym_method), "EntityCompiler__new");
+
+        let sym_method_no_parent = Symbol {
+            id: None,
+            stable_id: Some("id2".to_string()),
+            name: "default".to_string(),
+            kind: SymbolKind::Method,
+            lang: Language::Rust,
+            file_path: "src/wiki/storage.rs".to_string(),
+            start_line: 10,
+            end_line: 20,
+            start_col: 0,
+            end_col: 1,
+            signature: None,
+            parent: None,
+            complexity: None,
+            project_root: None,
+        };
+        assert_eq!(
+            compute_entity_filename(&sym_method_no_parent),
+            "storage__default"
+        );
+    }
+
+    #[test]
+    fn test_compile_prevents_homonym_collisions() {
+        let temp = TempDir::new().expect("tempdir");
+        let compiler = EntityCompiler::new(temp.path());
+
+        let sym_a = Symbol {
+            id: None,
+            stable_id: Some("stable_compiler_new".to_string()),
+            name: "new".to_string(),
+            kind: SymbolKind::Method,
+            lang: Language::Rust,
+            file_path: "src/wiki/compiler.rs".to_string(),
+            start_line: 10,
+            end_line: 20,
+            start_col: 0,
+            end_col: 1,
+            signature: None,
+            parent: Some("EntityCompiler".to_string()),
+            complexity: None,
+            project_root: None,
+        };
+
+        let sym_b = Symbol {
+            id: None,
+            stable_id: Some("stable_storage_new".to_string()),
+            name: "new".to_string(),
+            kind: SymbolKind::Method,
+            lang: Language::Rust,
+            file_path: "src/wiki/storage.rs".to_string(),
+            start_line: 10,
+            end_line: 20,
+            start_col: 0,
+            end_col: 1,
+            signature: None,
+            parent: Some("WikiStorageEngine".to_string()),
+            complexity: None,
+            project_root: None,
+        };
+
+        let sym_c_dup = Symbol {
+            id: None,
+            stable_id: Some("stable_dup_12345678".to_string()),
+            name: "new".to_string(),
+            kind: SymbolKind::Method,
+            lang: Language::Rust,
+            file_path: "src/other.rs".to_string(),
+            start_line: 30,
+            end_line: 40,
+            start_col: 0,
+            end_col: 1,
+            signature: None,
+            parent: Some("EntityCompiler".to_string()),
+            complexity: None,
+            project_root: None,
+        };
+
+        let stats = compiler
+            .compile(&[sym_a, sym_b, sym_c_dup], &[])
+            .expect("compile");
+
+        assert_eq!(stats.entities_written, 3);
+
+        let path_a = temp.path().join("entities/rust/EntityCompiler__new.md");
+        let path_b = temp.path().join("entities/rust/WikiStorageEngine__new.md");
+        let path_c = temp
+            .path()
+            .join("entities/rust/EntityCompiler__new_stable_d.md");
+
+        assert!(path_a.exists(), "EntityCompiler__new.md must exist");
+        assert!(path_b.exists(), "WikiStorageEngine__new.md must exist");
+        assert!(
+            path_c.exists(),
+            "Disambiguated duplicate with short hash must exist"
+        );
     }
 }

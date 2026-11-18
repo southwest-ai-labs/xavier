@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::wiki::parser::parse_markdown_content;
+use crate::wiki::storage::{WikiStorageEngine, WIKI_SQLITE_FILE};
 
 /// A broken wikilink report item.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,10 +51,59 @@ pub struct WikiLinter;
 impl WikiLinter {
     /// Audits a wiki directory for broken links, orphans, and drift against `CodeGraphDB`.
     pub fn lint_wiki(wiki_root: &Path, code_db: Option<&CodeGraphDB>) -> Result<LintReport> {
+        Self::lint_wiki_with_storage(wiki_root, code_db, None)
+    }
+
+    /// Audits a wiki directory with an optional explicit SQLite storage engine fallback.
+    ///
+    /// If `storage` is None, attempts to auto-detect `wiki.sqlite` in the wiki root
+    /// or its parent directories to validate wikilinks against indexed `wiki_nodes`.
+    pub fn lint_wiki_with_storage(
+        wiki_root: &Path,
+        code_db: Option<&CodeGraphDB>,
+        storage: Option<&WikiStorageEngine>,
+    ) -> Result<LintReport> {
         let mut report = LintReport::default();
 
         if !wiki_root.exists() {
             return Ok(report);
+        }
+
+        let mut sqlite_known_nodes = HashSet::new();
+
+        if let Some(store) = storage {
+            if let Ok(ids) = store.get_known_node_identifiers() {
+                sqlite_known_nodes.extend(ids);
+            }
+        } else {
+            let candidates = [
+                wiki_root.join(WIKI_SQLITE_FILE),
+                wiki_root.join("wiki.sqlite"),
+                wiki_root.join(".xavier").join(WIKI_SQLITE_FILE),
+                wiki_root
+                    .parent()
+                    .map(|p| p.join(WIKI_SQLITE_FILE))
+                    .unwrap_or_else(|| wiki_root.to_path_buf()),
+                wiki_root
+                    .parent()
+                    .map(|p| p.join("wiki.sqlite"))
+                    .unwrap_or_else(|| wiki_root.to_path_buf()),
+                wiki_root
+                    .parent()
+                    .map(|p| p.join(".xavier").join(WIKI_SQLITE_FILE))
+                    .unwrap_or_else(|| wiki_root.to_path_buf()),
+            ];
+
+            for cand in &candidates {
+                if cand.is_file() {
+                    if let Ok(store) = WikiStorageEngine::open(cand) {
+                        if let Ok(ids) = store.get_known_node_identifiers() {
+                            sqlite_known_nodes.extend(ids);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         let mut all_stems = HashSet::new();
@@ -86,18 +136,30 @@ impl WikiLinter {
         report.total_checked = note_files.len();
 
         // 2. Parse links and verify targets
+        let mut note_stable_ids: Vec<String> = Vec::with_capacity(note_files.len());
+
         for (path, rel, stem) in &note_files {
             if let Ok(content) = std::fs::read_to_string(path) {
                 let parsed = parse_markdown_content(&content);
 
+                let stable_id = parsed
+                    .frontmatter
+                    .get("stable_id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                note_stable_ids.push(stable_id);
+
                 for link in &parsed.wikilinks {
                     all_referenced_targets.insert(link.clone());
 
-                    // Check if target exists in stems or file paths
+                    // Check if target exists in stems or file paths or SQLite wiki_nodes table
                     let exists = all_stems.contains(link.as_str())
                         || all_stems.contains(&format!("{link}.md"))
                         || all_stems.contains(&format!("entities/{link}"))
-                        || all_stems.contains(&format!("concepts/{link}"));
+                        || all_stems.contains(&format!("concepts/{link}"))
+                        || sqlite_known_nodes.contains(link.as_str())
+                        || sqlite_known_nodes.contains(&format!("{link}.md"));
 
                     if !exists {
                         report.broken_links.push(BrokenLinkItem {
@@ -135,17 +197,24 @@ impl WikiLinter {
                 }
 
                 outgoing_map.push((rel.clone(), stem.clone(), parsed.wikilinks));
+            } else {
+                note_stable_ids.push(String::new());
             }
         }
 
         // 3. Identify orphan notes (excluding index.md and log.md)
-        for (_, rel, stem) in &note_files {
+        for (i, (_, rel, stem)) in note_files.iter().enumerate() {
             if rel == "index.md" || rel == "log.md" {
                 continue;
             }
 
+            let sid = note_stable_ids.get(i).map(|s| s.as_str()).unwrap_or("");
+
             let is_referenced = all_referenced_targets.contains(stem.as_str())
-                || all_referenced_targets.contains(rel.as_str());
+                || all_referenced_targets.contains(rel.as_str())
+                || (!sid.is_empty() && all_referenced_targets.contains(sid))
+                || sqlite_known_nodes.contains(stem.as_str())
+                || sqlite_known_nodes.contains(rel.as_str());
 
             if !is_referenced {
                 report.orphans.push(rel.clone());
@@ -191,5 +260,41 @@ mod tests {
         assert_eq!(report.broken_links[0].target, "MissingTarget");
 
         assert_eq!(report.orphans, vec!["Orphan.md".to_string()]);
+    }
+
+    #[test]
+    fn test_wiki_linter_sqlite_fallback_resolves_false_positives() {
+        let temp = TempDir::new().expect("tempdir");
+        let wiki_root = temp.path();
+
+        // Create a note that references a symbol by its stable_id: [[stable_calc_hash_1234]]
+        let note_a = "# Note A\n\nCalls [[stable_calc_hash_1234]].\n";
+        std::fs::write(wiki_root.join("NoteA.md"), note_a).unwrap();
+
+        // 1. Without SQLite storage, it's flagged as a broken link
+        let report_no_db = WikiLinter::lint_wiki(wiki_root, None).expect("lint");
+        assert_eq!(report_no_db.broken_links.len(), 1);
+        assert_eq!(report_no_db.broken_links[0].target, "stable_calc_hash_1234");
+
+        // 2. With SQLite storage containing the node, fallback resolves it cleanly
+        let storage = WikiStorageEngine::in_memory().expect("in-memory storage");
+        storage
+            .upsert_node(
+                "stable_calc_hash_1234",
+                "calculate_tax",
+                "Function",
+                "src/billing.rs",
+                "# Calculate Tax",
+                &[],
+            )
+            .expect("upsert");
+
+        let report_with_db =
+            WikiLinter::lint_wiki_with_storage(wiki_root, None, Some(&storage)).expect("lint");
+        assert_eq!(
+            report_with_db.broken_links.len(),
+            0,
+            "SQLite fallback must resolve false positive broken links"
+        );
     }
 }
