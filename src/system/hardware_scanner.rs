@@ -57,21 +57,21 @@ impl HardwareMetrics {
     /// Detect current host hardware metrics using sysinfo and cross-platform GPU probes.
     /// Infallible graceful fallback guarantees zero panics on virtualized or restricted container environments.
     pub fn detect_current() -> Result<Self> {
-        let mut sys = System::new();
-        sys.refresh_memory();
+        let (total_ram_bytes, available_ram_bytes) = match System::new() {
+            Ok(mut sys) => {
+                sys.refresh_memory();
+                (sys.total_memory(), sys.available_memory())
+            }
+            Err(_) => (0, 0),
+        };
 
         let cpu_cores = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
 
-        let total_ram_bytes = sys.total_memory();
-        let available_ram_bytes = sys.available_memory();
-
-        let disks = Disks::new_with_refreshed_list();
-        let disk_available_bytes = disks
-            .iter()
-            .next()
-            .map(|d| d.available_space())
+        let disk_available_bytes = Disks::new_with_refreshed_list()
+            .ok()
+            .and_then(|disks| disks.iter().next().map(|d| d.available_space()))
             .unwrap_or(0);
 
         let (has_gpu, gpu_vram_bytes) = Self::detect_gpu_graceful();

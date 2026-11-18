@@ -2,7 +2,7 @@
 # Xavier enrolment for Anthropic's OSS Scanner.
 # Build online here; the scanner audits the image with NO network.
 # Contract: checkout lives at /src (`COPY . /src`).
-FROM rust:1.94-bookworm
+FROM rust:1.95-bookworm
 ENV DEBIAN_FRONTEND=noninteractive \
     CARGO_TERM_COLOR=never \
     RUST_BACKTRACE=1

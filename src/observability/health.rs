@@ -401,9 +401,19 @@ impl HealthMonitor {
 
     /// Run checks.
     pub async fn run_checks(&self) -> HealthStatus {
-        let mut sys_info = sysinfo::System::new_all();
-
-        let system = self.check_system(&mut sys_info).await;
+        let system = match sysinfo::System::new_all() {
+            Ok(mut sys_info) => self.check_system(&mut sys_info).await,
+            Err(err) => {
+                tracing::warn!("Failed to initialize sysinfo System: {err}");
+                SystemHealth {
+                    cpu_usage: 0.0,
+                    ram_usage_percent: 0.0,
+                    disk_usage_percent: 0.0,
+                    uptime_secs: sysinfo::System::uptime().unwrap_or(0),
+                    status: HealthLevel::Degraded,
+                }
+            }
+        };
         let database = self.check_database().await;
         let embedding = self.check_embedding().await;
         let llm = self.check_llm().await;
@@ -547,16 +557,17 @@ impl HealthMonitor {
         };
 
         let mut disk_usage_percent = 0.0;
-        let disks = sysinfo::Disks::new_with_refreshed_list();
-        if let Some(main_disk) = disks.iter().next() {
-            let total = main_disk.total_space();
-            let available = main_disk.available_space();
-            if total > 0 {
-                disk_usage_percent = ((total - available) as f32 / total as f32) * 100.0;
+        if let Ok(disks) = sysinfo::Disks::new_with_refreshed_list() {
+            if let Some(main_disk) = disks.iter().next() {
+                let total = main_disk.total_space();
+                let available = main_disk.available_space();
+                if total > 0 {
+                    disk_usage_percent = ((total - available) as f32 / total as f32) * 100.0;
+                }
             }
         }
 
-        let uptime_secs = sysinfo::System::uptime();
+        let uptime_secs = sysinfo::System::uptime().unwrap_or(0);
 
         // Thresholds shared with `compute_degraded_reasons`: if they diverged, a
         // reason could contradict the aggregate status that produced it.

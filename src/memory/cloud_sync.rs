@@ -154,7 +154,7 @@ impl CloudMemorySync {
     /// Create a new `CloudMemorySync`.
     pub async fn new(store: Arc<dyn MemoryStore>, config: CloudSyncConfig) -> Result<Self> {
         let node_id = config.node_id.clone().unwrap_or_else(|| {
-            sysinfo::System::host_name().unwrap_or_else(|| "unknown".to_string())
+            sysinfo::System::host_name().unwrap_or_else(|_| "unknown".to_string())
         });
 
         let data_dir = PathBuf::from(&config.data_dir);

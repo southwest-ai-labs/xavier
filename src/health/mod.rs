@@ -1446,32 +1446,41 @@ pub fn push_embedding_alert_if_unhealthy(embedding: &EmbeddingHealth) -> bool {
 // ═══════════════════════════════════════════════
 
 fn gather_system_metrics() -> (f64, u64, u64, f64, f64) {
-    let mut sys = sysinfo::System::new();
-    sys.refresh_cpu_usage(); // Must refresh first; first call returns 0.0
-    sys.refresh_memory();
-    let mem_used = sys.used_memory() / (1024 * 1024); // MB
-    let mem_total = sys.total_memory() / (1024 * 1024);
+    let (cpu_usage_pct, mem_used, mem_total) = match sysinfo::System::new() {
+        Ok(mut sys) => {
+            sys.refresh_cpu_usage(); // Must refresh first; first call returns 0.0
+            sys.refresh_memory();
+            let mem_used = sys.used_memory() / (1024 * 1024); // MB
+            let mem_total = sys.total_memory() / (1024 * 1024);
 
-    // CPU: average across all cores, clamped to [0, 100]
-    let cpus = sys.cpus();
-    let cpu_usage = if !cpus.is_empty() {
-        let sum: f32 = cpus.iter().map(|c| c.cpu_usage()).sum();
-        (sum / cpus.len() as f32) as f64
-    } else {
-        sys.global_cpu_usage() as f64
+            // CPU: average across all cores, clamped to [0, 100]
+            let cpus = sys.cpus();
+            let cpu_usage = if !cpus.is_empty() {
+                let sum: f32 = cpus.iter().map(|c| c.usage()).sum();
+                (sum / cpus.len() as f32) as f64
+            } else {
+                sys.global_cpu_usage() as f64
+            };
+            (cpu_usage.clamp(0.0, 100.0), mem_used, mem_total)
+        }
+        Err(_) => (0.0, 0, 0),
     };
-    let cpu_usage_pct = cpu_usage.clamp(0.0, 100.0);
 
     // Disk
-    let disks = sysinfo::Disks::new_with_refreshed_list();
-    let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
-    let available_bytes: u64 = disks.iter().map(|d| d.available_space()).sum();
-    let disk_used = if total_bytes > 0 {
-        (total_bytes - available_bytes) as f64 / (1024.0 * 1024.0 * 1024.0)
-    } else {
-        0.0
+    let (disk_used, disk_total) = match sysinfo::Disks::new_with_refreshed_list() {
+        Ok(disks) => {
+            let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
+            let available_bytes: u64 = disks.iter().map(|d| d.available_space()).sum();
+            let disk_used = if total_bytes > 0 {
+                (total_bytes - available_bytes) as f64 / (1024.0 * 1024.0 * 1024.0)
+            } else {
+                0.0
+            };
+            let disk_total = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+            (disk_used, disk_total)
+        }
+        Err(_) => (0.0, 0.0),
     };
-    let disk_total = total_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
 
     (cpu_usage_pct, mem_used, mem_total, disk_used, disk_total)
 }

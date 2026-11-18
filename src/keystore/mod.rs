@@ -312,7 +312,7 @@ impl MasterKeyManager {
 
     fn host_name() -> String {
         use sysinfo::System;
-        System::host_name().unwrap_or_else(|| "unknown-host".to_string())
+        System::host_name().unwrap_or_else(|_| "unknown-host".to_string())
     }
 
     /// Current wrapping-key derivation: domain-separated host name, stable machine

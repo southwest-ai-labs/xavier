@@ -37,7 +37,7 @@ irm https://raw.githubusercontent.com/southwest-ai-labs/xavier/main/scripts/inst
 
 ### 2. Build from Source
 
-Ensure you have Rust (1.94+) installed:
+Ensure you have Rust (1.95+) installed:
 
 ```bash
 # Clone repository
@@ -517,9 +517,9 @@ PRAGMA foreign_keys = ON;
 
 ## 🦀 Minimum Supported Rust Version (MSRV)
 
-Xavier guarantees compilation on Rust **1.94** or higher.
+Xavier guarantees compilation on Rust **1.95** or higher.
 
-- **Current Pin**: Defined via `rust-version = "1.94"` in `Cargo.toml`.
+- **Current Pin**: Defined via `rust-version = "1.95"` in `Cargo.toml`.
 - **Bump Policy**: MSRV bumps follow a `stable-minus-2` policy (never exceeding `stable - 2` releases at the time of bump) when required by upstream dependency updates. Any MSRV bump is explicitly announced in a patch release.
 - **Scope**: Applies to standard crate library and binary builds. Development tooling, UI runtimes, or optional feature sidecars may require newer toolchain versions.
 

@@ -51,7 +51,7 @@ pub struct SystemUptimeProbe;
 
 impl UptimeProbe for SystemUptimeProbe {
     fn get_node_uptime_secs(&self) -> u64 {
-        sysinfo::System::uptime()
+        sysinfo::System::uptime().unwrap_or(0)
     }
 }
 
