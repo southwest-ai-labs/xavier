@@ -107,10 +107,13 @@ function AppContent() {
 
 	const [activeTopTab, setActiveTopTab] = useState<"chat" | "purerag" | "brain2">(() => {
 		if (typeof window !== "undefined") {
+			const params = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
+			const tabParam = params.get("tab");
+			if (tabParam === "brain2" || tabParam === "purerag" || tabParam === "chat") return tabParam;
 			const saved = localStorage.getItem("xavier_active_top_tab");
 			if (saved === "chat" || saved === "purerag" || saved === "brain2") return saved;
 		}
-		return "brain2";
+		return "chat";
 	});
 
 	const handleSelectTopTab = useCallback((tab: "chat" | "purerag" | "brain2") => {
