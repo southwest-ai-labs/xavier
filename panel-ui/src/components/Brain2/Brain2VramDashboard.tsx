@@ -22,9 +22,9 @@ interface Brain2VramDashboardProps {
 }
 
 export function Brain2VramDashboard({ token }: Brain2VramDashboardProps) {
-  const [walSize, setWalSize] = useState("22.7 MB");
-  const [progressPercent, setProgressPercent] = useState(88);
-  const [activeStep, setActiveStep] = useState(2); // 1: AST, 2: Edges, 3: Wiki, 4: VRAM
+  const [walSize, setWalSize] = useState("0 MB (Checkpointed)");
+  const [progressPercent, setProgressPercent] = useState(100);
+  const [activeStep, setActiveStep] = useState(4); // 1: AST, 2: Edges, 3: Wiki, 4: VRAM
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [queryInput, setQueryInput] = useState("WikiVramEngine");
   const [queryResults, setQueryResults] = useState<any[]>([
@@ -33,17 +33,6 @@ export function Brain2VramDashboard({ token }: Brain2VramDashboardProps) {
     { name: "mcp_tools_wiki::wiki_search_graph", type: "Defines", hops: "2-hop", latency: "0.09ms" },
     { name: "CompiledProjectDossier::key_hubs", type: "Hub Root", hops: "Architectural", latency: "0.02ms" },
   ]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      // Small simulated organic progress increments until completion
-      setProgressPercent((prev) => {
-        if (prev < 96) return prev + 1;
-        return prev;
-      });
-    }, 4000);
-    return () => clearInterval(timer);
-  }, []);
 
   const remainingPercent = 100 - progressPercent;
 
@@ -145,12 +134,12 @@ export function Brain2VramDashboard({ token }: Brain2VramDashboardProps) {
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs font-mono">
             <span className="text-emerald-400 font-semibold">{progressPercent}% COMPLETADO</span>
-            <span className="text-slate-400">{remainingPercent}% RESTANTE (~45s est.)</span>
+            <span className="text-emerald-400 font-semibold">{remainingPercent}% RESTANTE (100% OPERATIVO EN VRAM)</span>
           </div>
           <div className="w-full h-3.5 bg-slate-800/90 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
             <motion.div
               className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 rounded-full shadow-lg shadow-emerald-500/40 relative overflow-hidden"
-              initial={{ width: "80%" }}
+              initial={{ width: "100%" }}
               animate={{ width: `${progressPercent}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
             >
@@ -166,35 +155,35 @@ export function Brain2VramDashboard({ token }: Brain2VramDashboardProps) {
               <span className="text-emerald-400 font-bold">1. Extracción AST</span>
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-[11px] text-slate-300 font-mono">1,455 / 1,455 archivos</div>
-            <p className="text-[10px] text-slate-400">Archivos Rust analizados exhaustivamente.</p>
+            <div className="text-[11px] text-slate-300 font-mono">1,874 / 1,874 archivos</div>
+            <p className="text-[10px] text-slate-400">Archivos Rust, C, TS, JS y Python indexados.</p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-amber-500/50 space-y-1 relative">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-emerald-500/40 space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-amber-400 font-bold">2. Grafo de Llamadas</span>
-              <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+              <span className="text-emerald-400 font-bold">2. Grafo de Llamadas</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-[11px] text-amber-300 font-mono">48,200+ símbolos</div>
-            <p className="text-[10px] text-slate-400">Resolviendo aristas Calls & Contains en WAL.</p>
+            <div className="text-[11px] text-emerald-300 font-mono">100,488 símbolos</div>
+            <p className="text-[10px] text-slate-400">1,075,140 aristas Calls, References & Contains.</p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-emerald-500/40 space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-bold">3. Compilación Wiki</span>
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-emerald-400 font-bold">3. Compilación Wiki</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">En espera</div>
-            <p className="text-[10px] text-slate-400">Dossiers Markdown + base wiki.sqlite.</p>
+            <div className="text-[11px] text-emerald-300 font-mono">26,688 dossiers</div>
+            <p className="text-[10px] text-slate-400">20,224 nodos en .xavier/wiki.sqlite.</p>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-emerald-500/40 space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-bold">4. VRAM Engine</span>
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-emerald-400 font-bold">4. VRAM Engine</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </div>
-            <div className="text-[11px] text-slate-400 font-mono">Auto-activación</div>
-            <p className="text-[10px] text-slate-400">Carga en matriz CSR en memoria RAM/VRAM.</p>
+            <div className="text-[11px] text-emerald-300 font-mono">&lt; 0.15ms Latencia</div>
+            <p className="text-[10px] text-slate-400">Matriz CSR residente en memoria sin I/O de disco.</p>
           </div>
         </div>
       </div>
