@@ -283,6 +283,26 @@ impl WikiStorageEngine {
         Ok(targets)
     }
 
+    /// Returns all directed edge pairs `(source_id, target_id)` stored in the wiki.
+    pub fn get_all_edges(&self) -> Result<Vec<(String, String)>> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {e}"))?;
+
+        let mut stmt = conn.prepare(
+            "SELECT source_id, target_id FROM wiki_edges ORDER BY source_id ASC, target_id ASC",
+        )?;
+
+        let edges = stmt
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(edges)
+    }
+
     /// Returns incoming backlinks to `target_id`.
     pub fn get_backlinks(&self, target_id: &str) -> Result<Vec<String>> {
         let conn = self

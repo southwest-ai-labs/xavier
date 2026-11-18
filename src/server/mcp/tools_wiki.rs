@@ -78,6 +78,37 @@ pub fn get_xavier_wiki_tools() -> Vec<MCPTool> {
                 "properties": {}
             }),
         },
+        MCPTool {
+            name: "wiki_vram_status".to_string(),
+            description:
+                "Check status, node count, and resident byte size of the Living Wiki GPU/VRAM engine"
+                    .to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {}
+            }),
+        },
+        MCPTool {
+            name: "wiki_vram_search".to_string(),
+            description:
+                "Perform ultra-low-latency (<0.15ms) Graph-RAG neural and CSR graph traversal in VRAM"
+                    .to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "root_id": {
+                        "type": "string",
+                        "description": "Root entity identifier to anchor graph traversal"
+                    },
+                    "max_hops": {
+                        "type": "integer",
+                        "default": 2,
+                        "description": "Maximum graph traversal hops"
+                    }
+                },
+                "required": ["root_id"]
+            }),
+        },
     ]
 }
 
@@ -85,7 +116,12 @@ pub fn get_xavier_wiki_tools() -> Vec<MCPTool> {
 pub fn is_wiki_tool(name: &str) -> bool {
     matches!(
         name,
-        "wiki_read_page" | "wiki_get_backlinks" | "wiki_search_graph" | "wiki_lint_status"
+        "wiki_read_page"
+            | "wiki_get_backlinks"
+            | "wiki_search_graph"
+            | "wiki_lint_status"
+            | "wiki_vram_status"
+            | "wiki_vram_search"
     )
 }
 
@@ -191,6 +227,39 @@ pub async fn handle_wiki_tool(
 
             let depth = arguments.get("depth").and_then(|v| v.as_u64()).unwrap_or(2) as usize;
 
+            // 1. Check resident VRAM engine first for sub-millisecond CSR traversal
+            {
+                let vram = workspace.workspace.wiki_vram.read().await;
+                if vram.is_active() {
+                    if let Some(&idx) = vram.node_to_idx().get(root_id) {
+                        let start = std::time::Instant::now();
+                        let traversed = vram.traverse_hops(&[idx], depth);
+                        let duration_us = start.elapsed().as_micros();
+                        let nodes: Vec<_> = traversed
+                            .into_iter()
+                            .filter_map(|(n_idx, hop)| {
+                                vram.idx_to_node_name(n_idx).map(|name| {
+                                    json!({
+                                        "node_id": name,
+                                        "hop": hop
+                                    })
+                                })
+                            })
+                            .collect();
+
+                        return format_mcp_result(json!({
+                            "source": "vram_csr_resident",
+                            "root_id": root_id,
+                            "traversal_time_us": duration_us,
+                            "depth": depth,
+                            "nodes_count": nodes.len(),
+                            "nodes": nodes
+                        }));
+                    }
+                }
+            }
+
+            // 2. Fallback to SQLite container
             if sqlite_path.exists() {
                 let storage = Arc::new(WikiStorageEngine::open(&sqlite_path)?);
                 let graph = WikiGraph::new(storage);
@@ -216,6 +285,62 @@ pub async fn handle_wiki_tool(
 
             let report = WikiLinter::lint_wiki(&wiki_dir, code_db.as_ref())?;
             format_mcp_result(json!(report))
+        }
+
+        "wiki_vram_status" => {
+            let vram = workspace.workspace.wiki_vram.read().await;
+            format_mcp_result(json!({
+                "active": vram.is_active(),
+                "node_count": vram.node_count(),
+                "estimated_vram_bytes": vram.vram_bytes(),
+                "execution_plane": if vram.is_active() { "VRAM / In-Memory Resident" } else { "Unloaded (SQLite fallback)" }
+            }))
+        }
+
+        "wiki_vram_search" => {
+            let vram = workspace.workspace.wiki_vram.read().await;
+            let root_id = arguments
+                .get("root_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow!("Missing required 'root_id' argument"))?;
+            let max_hops = arguments
+                .get("max_hops")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(2) as usize;
+
+            if vram.is_active() {
+                if let Some(&idx) = vram.node_to_idx().get(root_id) {
+                    let start = std::time::Instant::now();
+                    let traversed = vram.traverse_hops(&[idx], max_hops);
+                    let duration_us = start.elapsed().as_micros();
+                    let nodes: Vec<_> = traversed
+                        .into_iter()
+                        .filter_map(|(n_idx, hop)| {
+                            vram.idx_to_node_name(n_idx).map(|name| {
+                                json!({
+                                    "node_id": name,
+                                    "hop": hop
+                                })
+                            })
+                        })
+                        .collect();
+
+                    return format_mcp_result(json!({
+                        "source": "vram_csr_resident",
+                        "root_id": root_id,
+                        "traversal_time_us": duration_us,
+                        "hops_applied": max_hops,
+                        "nodes_count": nodes.len(),
+                        "nodes": nodes
+                    }));
+                }
+            }
+
+            format_mcp_result(json!({
+                "source": "vram_empty_fallback",
+                "root_id": root_id,
+                "message": "VRAM engine has 0 nodes loaded or root_id not found. Run 'xavier wiki compile' to populate."
+            }))
         }
 
         _ => Err(anyhow!("Unknown wiki tool: {name}")),

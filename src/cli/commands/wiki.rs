@@ -193,6 +193,18 @@ async fn run_status(target_path: Option<PathBuf>, json_output: bool) -> Result<(
         0
     };
 
+    let (vram_status_str, vram_bytes) = if has_sqlite {
+        let mut vram = crate::wiki::WikiVramEngine::new(768);
+        if let Ok(storage) = WikiStorageEngine::open(&sqlite_path) {
+            let _ = vram.load_from_storage(&storage);
+            ("Ready (Resident)", vram.vram_bytes())
+        } else {
+            ("Offline", 0)
+        }
+    } else {
+        ("Offline", 0)
+    };
+
     if json_output {
         let status_json = serde_json::json!({
             "wiki_dir": wiki_dir.display().to_string(),
@@ -200,6 +212,10 @@ async fn run_status(target_path: Option<PathBuf>, json_output: bool) -> Result<(
             "has_sqlite": has_sqlite,
             "has_markdown_vault": has_md_dir,
             "total_nodes": node_count,
+            "vram_engine": {
+                "status": vram_status_str,
+                "resident_bytes": vram_bytes,
+            }
         });
         println!("{}", serde_json::to_string_pretty(&status_json)?);
     } else {
@@ -221,6 +237,15 @@ async fn run_status(target_path: Option<PathBuf>, json_output: bool) -> Result<(
             }
         );
         println!("   Total Living Nodes: {}", node_count.to_string().green());
+        println!(
+            "   VRAM Resident Engine: {} ({} KB resident)",
+            if vram_status_str == "Ready (Resident)" {
+                vram_status_str.green()
+            } else {
+                vram_status_str.yellow()
+            },
+            (vram_bytes / 1024).to_string().cyan()
+        );
     }
 
     Ok(())

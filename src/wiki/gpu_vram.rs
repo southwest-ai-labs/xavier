@@ -262,6 +262,60 @@ impl WikiVramEngine {
         Ok(final_results)
     }
 
+    /// Loads or refreshes the in-memory/VRAM resident graph from a `WikiStorageEngine`.
+    pub fn load_from_storage(&mut self, storage: &crate::wiki::WikiStorageEngine) -> Result<usize> {
+        let nodes = storage.list_nodes()?;
+        let edges = storage.get_all_edges()?;
+
+        self.node_to_idx.clear();
+        self.idx_to_node.clear();
+        self.embeddings.clear();
+        self.node_count = 0;
+
+        for node in &nodes {
+            self.register_node(&node.stable_id, None)?;
+        }
+
+        let edge_refs: Vec<(&str, &str)> = edges
+            .iter()
+            .map(|(s, t)| (s.as_str(), t.as_str()))
+            .collect();
+        self.set_edges(&edge_refs);
+
+        info!(
+            nodes = self.node_count,
+            edges = edges.len(),
+            vram_bytes = self.vram_bytes(),
+            "Living wiki VRAM/in-memory resident engine loaded"
+        );
+
+        Ok(self.node_count)
+    }
+
+    /// Calculates estimated resident VRAM/memory footprint in bytes.
+    pub fn vram_bytes(&self) -> usize {
+        let embeddings_bytes = self.embeddings.len() * std::mem::size_of::<f32>();
+        let csr_bytes = (self.csr.row_offsets.len() + self.csr.column_indices.len()) * 4
+            + self.csr.edge_weights.len() * 4;
+        let index_bytes = self.idx_to_node.iter().map(|s| s.len() + 32).sum::<usize>();
+        embeddings_bytes + csr_bytes + index_bytes
+    }
+
+    /// Checks if the VRAM engine has active resident data.
+    pub fn is_active(&self) -> bool {
+        self.node_count > 0
+    }
+
+    /// Returns reference to node to index map.
+    pub fn node_to_idx(&self) -> &HashMap<String, u32> {
+        &self.node_to_idx
+    }
+
+    /// Returns node identifier for given index.
+    pub fn idx_to_node_name(&self, idx: u32) -> Option<&str> {
+        self.idx_to_node.get(idx as usize).map(|s| s.as_str())
+    }
+
     /// Total count of resident nodes.
     pub fn node_count(&self) -> usize {
         self.node_count
@@ -323,5 +377,42 @@ mod tests {
         assert!(!rag_results.is_empty());
         assert_eq!(rag_results[0].0, "AuthService");
         assert_eq!(rag_results[0].2, 0); // Hop 0
+    }
+
+    #[test]
+    fn test_vram_load_from_storage() {
+        let storage = crate::wiki::WikiStorageEngine::in_memory().unwrap();
+        storage
+            .upsert_node(
+                "RouterNode",
+                "Router Node",
+                "concept",
+                "src/router.rs",
+                "# Router",
+                &["HandlerNode"],
+            )
+            .unwrap();
+        storage
+            .upsert_node(
+                "HandlerNode",
+                "Handler Node",
+                "entity",
+                "src/handler.rs",
+                "# Handler",
+                &[],
+            )
+            .unwrap();
+
+        let mut vram = WikiVramEngine::new(4);
+        let count = vram.load_from_storage(&storage).unwrap();
+
+        assert_eq!(count, 2);
+        assert!(vram.is_active());
+        assert!(vram.vram_bytes() > 0);
+
+        let router_idx = *vram.node_to_idx().get("RouterNode").unwrap();
+        let traversed = vram.traverse_hops(&[router_idx], 1);
+        assert_eq!(traversed.len(), 2);
+        assert_eq!(vram.idx_to_node_name(router_idx), Some("RouterNode"));
     }
 }

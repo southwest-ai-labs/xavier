@@ -137,7 +137,7 @@ export function getGenesisEndpoint(): string {
   if (typeof window !== "undefined" && window.location.hostname.includes("swal.network")) {
     return ""; // relativo a través del proxy Pages Functions
   }
-  return "https://xaviercloud.swal.network";
+  return "https://xavier-cloud.swal.network";
 }
 
 /**
@@ -208,7 +208,7 @@ export async function performNodeLogin(): Promise<NodeSession> {
     nodeId: result.node_id,
     token: result.token,
     karma: result.karma,
-    genesisNode: result.genesis_node || "xaviercloud.swal.network",
+    genesisNode: result.genesis_node || "xavier-cloud.swal.network",
     genesisStatus: result.genesis_status || "connected",
     connectedAt: Date.now(),
   };

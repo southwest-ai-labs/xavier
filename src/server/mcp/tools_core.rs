@@ -696,6 +696,26 @@ pub async fn handle_core_tool(
             let mut sources = Vec::<MCPSearchResult>::new();
             let mut content_parts = Vec::<String>::new();
 
+            // Inject compiled Brain 2 Living Knowledge Dossier on first page if wiki exists
+            let wiki_dir = std::path::PathBuf::from(&workspace.workspace_id)
+                .join(".xavier")
+                .join("wiki");
+            if page == 1 && wiki_dir.exists() {
+                let dossier = crate::context::dossier::ProjectDossierBuilder::build(
+                    project_id,
+                    Some(&wiki_dir),
+                    &[],
+                );
+                let dossier_md = dossier.to_markdown();
+                if !dossier_md.trim().is_empty() {
+                    let d_len = dossier_md.chars().count();
+                    if total_chars + d_len < max_chars {
+                        total_chars += d_len;
+                        content_parts.push(dossier_md);
+                    }
+                }
+            }
+
             for record in &records {
                 let entry = format!(
                     "Id: {}\nPath: {}\nRevision: {}\nContent: {}",
