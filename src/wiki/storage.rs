@@ -4,6 +4,7 @@
 //! `.xavier/wiki.sqlite`, enabling atomic multi-file updates, sub-millisecond lookups,
 //! and bidirectional export/import with Markdown directory vaults.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -263,6 +264,38 @@ impl WikiStorageEngine {
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
         Ok(nodes)
+    }
+
+    /// Returns all known node identifiers, titles, and file stems from `wiki_nodes`
+    /// for fast in-memory validation of wikilinks and integrity checking.
+    pub fn get_known_node_identifiers(&self) -> Result<HashSet<String>> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {e}"))?;
+
+        let mut stmt = conn.prepare("SELECT stable_id, title, file_path FROM wiki_nodes")?;
+        let mut set = HashSet::new();
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let stable_id: String = row.get(0)?;
+            let title: String = row.get(1)?;
+            let file_path: String = row.get(2)?;
+
+            if !stable_id.is_empty() {
+                set.insert(stable_id);
+            }
+            if !title.is_empty() {
+                set.insert(title);
+            }
+            if !file_path.is_empty() {
+                set.insert(file_path.clone());
+                if let Some(stem) = Path::new(&file_path).file_stem().and_then(|s| s.to_str()) {
+                    set.insert(stem.to_string());
+                }
+            }
+        }
+        Ok(set)
     }
 
     /// Returns outgoing links from `source_id`.
