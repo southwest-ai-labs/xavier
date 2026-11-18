@@ -26,7 +26,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             binary_name: xavier
             archive_format: tar.gz
-          - os: macos-14
+          - os: macos-latest
             target: aarch64-apple-darwin
             binary_name: xavier
             archive_format: tar.gz
