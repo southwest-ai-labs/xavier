@@ -3,8 +3,8 @@
 > Some features are experimental or beta — see [Experimental and beta features](#-experimental-and-beta-features).
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](https://www.gnu.org/licenses/agpl-3.0.html)
-[![Version](https://img.shields.io/badge/version-0.2.20-brightgreen.svg)](https://github.com/iberi22/xavier)
-[![CI Build Status](https://github.com/iberi22/xavier/actions/workflows/ci.yml/badge.svg)](https://github.com/iberi22/xavier/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-0.2.21-brightgreen.svg)](https://github.com/southwest-ai-labs/xavier)
+[![CI Build Status](https://github.com/southwest-ai-labs/xavier/actions/workflows/ci.yml/badge.svg)](https://github.com/southwest-ai-labs/xavier/actions/workflows/ci.yml)
 [![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
 
 Xavier is a **high-performance, Rust-based vector memory runtime for AI agents** with native HTTP REST, CLI, and Model Context Protocol (MCP) entry points. It manages vector embeddings, hierarchical context graphs, and semantic relationships using a robust SQLite-backed store (`sqlite-vec`), granting agents sub-millisecond contextual recall without external service dependencies.
@@ -13,13 +13,35 @@ Xavier is a **high-performance, Rust-based vector memory runtime for AI agents**
 
 ## 🚀 Quick Start
 
-### 1. Build & Installation
+### 1. Automated Installation (Recommended)
 
-Ensure you have Rust (1.94+) installed.
+Install Xavier in a single command for your platform:
+
+**Linux / macOS (One-liner):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/southwest-ai-labs/xavier/main/packaging/linux/install.sh | sh
+```
+
+**Windows 11 / 10 (PowerShell One-liner):**
+```powershell
+irm https://raw.githubusercontent.com/southwest-ai-labs/xavier/main/scripts/install.ps1 | iex
+```
+
+**Pre-built Graphical & Enterprise Installers:**
+- 🪟 **Windows GUI (Desktop App)**: [XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/latest/download/XavierSetup.exe) (with Start Menu & Desktop shortcuts)
+- 🏢 **Windows Enterprise (MSI)**: [XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/latest/download/XavierInstaller.msi) (Silent / Machine-wide)
+- 🐧 **Linux AppImage & Packages**: [Latest GitHub Releases](https://github.com/southwest-ai-labs/xavier/releases/latest) (`.AppImage`, `.deb`, `.rpm`, headless tarball)
+- 🍎 **macOS (Apple Silicon)**: [Latest GitHub Releases](https://github.com/southwest-ai-labs/xavier/releases/latest) (`xavier-*-aarch64-apple-darwin.tar.gz`)
+
+---
+
+### 2. Build from Source
+
+Ensure you have Rust (1.94+) installed:
 
 ```bash
 # Clone repository
-git clone https://github.com/iberi22/xavier.git
+git clone https://github.com/southwest-ai-labs/xavier.git
 cd xavier
 
 # Build release binary
@@ -31,7 +53,7 @@ cargo install --path . --locked
 
 For platform-specific installation options (such as Windows Scheduled Tasks or Linux systemd setup), see [Installer Guides](docs/guides/WINDOWS_INSTALL.md).
 
-### 2. Environment Setup
+### 3. Environment Setup
 
 Configure master credentials and target workspace path:
 
@@ -40,7 +62,7 @@ export XAVIER_TOKEN=your-secure-token
 export XAVIER_WORKSPACE_DIR=.
 ```
 
-### 3. Launching Services
+### 4. Launching Services
 
 Xavier provides unified daemons for HTTP REST and MCP interfaces:
 
@@ -55,11 +77,57 @@ xavier http --mcp-port 0
 xavier mcp
 ```
 
-### 4. Basic CLI Usage
+### 5. Basic CLI Usage
 
 ```bash
 # Add a memory fragment
 xavier add "Architecture decision: Use SQLite-vec for local vector storage" "ADR-001" --kind decision
+```
+
+---
+
+## 🤖 Ready-to-Use Prompt for Coding Agents
+
+Give this prompt to your AI coding assistant (**Claude Code**, **Cursor**, **Antigravity**, **Jules**, or **Codex**) to immediately connect it to Xavier, leverage Brain 2 Living Knowledge Graph-RAG, and compress terminal outputs via the RTK kernel (saving 90%+ tokens):
+
+> **Copy-paste into your agent's chat, `.cursorrules`, or `CLAUDE.md`:**
+
+```text
+You have access to Xavier, the high-performance Rust vector memory and knowledge graph runtime.
+Your primary goals when working in this codebase are to minimize LLM token consumption (saving up to 90%+ tokens) and maintain continuous architectural alignment.
+
+1. CONTEXT & MEMORY RETRIEVAL:
+   - Before implementing complex features or refactors, query Xavier for existing context, architectural decisions, and symbol references:
+     • MCP tools: `mem_search`, `memory_context`, `codegraph_explore`, `trace_path`
+     • CLI: `xavier search "<query>" -n 5` or `xavier context "<topic>"`
+   - Always persist important architectural decisions, bug root-causes, and completed milestone outcomes:
+     • MCP tools: `memory_save`, `save_fragment`
+     • CLI: `xavier add "<content>" "<tag>" --kind decision`
+
+2. TOKEN-EFFICIENT TERMINAL EXECUTION (RTK Kernel):
+   - When running cargo, git, or verbose commands, execute through the Xavier RTK proxy to compress CLI outputs by 60–99%:
+     • MCP tool: `xavier_run_command`
+     • CLI: `xavier exec "cargo test -p code-graph --lib"`
+     • CLI: `xavier exec "git diff"`
+
+3. BRAIN 2 GRAPH-RAG & WIKI INTELLIGENCE:
+   - Use Brain 2 VRAM-resident CSR graph for sub-millisecond symbol and call hierarchy traversal (14.4µs hop latency, 2.52 MB footprint).
+   - Access the Living Knowledge Engine via CLI (`xavier wiki`) or web panel (`http://127.0.0.1:8006/?tab=brain2`).
+
+4. MCP CONFIGURATION:
+   Configure Xavier in your agent's MCP settings:
+   {
+     "mcpServers": {
+       "xavier": {
+         "command": "xavier",
+         "args": ["mcp"],
+         "env": {
+           "XAVIER_TOKEN": "your-token-here",
+           "XAVIER_WORKSPACE_DIR": "."
+         }
+       }
+     }
+   }
 ```
 
 ---
@@ -104,35 +172,35 @@ swal-preflight check --cwd .
 
 ## 📦 Downloads
 
-Latest release: **[v0.2.19](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.19)** — built via `.github/workflows/release.yml` and `.github/workflows/windows-installers.yml`.
+Latest release: **[v0.2.21](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.21)** — built via `.github/workflows/release.yml` and `.github/workflows/windows-installers.yml`.
 
 ### Windows Installers & Packages
 | Type | Artifact | Description |
 |---|---|---|
-| **Installer (EXE)** | [XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierSetup.exe) | Graphical Inno Setup installer with Start Menu shortcuts and PATH setup |
-| **Enterprise (MSI)** | [XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/XavierInstaller.msi) | WiX machine-wide installer for unattended/enterprise deployment |
-| **Portable (ZIP)** | [xavier-v0.2.19-x86_64-pc-windows-msvc.zip](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-x86_64-pc-windows-msvc.zip) | Standalone CLI binary (`xavier.exe`) |
+| **Installer (EXE)** | [XavierSetup.exe](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/XavierSetup.exe) | Graphical Inno Setup installer with Start Menu shortcuts and PATH setup |
+| **Enterprise (MSI)** | [XavierInstaller.msi](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/XavierInstaller.msi) | WiX machine-wide installer for unattended/enterprise deployment |
+| **Portable (ZIP)** | [xavier-v0.2.21-x86_64-pc-windows-msvc.zip](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-v0.2.21-x86_64-pc-windows-msvc.zip) | Standalone CLI binary (`xavier.exe`) |
 
 ### Linux & macOS Packages
 | OS | Arch | Artifact |
 |---|---|---|
-| Linux (Desktop) | x86_64 | [Xavier_0.2.19_amd64.AppImage](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.AppImage) / [.deb](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/Xavier_0.2.19_amd64.deb) |
-| Linux (Server) | x86_64 | [xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-v0.2.19-x86_64-unknown-linux-gnu.tar.gz) / [.rpm](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-server-0.2.19-1.x86_64.rpm) |
-| macOS | aarch64 | [xavier-v0.2.19-aarch64-apple-darwin.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.19/xavier-v0.2.19-aarch64-apple-darwin.tar.gz) |
+| Linux (Desktop) | x86_64 | [Xavier_0.2.21_amd64.AppImage](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/Xavier_0.2.21_amd64.AppImage) / [.deb](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/Xavier_0.2.21_amd64.deb) |
+| Linux (Server) | x86_64 | [xavier-server-v0.2.21-x86_64-unknown-linux-gnu.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-server-v0.2.21-x86_64-unknown-linux-gnu.tar.gz) / [.rpm](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-server-0.2.21-1.x86_64.rpm) |
+| macOS | aarch64 | [xavier-v0.2.21-aarch64-apple-darwin.tar.gz](https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-v0.2.21-aarch64-apple-darwin.tar.gz) |
 
-Each artifact has a `.sha256` sidecar on the [Releases page](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.19).
+Each artifact has a `.sha256` sidecar on the [Releases page](https://github.com/southwest-ai-labs/xavier/releases/tag/v0.2.21).
 
-> **UI vs CLI**: Starting Xavier with `xavier http 8006` serves the visual Web Panel at **`http://localhost:8006`** (with PureRAG and memory explorer) and Model Context Protocol (MCP) server. To run purely in headless mode without UI assets, use `xavier http --no-ui`. For the interactive terminal monitor, run `xavier-tui`.
+> **UI vs CLI**: Starting Xavier with `xavier http 8006` serves the visual Web Panel at **`http://localhost:8006`** (with Brain 2 Living Knowledge Dashboard, PureRAG, and memory explorer) and Model Context Protocol (MCP) server. To run purely in headless mode without UI assets, use `xavier http --no-ui`. For the interactive terminal monitor, run `xavier-tui`.
 
 ```bash
 # Linux example
-curl -L https://github.com/iberi22/xavier/releases/download/v0.2.17/xavier-v0.2.17-x86_64-unknown-linux-gnu.tar.gz -o xavier.tar.gz
-curl -L https://github.com/iberi22/xavier/releases/download/v0.2.17/xavier-v0.2.17-x86_64-unknown-linux-gnu.tar.gz.sha256 -o xavier.sha256
+curl -L https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-v0.2.21-x86_64-unknown-linux-gnu.tar.gz -o xavier.tar.gz
+curl -L https://github.com/southwest-ai-labs/xavier/releases/download/v0.2.21/xavier-v0.2.21-x86_64-unknown-linux-gnu.tar.gz.sha256 -o xavier.sha256
 sha256sum -c xavier.sha256
 tar -xzf xavier.tar.gz && ./xavier --help
 ```
 
-Docker image: `ghcr.io/iberi22/xavier:0.2.17` (also `:latest`) — also see [Downloads page](docs/site/src/content/docs/downloads.mdx) (Starlight).
+Docker image: `ghcr.io/southwest-ai-labs/xavier:0.2.21` (also `:latest`) — also see [Downloads page](docs/site/src/content/docs/downloads.mdx) (Starlight).
 
 ---
 
@@ -182,7 +250,7 @@ Short summary:
 - Browser panel required `__TAURI_INTERNALS__` guards + `useApiToken` hook (fixed in WAVE-5, `4af11709`).
 - `XAVIER_TOKEN=foo # comment` inline — the `# comment` becomes part of the literal token; put comments on their own lines.
 - `XAVIER_PANEL_UI_DIR` priority list only in `assets.rs` — now documented in `docs/reference/ENV_VARS.md`.
-- `/v1/auth/login`, `/v1/auth/register`, `/v1/auth/refresh`, `/v1/auth/logout` and `/v1/auth/totp/*` were dead endpoints (backed by a user store nothing ever wrote to) and are now deprecated (`308`/`410` pointing to `/auth/*`) — see [GH #2545](https://github.com/iberi22/xavier/issues/2545) and [`docs/api/README.md`](docs/api/README.md#2-authentication-protocol) for the real, working auth API and a tested install walkthrough in [`docs/manual/GETTING_STARTED.md`](docs/manual/GETTING_STARTED.md#4-instalación-desde-cero-docker--primer-usuario-admin).
+- `/v1/auth/login`, `/v1/auth/register`, `/v1/auth/refresh`, `/v1/auth/logout` and `/v1/auth/totp/*` were dead endpoints (backed by a user store nothing ever wrote to) and are now deprecated (`308`/`410` pointing to `/auth/*`) — see [GH #2545](https://github.com/southwest-ai-labs/xavier/issues/2545) and [`docs/api/README.md`](docs/api/README.md#2-authentication-protocol) for the real, working auth API and a tested install walkthrough in [`docs/manual/GETTING_STARTED.md`](docs/manual/GETTING_STARTED.md#4-instalación-desde-cero-docker--primer-usuario-admin).
 
 ---
 
