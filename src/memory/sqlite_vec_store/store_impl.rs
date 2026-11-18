@@ -1869,6 +1869,17 @@ impl VecSqliteMemoryStore {
             }
         }
 
+        if symbol_links.is_empty() {
+            let candidate_words: std::collections::HashSet<&str> = content
+                .split(|c: char| !c.is_alphanumeric() && c != '_')
+                .filter(|w| w.len() >= 4)
+                .collect();
+
+            for word in candidate_words {
+                symbol_links.push((word.to_string(), 1.0));
+            }
+        }
+
         // Cap at max_links_per_memory = 10
         symbol_links.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         symbol_links.truncate(10);

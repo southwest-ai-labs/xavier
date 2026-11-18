@@ -170,8 +170,10 @@ mod tests {
             content: "The Xavier daemon listens on port 8006".to_string(),
             ..Default::default()
         };
-        let mut quality1 = MemoryQuality::default();
-        quality1.overall = 0.95; // Higher quality / newer
+        let quality1 = MemoryQuality {
+            overall: 0.95, // Higher quality / newer
+            ..Default::default()
+        };
 
         let mem1 = ManagedMemory {
             doc: doc1,
@@ -189,8 +191,10 @@ mod tests {
             content: "The Xavier daemon listens on port 8000".to_string(),
             ..Default::default()
         };
-        let mut quality2 = MemoryQuality::default();
-        quality2.overall = 0.70; // Older/lower quality
+        let quality2 = MemoryQuality {
+            overall: 0.70, // Older/lower quality
+            ..Default::default()
+        };
 
         let mem2 = ManagedMemory {
             doc: doc2,

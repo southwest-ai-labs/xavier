@@ -214,8 +214,10 @@ mod tests {
             ],
         };
 
-        let mut sym = code_graph::types::Symbol::default();
-        sym.name = "ExecutionEngine".to_string();
+        let sym = code_graph::types::Symbol {
+            name: "ExecutionEngine".to_string(),
+            ..Default::default()
+        };
 
         let hubs = vec![HubNode {
             symbol: sym,
