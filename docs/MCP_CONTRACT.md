@@ -101,8 +101,14 @@ Both JSON-RPC transports use the same `dispatch_mcp_value` dispatcher and expose
 | `xavier_skill_list` | No | Yes | List indexed skills with costs |
 | `xavier_skill_usage` | No | Yes | Read skill lifecycle counts and harness acknowledgment coverage |
 | `xavier_token_savings` | No | Yes | Report token savings achieved through Xavier context regeneration |
+| `wiki_get_backlinks` | No | Yes | Get outgoing and incoming backlinks for a given living wiki node |
+| `wiki_lint_status` | No | Yes | Get broken links, orphan nodes, and structural hygiene report of the living wiki |
+| `wiki_read_page` | No | Yes | Read markdown content and metadata of a living wiki node |
+| `wiki_search_graph` | No | Yes | Hybrid search across living wiki nodes combining lexical and structural graph signals |
+| `wiki_vram_search` | No | Yes | Ultra-low-latency CSR Graph-RAG traversal directly in GPU/VRAM memory |
+| `wiki_vram_status` | No | Yes | Report VRAM in-memory Graph-RAG topology, CSR edge counts, and memory footprint |
 
-The smaller subset on `:8006` is a deprecated legacy REST endpoint retained for backward compatibility with older clients. Agents and modern clients must use the JSON-RPC interface on `:8100`, which contains the full, canonical 59-tool surface (the six `pageindex_*` tools require the `pageindex` feature, and the telecom tools require an initialized telecom backend). The `:8100` tool list is assembled dynamically in `src/server/mcp/server.rs` (`get_xavier_tools`), whereas the `:8006` list is hardcoded in `src/cli/handlers/workspace.rs` (`mcp_tools_handler`).
+The smaller subset on `:8006` is a deprecated legacy REST endpoint retained for backward compatibility with older clients. Agents and modern clients must use the JSON-RPC interface on `:8100`, which contains the full, canonical 65-tool surface (the six `pageindex_*` tools require the `pageindex` feature, and the telecom tools require an initialized telecom backend). The `:8100` tool list is assembled dynamically in `src/server/mcp/server.rs` (`get_xavier_tools`), whereas the `:8006` list is hardcoded in `src/cli/handlers/workspace.rs` (`mcp_tools_handler`).
 
 
 ## Canonical agent loop
