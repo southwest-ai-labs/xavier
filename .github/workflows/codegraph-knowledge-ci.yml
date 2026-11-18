@@ -20,7 +20,7 @@ jobs:
   build-knowledge-base:
     name: Fast Native AST Indexing & Knowledge Packaging
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 60
 
     steps:
       - name: Checkout Repository
@@ -36,6 +36,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "xavier-codegraph-ci"
+          cache-on-failure: true
 
       - name: Build Release CodeGraph & Xavier
         run: |
