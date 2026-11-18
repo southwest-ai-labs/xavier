@@ -97,6 +97,7 @@ function getInitialSession(): {
 				try {
 					localStorage.setItem("xavier_onboarding_completed", "true");
 					localStorage.setItem("xavier_security_onboarding_completed", "true");
+					localStorage.setItem("xavier_desktop_token", sessionToken);
 				} catch {}
 				return { token: sessionToken, user, isAuthenticated: true };
 			}
@@ -182,6 +183,11 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 			updated_at: now,
 		};
 		writeRt(sessionToken);
+		try {
+			localStorage.setItem("xavier_onboarding_completed", "true");
+			localStorage.setItem("xavier_security_onboarding_completed", "true");
+			localStorage.setItem("xavier_desktop_token", sessionToken);
+		} catch {}
 		set({
 			user,
 			token: sessionToken,
