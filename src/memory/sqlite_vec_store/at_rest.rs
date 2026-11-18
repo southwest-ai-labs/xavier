@@ -2160,9 +2160,8 @@ fn sha256_file(path: &Path) -> Result<String> {
 /// Free bytes on the filesystem holding `path` (longest matching mount point).
 fn free_bytes(path: &Path) -> Option<u64> {
     let canon = std::fs::canonicalize(path).ok()?;
-    let disks = sysinfo::Disks::new_with_refreshed_list();
+    let disks = sysinfo::Disks::new_with_refreshed_list().ok()?;
     disks
-        .list()
         .iter()
         .filter(|d| canon.starts_with(d.mount_point()))
         .max_by_key(|d| d.mount_point().as_os_str().len())

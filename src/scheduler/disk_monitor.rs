@@ -30,9 +30,13 @@ impl DiskMonitor {
         let warn_pct = settings.advanced.disk_warn_pct as f64;
         let crit_pct = settings.advanced.disk_crit_pct as f64;
 
-        let disks = sysinfo::Disks::new_with_refreshed_list();
-        let total_bytes: u64 = disks.iter().map(|d| d.total_space()).sum();
-        let available_bytes: u64 = disks.iter().map(|d| d.available_space()).sum();
+        let (total_bytes, available_bytes) = match sysinfo::Disks::new_with_refreshed_list() {
+            Ok(disks) => (
+                disks.iter().map(|d| d.total_space()).sum::<u64>(),
+                disks.iter().map(|d| d.available_space()).sum::<u64>(),
+            ),
+            Err(_) => (0u64, 0u64),
+        };
 
         let disk_usage_percent = if total_bytes > 0 {
             ((total_bytes - available_bytes) as f64 / total_bytes as f64) * 100.0

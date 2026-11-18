@@ -175,7 +175,10 @@ fn list_macos_removable_devices() -> Vec<UsbStorageDevice> {
 
 /// Probes total and available disk space in bytes using `sysinfo::Disks` (100% safe Rust)
 pub fn probe_disk_space(path: &Path) -> (Option<u64>, Option<u64>) {
-    let disks = sysinfo::Disks::new_with_refreshed_list();
+    let disks = match sysinfo::Disks::new_with_refreshed_list() {
+        Ok(d) => d,
+        Err(_) => return (None, None),
+    };
     // First attempt: exact or longest prefix match
     let mut best_match: Option<(&sysinfo::Disk, usize)> = None;
 

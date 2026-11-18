@@ -122,14 +122,7 @@ fn unix_timestamp() -> i64 {
 }
 
 fn current_load_average() -> f32 {
-    #[cfg(unix)]
-    {
-        let avg = sysinfo::System::load_average();
-        avg.one as f32
-    }
-
-    #[cfg(not(unix))]
-    {
-        0.0
-    }
+    sysinfo::System::load_average()
+        .map(|avg| avg.one as f32)
+        .unwrap_or(0.0)
 }
