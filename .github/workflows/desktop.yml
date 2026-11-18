@@ -123,7 +123,9 @@ jobs:
           "$IMG" --appimage-extract >/dev/null
           rm -f squashfs-root/usr/lib/libwayland-*.so*
           if ls squashfs-root/usr/lib | grep -q '^libwayland-'; then exit 1; fi
-          ./appimagetool --no-appstream squashfs-root "$IMG"
+          chmod -R a+rX squashfs-root
+          [ -f squashfs-root/AppRun ] && chmod a+rx squashfs-root/AppRun
+          ./appimagetool --no-appstream --no-check-permissions squashfs-root "$IMG"
           rm -rf squashfs-root appimagetool
 
       - name: E2E Smoke Test Desktop AppImage in Virtual Framebuffer (Xvfb)
