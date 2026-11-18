@@ -95,7 +95,7 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
   const nodeId =
     (user as unknown as { node_id?: string })?.node_id ||
     (typeof user?.id === "string" ? user.id : "node_ed0fe57d1f71cbf6");
-  const genesisNode = "xavier-cloud.swal.network";
+  const genesisNode = "xaviercloud.swal.network";
 
   const handleCopyNodeId = () => {
     void navigator.clipboard.writeText(nodeId);
