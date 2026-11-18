@@ -1,7 +1,7 @@
 #!/bin/sh
 # Xavier headless server installer.
 #
-#   curl -fsSL https://raw.githubusercontent.com/iberi22/xavier/main/packaging/linux/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/southwest-ai-labs/xavier/main/packaging/linux/install.sh | sh
 #   sh install.sh [--version vX.Y.Z] [--archive FILE [--sha256 FILE]] [--user] [--no-start] [--force]
 #
 # As root it installs a system service (user "xavier", /var/lib/xavier, /etc/xavier/xavier.env).
@@ -9,7 +9,7 @@
 # The release archive is always verified against its .sha256 before anything is installed.
 set -eu
 
-REPO="iberi22/xavier"
+REPO="southwest-ai-labs/xavier"
 version=""
 archive=""
 sha_file=""

@@ -141,9 +141,6 @@ jobs:
     with:
       version: ${{ github.ref_name }}
       publish: true
-    permissions:
-      contents: read
-      packages: write
 
   publish-release:
     name: Publish GitHub Release

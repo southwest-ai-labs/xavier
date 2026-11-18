@@ -43,6 +43,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: server-packages-${{ github.event.pull_request.number || github.ref }}-${{ inputs.version || 'ci' }}
