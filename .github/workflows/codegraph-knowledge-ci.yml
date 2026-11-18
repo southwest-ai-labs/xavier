@@ -39,7 +39,7 @@ jobs:
 
       - name: Build Release CodeGraph & Xavier
         run: |
-          cargo build --release --bin code-graph --bin xavier
+          cargo build --release --package code-graph --package xavier
 
       - name: Run Native Ext4 CodeGraph Indexing
         run: |
