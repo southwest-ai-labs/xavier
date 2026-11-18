@@ -71,7 +71,7 @@ describe("LoginPage (Passwordless Magic Link)", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        "https://xaviercloud.swal.network/auth/magic-link",
+        "https://xavier-cloud.swal.network/auth/magic-link",
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -382,6 +382,7 @@ mod tests {
     #[test]
     fn test_vram_load_from_storage() {
         let storage = crate::wiki::WikiStorageEngine::in_memory().unwrap();
+        let links = vec!["HandlerNode".to_string()];
         storage
             .upsert_node(
                 "RouterNode",
@@ -389,9 +390,10 @@ mod tests {
                 "concept",
                 "src/router.rs",
                 "# Router",
-                &["HandlerNode"],
+                &links,
             )
             .unwrap();
+        let empty_links: Vec<String> = Vec::new();
         storage
             .upsert_node(
                 "HandlerNode",
@@ -399,7 +401,7 @@ mod tests {
                 "entity",
                 "src/handler.rs",
                 "# Handler",
-                &[],
+                &empty_links,
             )
             .unwrap();
 
