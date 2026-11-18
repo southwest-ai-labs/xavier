@@ -35,6 +35,7 @@ pub fn get_xavier_tools(has_telecom: bool) -> Vec<MCPTool> {
         tools.extend(super::telecom_tools::register_telecom_mcp_tools());
     }
     tools.extend(super::tools_expert::get_expert_tools());
+    tools.extend(super::tools_wiki::get_xavier_wiki_tools());
     #[cfg(feature = "pageindex")]
     tools.extend(super::tools_pageindex::get_pageindex_tools());
     tools
@@ -166,7 +167,9 @@ pub async fn handle_tool_call(
         .await;
     }
 
-    if super::tools_core::is_core_tool(name) {
+    if super::tools_wiki::is_wiki_tool(name) {
+        super::tools_wiki::handle_wiki_tool(&workspace, name, arguments).await
+    } else if super::tools_core::is_core_tool(name) {
         super::tools_core::handle_core_tool(state, workspace, claims, name, arguments).await
     } else if super::tools_secrets::is_secrets_tool(name) {
         let ctx = super::tools_secrets::SecretToolContext::production();

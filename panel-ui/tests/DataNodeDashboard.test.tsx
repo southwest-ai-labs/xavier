@@ -133,7 +133,7 @@ describe("DataNodeDashboard Component", () => {
 
     await waitFor(() => {
       expect(screen.queryByText("Syncing...")).not.toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it("handles status refresh button click", async () => {

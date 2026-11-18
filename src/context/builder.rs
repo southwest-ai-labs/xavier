@@ -321,16 +321,15 @@ pub fn matches_project_context(doc: &ContextDocument, project_id: &str) -> bool 
 }
 
 /// Filter documents matching the given project_id, taking advantage of
-/// hierarchical path fallback if metadata is not explicitly populated.
+/// hierarchical path fallback if metadata is not explicitly populated,
+/// while filtering out noisy terminal execution traces.
 pub fn get_project_context(
     documents: &[ContextDocument],
     project_id: &str,
 ) -> Vec<ContextDocument> {
-    documents
-        .iter()
-        .filter(|doc| matches_project_context(doc, project_id))
-        .cloned()
-        .collect()
+    let (clean_docs, _) =
+        crate::context::dossier::filter_noise_free_project_documents(documents, project_id);
+    clean_docs
 }
 
 #[cfg(test)]

@@ -91,7 +91,8 @@ pub fn merge_documents(memories: &[ManagedMemory]) -> Result<MergeOutcome> {
         .parse()
         .unwrap_or_else(|_| NormalizedId::from_str_unchecked(&canonical_id));
 
-    let mut combined_sentences = extract_sentences(&canonical_source.doc.content);
+    let reconciled =
+        crate::consolidation::contradiction::reconcile_memories_deterministically(&ordered);
     let mut redundant_ids = Vec::new();
     let mut best_similarity = 1.0f32;
 
@@ -107,19 +108,14 @@ pub fn merge_documents(memories: &[ManagedMemory]) -> Result<MergeOutcome> {
         if mem_id_norm != canonical_id_norm {
             redundant_ids.push(mem_id);
         }
-
-        for sentence in extract_sentences(&memory.doc.content) {
-            if !combined_sentences
-                .iter()
-                .any(|existing| normalize_text(existing) == normalize_text(&sentence))
-            {
-                combined_sentences.push(sentence);
-            }
-        }
     }
 
     let mut canonical = canonical_source.doc.clone();
-    canonical.content = cleanup_redundant_text(&combined_sentences.join(" "));
+    canonical.content = cleanup_redundant_text(&reconciled.canonical_content);
+    if !reconciled.contradictions_resolved.is_empty() {
+        canonical.metadata["contradictions_resolved"] =
+            serde_json::to_value(&reconciled.contradictions_resolved).unwrap_or_default();
+    }
     canonical.metadata["memory_merged"] = serde_json::json!(true);
     canonical.metadata["memory_merged_from"] = serde_json::json!(memories
         .iter()

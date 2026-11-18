@@ -3,6 +3,7 @@
 //! This module provides consolidation, decay, importance scoring, reflection,
 //! and TGD (Textual Gradient Descent) integration on top of the existing memory store.
 
+pub mod contradiction;
 pub mod merger;
 pub mod reflection;
 

@@ -43,6 +43,7 @@ mod tests {
         ("bm25", include_str!("../../context/bm25.rs")),
         ("builder", include_str!("../../context/builder.rs")),
         ("classifier", include_str!("../../context/classifier.rs")),
+        ("dossier", include_str!("../../context/dossier.rs")),
         ("executor", include_str!("../../context/executor.rs")),
         (
             "graph_retriever",

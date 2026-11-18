@@ -25,6 +25,7 @@ import GroupRoomView from "./components/Telecom/GroupRoomView";
 import TelecomAuditTrailView from "./components/Telecom/TelecomAuditTrailView";
 import TelecomHubView from "./components/Telecom/TelecomHubView";
 import TopStatusBar from "./components/TopStatusBar";
+import { Brain2VramDashboard } from "./components/Brain2/Brain2VramDashboard";
 import ErrorToast from "./components/ui/ErrorToast";
 import WalletView from "./components/WalletView";
 import { XavierLandingView } from "./components/XavierLandingView";
@@ -104,15 +105,18 @@ function AppContent() {
 	const graphMetaRef = useRef(graphMeta);
 	const graphSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const [activeTopTab, setActiveTopTab] = useState<"chat" | "purerag">(() => {
+	const [activeTopTab, setActiveTopTab] = useState<"chat" | "purerag" | "brain2">(() => {
 		if (typeof window !== "undefined") {
+			const params = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
+			const tabParam = params.get("tab");
+			if (tabParam === "brain2" || tabParam === "purerag" || tabParam === "chat") return tabParam;
 			const saved = localStorage.getItem("xavier_active_top_tab");
-			if (saved === "chat" || saved === "purerag") return saved;
+			if (saved === "chat" || saved === "purerag" || saved === "brain2") return saved;
 		}
 		return "chat";
 	});
 
-	const handleSelectTopTab = useCallback((tab: "chat" | "purerag") => {
+	const handleSelectTopTab = useCallback((tab: "chat" | "purerag" | "brain2") => {
 		setActiveTopTab(tab);
 		if (typeof window !== "undefined") {
 			localStorage.setItem("xavier_active_top_tab", tab);
@@ -746,6 +750,19 @@ function AppContent() {
 				<div className="flex items-center gap-1.5 p-1 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 shadow-xl">
 					<button
 						type="button"
+						data-testid="brain2-tab"
+						onClick={() => handleSelectTopTab("brain2")}
+						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+							activeTopTab === "brain2"
+								? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20"
+								: "text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+						}`}
+					>
+						<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+						<span>🧠 Brain 2 VRAM</span>
+					</button>
+					<button
+						type="button"
 						data-testid="purerag-tab"
 						onClick={() => handleSelectTopTab("purerag")}
 						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
@@ -815,7 +832,11 @@ function AppContent() {
 			</AnimatePresence>
 
 			{/* Main Content Area */}
-			{activeTopTab === "purerag" ? (
+			{activeTopTab === "brain2" ? (
+				<main className="flex-1 w-full relative z-20 overflow-y-auto px-2 sm:px-4 md:px-8">
+					<Brain2VramDashboard token={token || undefined} />
+				</main>
+			) : activeTopTab === "purerag" ? (
 				<main className="flex-1 w-full relative z-20 overflow-y-auto px-2 sm:px-4 md:px-8">
 					<PureRagView
 						token={token || undefined}

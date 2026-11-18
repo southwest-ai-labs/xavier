@@ -96,7 +96,7 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await fetch(
-        "https://xaviercloud.swal.network/auth/magic-link",
+        "https://xavier-cloud.swal.network/auth/magic-link",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

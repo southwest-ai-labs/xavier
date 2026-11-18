@@ -1,0 +1,75 @@
+name: CodeGraph & Brain 2 Knowledge CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'crates/**'
+      - 'code-graph/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-knowledge-base:
+    name: Fast Native AST Indexing & Knowledge Packaging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Cache Cargo Dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "xavier-codegraph-ci"
+          cache-on-failure: true
+
+      - name: Build Release CodeGraph & Xavier
+        run: |
+          cargo build --release --package code-graph --package xavier
+
+      - name: Run Native Ext4 CodeGraph Indexing
+        run: |
+          mkdir -p .xavier
+          echo "Starting lightning-fast native Linux indexation..."
+          ./target/release/code-graph --db-path ./.xavier/code_graph.db scan .
+          ls -lh .xavier/code_graph.db*
+
+      - name: Compile Living Wiki & VRAM Structure
+        run: |
+          echo "Compiling Brain 2 Living Wiki and SQLite graph container..."
+          ./target/release/xavier wiki compile .
+          ./target/release/xavier wiki status .
+          ls -lh .xavier/wiki.sqlite .xavier/wiki/
+
+      - name: Package Knowledge Capsule (Compressed)
+        run: |
+          mkdir -p dist/knowledge
+          tar -czf dist/knowledge/xavier-brain2-knowledge.tar.gz \
+            .xavier/code_graph.db \
+            .xavier/wiki.sqlite \
+            .xavier/wiki/index.md \
+            .xavier/wiki/entities/
+          ls -lh dist/knowledge/xavier-brain2-knowledge.tar.gz
+
+      - name: Upload Knowledge Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: xavier-brain2-knowledge-base
+          path: dist/knowledge/xavier-brain2-knowledge.tar.gz
+          retention-days: 30
+          if-no-files-found: error

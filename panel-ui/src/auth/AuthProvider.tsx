@@ -81,8 +81,8 @@ function getInitialSession(): {
 			const sessionToken =
 				params.get("token") ||
 				(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
-			const email = params.get("email") || "iberi22@gmail.com";
-			const tenant = params.get("tenant") || "swal";
+			const email = params.get("email") || "operator@xavier.local";
+			const tenant = params.get("tenant") || "local";
 			if (sessionToken) {
 				const now = Math.floor(Date.now() / 1000);
 				const user: User = {
@@ -97,6 +97,7 @@ function getInitialSession(): {
 				try {
 					localStorage.setItem("xavier_onboarding_completed", "true");
 					localStorage.setItem("xavier_security_onboarding_completed", "true");
+					localStorage.setItem("xavier_desktop_token", sessionToken);
 				} catch {}
 				return { token: sessionToken, user, isAuthenticated: true };
 			}
@@ -106,9 +107,9 @@ function getInitialSession(): {
 	if (rt) {
 		const now = Math.floor(Date.now() / 1000);
 		const user: User = {
-			id: "swal",
-			email: "iberi22@gmail.com",
-			name: "iberi22",
+			id: "local",
+			email: "operator@xavier.local",
+			name: "operator",
 			role: "admin",
 			created_at: now,
 			updated_at: now,
@@ -174,14 +175,19 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 	setSession: (sessionToken, email, tenant) => {
 		const now = Math.floor(Date.now() / 1000);
 		const user = {
-			id: tenant || "swal-user",
-			email: email || "iberi22@gmail.com",
-			name: email ? email.split("@")[0] : "Brahyan Belalcazar",
+			id: tenant || "local-user",
+			email: email || "operator@xavier.local",
+			name: email ? email.split("@")[0] : "Operator",
 			role: "admin" as const,
 			created_at: now,
 			updated_at: now,
 		};
 		writeRt(sessionToken);
+		try {
+			localStorage.setItem("xavier_onboarding_completed", "true");
+			localStorage.setItem("xavier_security_onboarding_completed", "true");
+			localStorage.setItem("xavier_desktop_token", sessionToken);
+		} catch {}
 		set({
 			user,
 			token: sessionToken,
@@ -320,8 +326,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 					const sessionToken =
 						params.get("token") ||
 						(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
-					const email = params.get("email") || "iberi22@gmail.com";
-					const tenant = params.get("tenant") || "swal";
+					const email = params.get("email") || "operator@xavier.local";
+					const tenant = params.get("tenant") || "local";
 					if (sessionToken) {
 						setSession(sessionToken, email, tenant);
 					}

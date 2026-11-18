@@ -85,6 +85,7 @@ pub mod training;
 pub mod ui;
 pub mod utils;
 pub mod verification;
+pub mod wiki;
 pub mod workspace;
 
 // Hexagonal architecture modules

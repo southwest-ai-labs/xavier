@@ -117,14 +117,55 @@ pub(crate) fn load_env_contract() -> Result<()> {
     Ok(())
 }
 
+/// Helper to collapse duplicate or nested "data" components in paths.
+fn collapse_nested_data(path: PathBuf) -> PathBuf {
+    use std::path::Component;
+    let mut collapsed = PathBuf::new();
+    let mut prev_was_data = false;
+    for component in path.components() {
+        let is_data = match component {
+            Component::Normal(s) => s
+                .to_str()
+                .map(|s| s.eq_ignore_ascii_case("data"))
+                .unwrap_or(false),
+            _ => false,
+        };
+        if is_data && prev_was_data {
+            continue;
+        }
+        prev_was_data = is_data;
+        collapsed.push(component);
+    }
+    collapsed
+}
+
 /// Resolve a storage path under the data root, accepting legacy `data/` prefixes.
 /// An empty optional path stays empty; absolute paths remain explicit overrides.
 pub(crate) fn resolve_storage_path(path: &str, data_dir: &Path) -> PathBuf {
-    let path = Path::new(path);
-    if path.as_os_str().is_empty() || path.is_absolute() {
-        return path.to_path_buf();
+    let path_obj = Path::new(path);
+    if path_obj.as_os_str().is_empty() || path_obj.is_absolute() {
+        return collapse_nested_data(path_obj.to_path_buf());
     }
-    data_dir.join(path.strip_prefix("data").unwrap_or(path))
+
+    let normalized = path.replace('\\', "/");
+    let mut rel = Path::new(&normalized);
+    loop {
+        if let Ok(stripped) = rel.strip_prefix(".") {
+            rel = stripped;
+        } else if let Ok(stripped) = rel.strip_prefix("data") {
+            rel = stripped;
+        } else {
+            break;
+        }
+    }
+
+    let joined = if rel.as_os_str().is_empty() {
+        data_dir.to_path_buf()
+    } else {
+        data_dir.join(rel)
+    };
+
+    collapse_nested_data(joined)
 }
 
 fn home_relative(path: PathBuf) -> PathBuf {
@@ -160,11 +201,17 @@ pub fn resolve_state_dir() -> PathBuf {
 
 /// Resolve the data root independently of the process working directory.
 pub fn resolve_data_dir() -> PathBuf {
+    #[cfg(windows)]
+    let platform_data = dirs::data_local_dir().map(|dir| dir.join("xavier"));
+    #[cfg(not(windows))]
+    let platform_data = dirs::data_dir().map(|dir| dir.join("xavier"));
+
     let path = std::env::var_os("XAVIER_DATA_DIR")
         .map(PathBuf::from)
-        .or_else(|| dirs::data_dir().map(|dir| dir.join("xavier")))
+        .or(platform_data)
         .unwrap_or_else(|| PathBuf::from("data"));
     let resolved = home_relative(path);
+    let resolved = collapse_nested_data(resolved);
     crate::test_support::guard_user_path(&resolved);
     resolved
 }
@@ -846,6 +893,68 @@ mod tests {
 
         let loaded = load().expect("load must not fail without defaults");
         assert!(loaded.is_none(), "nothing to load is not an error");
+    }
+
+    #[test]
+    fn resolve_storage_path_prevents_nested_data_directories() {
+        let base_data = Path::new("/custom/xavier/data");
+        // Normal relative path with "data/" prefix
+        assert_eq!(
+            resolve_storage_path("data/embedding_cache.db", base_data),
+            base_data.join("embedding_cache.db")
+        );
+        // Path with nested "data/data/" prefix
+        assert_eq!(
+            resolve_storage_path("data/data/embedding_cache.db", base_data),
+            base_data.join("embedding_cache.db")
+        );
+        // Relative path without "data/"
+        assert_eq!(
+            resolve_storage_path("embedding_cache.db", base_data),
+            base_data.join("embedding_cache.db")
+        );
+        // Windows backslash format
+        assert_eq!(
+            resolve_storage_path("data\\data\\embedding_cache.db", base_data),
+            base_data.join("embedding_cache.db")
+        );
+        // Leading dot-slash
+        assert_eq!(
+            resolve_storage_path("./data/embedding_cache.db", base_data),
+            base_data.join("embedding_cache.db")
+        );
+        // Just "data" or "data/data"
+        assert_eq!(
+            resolve_storage_path("data", base_data),
+            base_data.to_path_buf()
+        );
+        assert_eq!(
+            resolve_storage_path("data/data", base_data),
+            base_data.to_path_buf()
+        );
+        // Empty path stays empty
+        assert_eq!(resolve_storage_path("", base_data), PathBuf::new());
+        // Base dir without "data" suffix
+        let base_xavier = Path::new("/custom/xavier");
+        assert_eq!(
+            resolve_storage_path("data/vec-store.sqlite3", base_xavier),
+            base_xavier.join("vec-store.sqlite3")
+        );
+        assert_eq!(
+            resolve_storage_path("data/data/vec-store.sqlite3", base_xavier),
+            base_xavier.join("vec-store.sqlite3")
+        );
+    }
+
+    #[test]
+    fn resolve_data_dir_honours_local_data_root() {
+        let _env = TempEnv::new();
+        std::env::remove_var("XAVIER_DATA_DIR");
+        let resolved = resolve_data_dir();
+        assert!(!resolved.as_os_str().is_empty());
+        // Verify path does not contain nested data/data
+        let s = resolved.to_string_lossy();
+        assert!(!s.contains("data/data") && !s.contains("data\\data"));
     }
 }
 

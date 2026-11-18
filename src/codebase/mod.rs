@@ -20,6 +20,7 @@ pub mod repo_identity;
 pub mod repo_package_crypto;
 pub mod repo_registry;
 pub mod snapshot;
+pub mod sync;
 
 /// Validation regex for project_id: only alphanumeric, hyphens, and underscores.
 static PROJECT_ID_RE: LazyLock<Regex> =

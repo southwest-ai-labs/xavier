@@ -110,6 +110,7 @@ pub struct WorkspaceState {
     pub hormer: Arc<crate::agents::hormer::Hormer>,
     pub zone_booster: Arc<crate::retrieval::gating::AdaptiveZoneBooster>,
     pub working_memory: Arc<RwLock<WorkingMemory>>,
+    pub wiki_vram: Arc<RwLock<crate::wiki::WikiVramEngine>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -551,6 +552,19 @@ impl WorkspaceState {
                 .with_booster(Arc::clone(&zone_booster)),
         );
 
+        let wiki_vram = {
+            let mut eng = crate::wiki::WikiVramEngine::new(768);
+            let wiki_sqlite = workspace_root
+                .join(".xavier")
+                .join(crate::wiki::WIKI_SQLITE_FILE);
+            if wiki_sqlite.exists() {
+                if let Ok(storage) = crate::wiki::WikiStorageEngine::open(&wiki_sqlite) {
+                    let _ = eng.load_from_storage(&storage);
+                }
+            }
+            Arc::new(RwLock::new(eng))
+        };
+
         let state = Self {
             runtime: Arc::new(
                 AgentRuntime::new(
@@ -579,6 +593,7 @@ impl WorkspaceState {
             hormer,
             zone_booster,
             working_memory,
+            wiki_vram,
         };
 
         if store_root.is_none() {
@@ -1346,6 +1361,7 @@ impl WorkspaceState {
             hormer,
             zone_booster,
             working_memory,
+            wiki_vram: Arc::new(RwLock::new(crate::wiki::WikiVramEngine::new(768))),
         }
     }
 }

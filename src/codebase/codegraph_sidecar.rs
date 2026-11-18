@@ -96,7 +96,11 @@ fn candidate_names(base_names: &[&str]) -> Vec<String> {
 fn sidecar_candidates() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(path) = std::env::var_os("XAVIER_CODEGRAPH_BIN") {
-        candidates.push(PathBuf::from(path));
+        let s = path.to_string_lossy();
+        let trimmed = s.trim().trim_matches(['"', '\'']).trim();
+        if !trimmed.is_empty() {
+            candidates.push(PathBuf::from(trimmed));
+        }
     }
     let cwd = std::env::current_dir().unwrap_or_default();
     let target_dir = std::env::var_os("CARGO_TARGET_DIR")
@@ -124,9 +128,21 @@ fn sidecar_candidates() -> Vec<PathBuf> {
         }
     }
     if let Some(path) = std::env::var_os("PATH") {
+        // Sanitize PATH components to avoid Win32 ERROR_INVALID_NAME (123) when paths are quoted.
+        let sanitized_dirs: Vec<PathBuf> = std::env::split_paths(&path)
+            .filter_map(|dir| {
+                let s = dir.to_string_lossy();
+                let trimmed = s.trim().trim_matches(['"', '\'']).trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(trimmed))
+                }
+            })
+            .collect();
         // Preserve the existing preference for codegraph over code-graph on PATH.
         for name in candidate_names(&["codegraph", "code-graph"]) {
-            candidates.extend(std::env::split_paths(&path).map(|dir| dir.join(&name)));
+            candidates.extend(sanitized_dirs.iter().map(|dir| dir.join(&name)));
         }
     }
     candidates
@@ -716,9 +732,56 @@ mod tests {
             assert!(names.contains(&"codegraph".to_string()));
             assert!(names.contains(&format!("code-graph{suffix}")));
             assert!(names.contains(&"code-graph".to_string()));
+            let idx_exe = names
+                .iter()
+                .position(|n| n == &format!("codegraph{suffix}"))
+                .unwrap();
+            let idx_bare = names.iter().position(|n| n == "codegraph").unwrap();
+            assert!(
+                idx_exe < idx_bare,
+                "Windows binary should prefer .exe suffix first"
+            );
         } else {
             assert_eq!(names, vec!["codegraph", "code-graph"]);
         }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_sidecar_candidates_sanitizes_quoted_path() {
+        let _guard = EnvRestore::new(&["PATH", "XAVIER_CODEGRAPH_BIN"]);
+        std::env::remove_var("XAVIER_CODEGRAPH_BIN");
+        // Simulate Windows-style quoted PATH entries
+        #[cfg(windows)]
+        let test_path =
+            "\"C:\\Program Files\\Some App\";'C:\\Another Path';C:\\Normal\\Path;   ;\"\"";
+        #[cfg(not(windows))]
+        let test_path = "\"/usr/local/some app\":'/opt/custom bin':/usr/bin:   :\"\"";
+
+        std::env::set_var("PATH", test_path);
+        let candidates = sidecar_candidates();
+        assert!(!candidates.is_empty());
+        for c in &candidates {
+            let s = c.to_string_lossy();
+            assert!(
+                !s.contains('"'),
+                "candidate path must not contain quotes: {s}"
+            );
+            assert!(
+                !s.contains('\''),
+                "candidate path must not contain single quotes: {s}"
+            );
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn test_sidecar_candidates_sanitizes_quoted_override_bin() {
+        let _guard = EnvRestore::new(&["PATH", "XAVIER_CODEGRAPH_BIN"]);
+        std::env::set_var("XAVIER_CODEGRAPH_BIN", "\"C:\\opt\\bin\\codegraph.exe\"");
+        let candidates = sidecar_candidates();
+        assert!(!candidates.is_empty());
+        assert_eq!(candidates[0], PathBuf::from("C:\\opt\\bin\\codegraph.exe"));
     }
 
     #[test]

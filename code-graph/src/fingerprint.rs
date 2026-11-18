@@ -782,5 +782,6 @@ fn fingerprint_function(node: Node, name: &str, source: &str) -> FunctionFingerp
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 }
