@@ -66,7 +66,7 @@ pub async fn agent_active_handler(
         "agents": active.iter().map(|a| serde_json::json!({
             "agent_id": a.agent_id,
             "session_id": a.session_id,
-            "last_heartbeat": a.last_heartbeat.to_rfc3339(),
+            "last_heartbeat": a.last_heartbeat.to_string(),
             "name": a.metadata.name,
             "capabilities": a.metadata.capabilities,
             "role": a.metadata.role,

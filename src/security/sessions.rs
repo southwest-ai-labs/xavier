@@ -3,7 +3,6 @@
 //! Issues short-lived, temporary session tokens for frontends to securely
 //! interact with the Xavier backend without exposure of root tokens.
 
-use chrono::{DateTime, Duration, Utc};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,20 +11,20 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct EphemeralSession {
     pub id: String,
-    pub expires_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
+    pub expires_at: jiff::Timestamp,
+    pub created_at: jiff::Timestamp,
 }
 
 impl EphemeralSession {
     /// Is expired.
     pub fn is_expired(&self) -> bool {
-        Utc::now() > self.expires_at
+        jiff::Timestamp::now() > self.expires_at
     }
 }
 
 pub struct SessionManager {
     sessions: Arc<RwLock<HashMap<String, EphemeralSession>>>,
-    default_ttl: Duration,
+    default_ttl: jiff::Span,
 }
 
 impl SessionManager {
@@ -33,17 +32,17 @@ impl SessionManager {
     pub fn new(ttl_minutes: i64) -> Self {
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
-            default_ttl: Duration::minutes(ttl_minutes),
+            default_ttl: jiff::Span::new().minutes(ttl_minutes),
         }
     }
 
     /// Create a new ephemeral session
     pub fn create_session(&self) -> EphemeralSession {
         let id = format!("sess_{}", Uuid::new_v4());
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let session = EphemeralSession {
             id: id.clone(),
-            expires_at: now + self.default_ttl,
+            expires_at: now.checked_add(self.default_ttl).unwrap_or(now),
             created_at: now,
         };
         self.sessions.write().insert(id, session.clone());
@@ -64,7 +63,7 @@ impl SessionManager {
 
     /// Cleanup all expired sessions
     pub fn cleanup_expired(&self) -> usize {
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let mut count = 0;
         self.sessions.write().retain(|_, session| {
             let expired = session.expires_at < now;

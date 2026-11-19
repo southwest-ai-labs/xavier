@@ -10,7 +10,7 @@ pub struct TenantResponse {
     pub id: TenantId,
     pub name: String,
     pub plan: Plan,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 pub async fn handle_tenants_command(cmd: TenantsCommand) -> anyhow::Result<()> {

@@ -6,7 +6,6 @@
 //! of the context at a given point in time.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -18,8 +17,8 @@ use crate::memory::virtual_memory::{MemoryReference, VirtualMemory};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineQuery {
     pub query: String,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
+    pub start_date: Option<jiff::Timestamp>,
+    pub end_date: Option<jiff::Timestamp>,
     pub agent_id: Option<String>,
     pub limit: usize,
 }
@@ -27,15 +26,15 @@ pub struct TimelineQuery {
 /// A slice of context from a specific point in time
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimeSlice {
-    pub period_start: DateTime<Utc>,
-    pub period_end: DateTime<Utc>,
+    pub period_start: jiff::Timestamp,
+    pub period_end: jiff::Timestamp,
     pub memories: Vec<MemoryReference>,
     pub timeline_events: Vec<TimelineEventSummary>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimelineEventSummary {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: jiff::Timestamp,
     pub operation: String,
     pub summary: String,
     pub agent_id: String,
@@ -55,15 +54,17 @@ impl TimelineEngine {
     /// This simulates "time travel" by only looking at memories created
     /// or modified within that window, alongside the raw audit events.
     pub async fn get_time_slice(&self, query: &TimelineQuery) -> Result<TimeSlice> {
-        let start = query
-            .start_date
-            .unwrap_or_else(|| Utc::now() - chrono::Duration::days(30));
-        let end = query.end_date.unwrap_or_else(Utc::now);
+        let start = query.start_date.unwrap_or_else(|| {
+            jiff::Timestamp::now()
+                .checked_sub(jiff::Span::new().hours(30 * 24))
+                .unwrap()
+        });
+        let end = query.end_date.unwrap_or_else(jiff::Timestamp::now);
 
         // 1. Fetch memory references
         let filters = MemoryQueryFilters {
-            recorded_after: Some(start.to_rfc3339()),
-            recorded_before: Some(end.to_rfc3339()),
+            recorded_after: Some(start.to_string()),
+            recorded_before: Some(end.to_string()),
             ..Default::default()
         };
 
@@ -75,18 +76,17 @@ impl TimelineEngine {
             entries.into_iter().map(|e| e.to_reference()).collect();
 
         // 2. Fetch timeline audit events (if supported by backend)
-        let since_iso = start.to_rfc3339();
+        let since_iso = start.to_string();
         let mut timeline_events = Vec::new();
         let ws = self.memory.workspace_id();
 
         if let Some(store) = self.memory.store().await {
             if let Ok(events) = store.list_timeline_events(ws, &since_iso).await {
                 for ev in events {
-                    if let Ok(ts) = DateTime::parse_from_rfc3339(&ev.timestamp) {
-                        let ts_utc = ts.with_timezone(&Utc);
-                        if ts_utc <= end {
+                    if let Ok(ts) = ev.timestamp.parse::<jiff::Timestamp>() {
+                        if ts <= end {
                             timeline_events.push(TimelineEventSummary {
-                                timestamp: ts_utc,
+                                timestamp: ts,
                                 operation: ev.event_type.clone(),
                                 summary: ev
                                     .payload

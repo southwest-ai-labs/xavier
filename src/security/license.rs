@@ -224,7 +224,7 @@ pub fn verify_commercial_license_with_pubkey(
         .map_err(|e| LicenseError::JsonError(e.to_string()))?;
 
     if let Some(exp) = payload.expires_at {
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         if now > exp {
             return Err(LicenseError::Expired(exp));
         }
@@ -405,7 +405,7 @@ mod tests {
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Commercial".to_string(),
-            expires_at: Some(chrono::Utc::now().timestamp() + 3600),
+            expires_at: Some(jiff::Timestamp::now().as_second() + 3600),
             node_id: Some("node-swal-001".to_string()),
         };
 
@@ -422,7 +422,7 @@ mod tests {
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Enterprise".to_string(),
-            expires_at: Some(chrono::Utc::now().timestamp() - 100),
+            expires_at: Some(jiff::Timestamp::now().as_second() - 100),
             node_id: None,
         };
 
@@ -485,7 +485,7 @@ mod tests {
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Enterprise".to_string(),
-            expires_at: Some(chrono::Utc::now().timestamp() + 86400),
+            expires_at: Some(jiff::Timestamp::now().as_second() + 86400),
             node_id: Some("node-777".to_string()),
         };
 

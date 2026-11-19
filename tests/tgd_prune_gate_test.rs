@@ -291,7 +291,7 @@ async fn unflushed_buffered_access_shields_the_record() {
     store.put(low_utility_old("stale", ws)).await.expect("put");
 
     // Buffer-only: deliberately NOT flushed.
-    RECORDER.record(ws, &["just-read".to_string()], chrono::Utc::now());
+    RECORDER.record(ws, &["just-read".to_string()], jiff::Timestamp::now());
     assert_eq!(
         store.load_access_stats(ws).await.expect("load").len(),
         0,

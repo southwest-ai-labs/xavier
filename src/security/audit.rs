@@ -1,6 +1,5 @@
 use crate::codebase::connection_manager::ConnectionManager;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -13,7 +12,7 @@ pub struct AuditLogEntry {
     pub role: String,
     pub permission: String,
     pub result: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: jiff::Timestamp,
 }
 
 /// A structured logger for logging security events and permission checks.
@@ -83,7 +82,7 @@ impl AuditLogger {
             } else {
                 "DENY".to_string()
             },
-            timestamp: Utc::now(),
+            timestamp: jiff::Timestamp::now(),
         };
 
         let id = entry.id.clone();
@@ -91,7 +90,7 @@ impl AuditLogger {
         let r = entry.role.clone();
         let p = entry.permission.clone();
         let res = entry.result.clone();
-        let ts_str = entry.timestamp.to_rfc3339();
+        let ts_str = entry.timestamp.to_string();
 
         ConnectionManager::global()
             .with_conn(&self.project_id, move |conn| {
@@ -117,8 +116,8 @@ impl AuditLogger {
                 let rows = stmt.query_map([], |row| {
                     let ts_str: String = row.get(5)?;
                     let timestamp = ts_str
-                        .parse::<DateTime<Utc>>()
-                        .unwrap_or_else(|_| Utc::now());
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now());
 
                     Ok(AuditLogEntry {
                         id: row.get(0)?,

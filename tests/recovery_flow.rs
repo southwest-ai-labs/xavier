@@ -1,4 +1,3 @@
-use chrono::Utc;
 use uuid::Uuid;
 
 use xavier::security::recovery::RecoverySystem;
@@ -60,8 +59,8 @@ async fn test_full_recovery_flow() {
         password_hash,
         recovery_seed_hash: seed_hash,
         two_factor_enabled: true,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
     };
 
     user_store.add_user(user.clone()).await.unwrap();

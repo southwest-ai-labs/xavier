@@ -7,7 +7,6 @@
 //! - Store/retrieve agent context in memory
 
 use async_trait::async_trait;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -64,7 +63,7 @@ impl SimpleAgentRegistry {
         session_id: String,
         metadata: AgentMetadata,
     ) -> bool {
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let mut agents = self.agents.write().await;
 
         let entry = AgentEntry {
@@ -88,7 +87,7 @@ impl SimpleAgentRegistry {
     pub async fn heartbeat(&self, agent_id: &str) -> bool {
         let mut agents = self.agents.write().await;
         if let Some(entry) = agents.get_mut(agent_id) {
-            entry.last_heartbeat = Utc::now();
+            entry.last_heartbeat = jiff::Timestamp::now();
             true
         } else {
             false
@@ -97,14 +96,14 @@ impl SimpleAgentRegistry {
 
     /// Get all active agents (heartbeat < 5 minutes old)
     pub async fn get_active_agents(&self) -> Vec<AgentEntry> {
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let agents = self.agents.read().await;
 
         agents
             .values()
             .filter(|entry| {
-                let age = now.signed_duration_since(entry.last_heartbeat);
-                age.num_seconds() < HEARTBEAT_TIMEOUT_SECS
+                let age = now.as_second() - entry.last_heartbeat.as_second();
+                age < HEARTBEAT_TIMEOUT_SECS
             })
             .cloned()
             .collect()
@@ -265,7 +264,9 @@ mod tests {
         {
             let mut agents = registry.agents.write().await;
             if let Some(entry) = agents.get_mut("agent-1") {
-                entry.last_heartbeat = Utc::now() - chrono::Duration::seconds(400);
+                entry.last_heartbeat = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().seconds(400))
+                    .unwrap();
             }
         }
 

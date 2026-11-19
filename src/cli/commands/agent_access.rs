@@ -3,7 +3,6 @@
 use super::enums::{OnboardClient, TokenScope};
 use crate::cli::config::{resolve_base_url, resolve_mcp_port};
 use anyhow::Result;
-use chrono::Utc;
 use reqwest::{Client, Response, Url};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -217,7 +216,7 @@ async fn onboard_inner(
     Ok(())
 }
 
-fn expiry(ttl: &str) -> AccessResult<chrono::DateTime<Utc>> {
+fn expiry(ttl: &str) -> AccessResult<jiff::Timestamp> {
     let invalid = || {
         failure(
             2,
@@ -241,8 +240,10 @@ fn expiry(ttl: &str) -> AccessResult<chrono::DateTime<Utc>> {
         .and_then(|n| n.checked_mul(multiplier))
         .filter(|&n| n > 0)
         .ok_or_else(invalid)?;
-    let duration = chrono::Duration::try_seconds(seconds).ok_or_else(invalid)?;
-    Utc::now().checked_add_signed(duration).ok_or_else(invalid)
+    let span = jiff::Span::new().seconds(seconds);
+    jiff::Timestamp::now()
+        .checked_add(span)
+        .map_err(|_| invalid())
 }
 
 struct SecretFile {

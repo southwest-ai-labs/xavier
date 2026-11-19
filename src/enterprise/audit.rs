@@ -2,7 +2,6 @@
 //!
 //! Tracks all operations with timestamps, tenant context, and action details.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use thiserror::Error;
@@ -57,7 +56,7 @@ impl AuditAction {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
     pub id: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: jiff::Timestamp,
     pub tenant_id: TenantId,
     pub user_id: Option<Uuid>,
     pub action: AuditAction,
@@ -74,7 +73,7 @@ impl AuditEntry {
     pub fn new(tenant_id: TenantId, action: AuditAction, resource: impl Into<String>) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
-            timestamp: Utc::now(),
+            timestamp: jiff::Timestamp::now(),
             tenant_id,
             user_id: None,
             action,
@@ -194,8 +193,8 @@ impl AuditLog {
     pub fn get_in_range(
         &self,
         tenant_id: &TenantId,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
+        start: jiff::Timestamp,
+        end: jiff::Timestamp,
     ) -> Vec<&AuditEntry> {
         self.entries
             .iter()
@@ -253,8 +252,8 @@ pub struct AuditQuery {
     pub tenant_id: Option<TenantId>,
     pub user_id: Option<Uuid>,
     pub action: Option<String>,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
+    pub start_date: Option<jiff::Timestamp>,
+    pub end_date: Option<jiff::Timestamp>,
     pub limit: Option<usize>,
     pub offset: Option<usize>,
 }
@@ -275,7 +274,7 @@ impl AuditQuery {
     }
 
     /// With date range.
-    pub fn with_date_range(mut self, start: DateTime<Utc>, end: DateTime<Utc>) -> Self {
+    pub fn with_date_range(mut self, start: jiff::Timestamp, end: jiff::Timestamp) -> Self {
         self.start_date = Some(start);
         self.end_date = Some(end);
         self

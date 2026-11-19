@@ -196,9 +196,9 @@ pub struct EvictPayload {
 pub struct TimelineQueryPayload {
     pub query: String,
     #[serde(default)]
-    pub start_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub start_date: Option<jiff::Timestamp>,
     #[serde(default)]
-    pub end_date: Option<chrono::DateTime<chrono::Utc>>,
+    pub end_date: Option<jiff::Timestamp>,
     #[serde(default)]
     pub agent_id: Option<String>,
     #[serde(default = "default_limit")]
@@ -352,7 +352,7 @@ pub struct CreateTokenPayload {
     #[serde(default)]
     pub scopes: Vec<String>,
     #[serde(default)]
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub expires_at: Option<jiff::Timestamp>,
 }
 
 #[derive(Debug, Deserialize)]

@@ -29,7 +29,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::Timestamp;
 use serial_test::serial;
 
 use xavier::checkpoint::Checkpoint;
@@ -211,8 +211,8 @@ impl MemoryStore for ScriptedAccessStore {
                             id.clone(),
                             xavier::memory::access::AccessStats {
                                 access_count: *count,
-                                first_accessed_at: Some(Utc::now()),
-                                last_accessed_at: Some(Utc::now()),
+                                first_accessed_at: Some(Timestamp::now()),
+                                last_accessed_at: Some(Timestamp::now()),
                             },
                         )
                     })
@@ -310,7 +310,7 @@ impl MemoryStore for ScriptedAccessStore {
 fn buffer(workspaces: &[&str], memory_id: &str, count: usize) {
     for ws in workspaces {
         let ids: Vec<String> = (0..count).map(|i| format!("{memory_id}-{i}")).collect();
-        RECORDER.record(ws, &ids, Utc::now());
+        RECORDER.record(ws, &ids, Timestamp::now());
     }
 }
 
@@ -488,7 +488,7 @@ async fn a_failed_flush_backs_off_instead_of_retrying_on_every_read() {
     RECORDER.reset();
     let recorder = AccessRecorder::default();
 
-    recorder.record("ws-backoff", &["doc-a".to_string()], Utc::now());
+    recorder.record("ws-backoff", &["doc-a".to_string()], Timestamp::now());
     assert_eq!(
         recorder.backoff(),
         DEFAULT_FLUSH_INTERVAL,
@@ -543,7 +543,7 @@ async fn a_full_buffer_is_due_even_under_backoff() {
     let ids: Vec<String> = (0..DEFAULT_FLUSH_BATCH)
         .map(|i| format!("flood-{i}"))
         .collect();
-    recorder.record("ws-flood", &ids, Utc::now());
+    recorder.record("ws-flood", &ids, Timestamp::now());
 
     assert!(
         recorder.should_flush(),
@@ -584,7 +584,7 @@ async fn concurrent_records_and_flushes_count_each_access_once() {
     let writer = tokio::spawn(async move {
         for _ in 0..ROUNDS {
             for i in 0..DOCS {
-                RECORDER.record("ws-conc", &[format!("doc-{i}")], Utc::now());
+                RECORDER.record("ws-conc", &[format!("doc-{i}")], Timestamp::now());
             }
             tokio::task::yield_now().await;
         }
@@ -649,7 +649,7 @@ async fn concurrent_failing_flushes_never_duplicate_the_buffer() {
 
     const RECORDS: usize = 50;
     let ids: Vec<String> = (0..RECORDS).map(|i| format!("doc-{i}")).collect();
-    RECORDER.record("ws-concfail", &ids, Utc::now());
+    RECORDER.record("ws-concfail", &ids, Timestamp::now());
 
     for _ in 0..10 {
         let mut tasks = Vec::new();
@@ -868,7 +868,7 @@ async fn accesses_recorded_since_the_last_flush_survive_a_restart() {
         RECORDER.record(
             "ws-restart",
             &["hot".to_string(), "warm".to_string()],
-            Utc::now(),
+            Timestamp::now(),
         );
     }
     assert_eq!(RECORDER.pending_count(), 2, "two distinct records");
@@ -903,7 +903,7 @@ async fn repeated_cycles_never_inflate_the_counter() {
     for cycle in 0..5u64 {
         let ids = vec!["rec".to_string()];
         for _ in 0..(cycle + 1) {
-            RECORDER.record("ws-cycle", &ids, Utc::now());
+            RECORDER.record("ws-cycle", &ids, Timestamp::now());
         }
         expected += cycle + 1;
         flush_pending(&*store).await.expect("flush");

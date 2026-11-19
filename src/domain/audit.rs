@@ -2,13 +2,12 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEntry {
     pub id: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: jiff::Timestamp,
     pub component: String,
     pub event_type: String,
     pub severity: AuditSeverity,
