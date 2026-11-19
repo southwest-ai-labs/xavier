@@ -2,7 +2,7 @@
 
 use aho_corasick::AhoCorasick;
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, RwLock};
@@ -119,7 +119,7 @@ impl BeliefGraph {
             concept: concept_norm.clone(),
             confidence,
             language_family,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         self.nodes

@@ -289,8 +289,8 @@ impl GraphStorePort for SqliteGraphStore {
                 1,
                 node.language_family,
                 "{}",
-                node.created_at.to_rfc3339(),
-                node.created_at.to_rfc3339(),
+                node.created_at.to_string(),
+                node.created_at.to_string(),
             ],
         )?;
         Ok(())
@@ -311,9 +311,10 @@ impl GraphStorePort for SqliteGraphStore {
                     concept: row.get(1)?,
                     confidence: row.get(2)?,
                     language_family: row.get(3)?,
-                    created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                    created_at: row
+                        .get::<_, String>(4)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
                 })
             })
             .ok();
@@ -334,9 +335,10 @@ impl GraphStorePort for SqliteGraphStore {
                 concept: row.get(1)?,
                 confidence: row.get(2)?,
                 language_family: row.get(3)?,
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                created_at: row
+                    .get::<_, String>(4)?
+                    .parse::<jiff::Timestamp>()
+                    .unwrap_or_else(|_| jiff::Timestamp::now()),
             })
         })?;
 
@@ -365,8 +367,8 @@ impl GraphStorePort for SqliteGraphStore {
                 edge.source_language,
                 edge.target_language,
                 "{}",
-                edge.created_at.to_rfc3339(),
-                edge.updated_at.to_rfc3339(),
+                edge.created_at.to_string(),
+                edge.updated_at.to_string(),
             ],
         )?;
         Ok(())
@@ -393,12 +395,14 @@ impl GraphStorePort for SqliteGraphStore {
                 is_inferred: is_inferred != 0,
                 source_language: row.get(6)?,
                 target_language: row.get(7)?,
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
-                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                created_at: row
+                    .get::<_, String>(8)?
+                    .parse::<jiff::Timestamp>()
+                    .unwrap_or_else(|_| jiff::Timestamp::now()),
+                updated_at: row
+                    .get::<_, String>(9)?
+                    .parse::<jiff::Timestamp>()
+                    .unwrap_or_else(|_| jiff::Timestamp::now()),
             })
         })?;
 
@@ -431,12 +435,14 @@ impl GraphStorePort for SqliteGraphStore {
                     is_inferred: is_inferred != 0,
                     source_language: row.get(6)?,
                     target_language: row.get(7)?,
-                    created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(8)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
-                    updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                    created_at: row
+                        .get::<_, String>(8)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
+                    updated_at: row
+                        .get::<_, String>(9)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
                 })
             })
             .ok();

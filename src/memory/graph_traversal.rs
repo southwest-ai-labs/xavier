@@ -178,7 +178,7 @@ impl<'a> Pathfinder<'a> {
         let mut visited_relations = HashSet::new();
         let mut priority_queue = BinaryHeap::new();
 
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let policy = self
             .policy
             .as_ref()

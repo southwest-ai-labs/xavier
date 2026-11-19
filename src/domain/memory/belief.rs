@@ -2,7 +2,7 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -11,7 +11,7 @@ pub struct BeliefNode {
     pub concept: String,
     pub confidence: f32,
     pub language_family: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -27,8 +27,8 @@ pub struct BeliefEdge {
     pub is_inferred: bool,
     pub source_language: Option<String>,
     pub target_language: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl BeliefEdge {
@@ -40,7 +40,7 @@ impl BeliefEdge {
         confidence_score: f32,
         provenance_id: String,
     ) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: ulid::Ulid::new().to_string(),
             source,

@@ -511,7 +511,7 @@ impl AdaptiveGating {
                         score: scored_edge.policy_score,
                         source: "semantic_expansion".to_string(),
                         path: format!("beliefs/{}", edge.id),
-                        updated_at: Some(edge.updated_at.timestamp_millis()),
+                        updated_at: Some(edge.updated_at.as_millisecond()),
                         zone: None,
                     });
                 }

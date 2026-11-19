@@ -719,16 +719,14 @@ impl MemoryStore for VecSqliteMemoryStore {
                     is_inferred: is_inferred != 0,
                     source_language,
                     target_language,
-                    created_at: chrono::DateTime::parse_from_rfc3339(
-                        &row.get::<_, String>(11)?,
-                    )
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now()),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(
-                        &row.get::<_, String>(12)?,
-                    )
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now()),
+                    created_at: row
+                        .get::<_, String>(11)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
+                    updated_at: row
+                        .get::<_, String>(12)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
                 });
             }
 
@@ -853,8 +851,8 @@ impl MemoryStore for VecSqliteMemoryStore {
                         belief.is_inferred as i32,
                         belief.source_language,
                         belief.target_language,
-                        belief.created_at.to_rfc3339(),
-                        belief.updated_at.to_rfc3339(),
+                        belief.created_at.to_string(),
+                        belief.updated_at.to_string(),
                         workspace_id,
                     ],
                 )?;
