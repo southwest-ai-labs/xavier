@@ -1686,14 +1686,15 @@ mod tests {
         use std::sync::Arc;
         let work = tempfile::tempdir().expect("workspace dir");
         let (state, mut workspace) = crate::server::mcp::tests::test_state().await;
+        let project_id = format!("ws-context-{}", ulid::Ulid::new());
         let memory = Arc::new(crate::memory::qmd_memory::QmdMemory::new_with_workspace(
             Arc::new(tokio::sync::RwLock::new(documents)),
-            "ws-context",
+            &project_id,
         ));
         let store = Arc::new(crate::memory::store::InMemoryMemoryStore::default());
         workspace.workspace = Arc::new(
             crate::workspace::WorkspaceState::new_minimal(
-                "ws-context".to_string(),
+                project_id,
                 work.path().to_path_buf(),
                 memory,
                 store,

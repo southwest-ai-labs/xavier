@@ -26,7 +26,7 @@ export function OverviewTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <div className="text-emerald-400 font-mono text-sm animate-pulse">Initializing Maloca Core Systems...</div>
+        <div className="text-[var(--accent)] font-mono text-sm animate-pulse">Initializing Maloca Core Systems...</div>
       </div>
     );
   }
@@ -47,7 +47,7 @@ export function OverviewTab() {
         {/* Core Stats */}
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="flex items-center gap-2 mb-2 text-[var(--foreground)]">
-            <FileCode size={14} className="text-emerald-400" />
+            <FileCode size={14} className="text-[var(--accent)]" />
             <span className="text-xs uppercase tracking-wider font-mono">Features</span>
           </div>
           <div className="text-2xl font-bold text-[var(--foreground)] flex items-baseline gap-2">
@@ -55,13 +55,13 @@ export function OverviewTab() {
             <span className="text-xs text-[var(--foreground)] font-normal tracking-wide">TOTAL</span>
           </div>
           <div className="mt-2 text-xs text-[var(--foreground)]">
-            <span className="text-emerald-400">{pack.features_draft}</span> in draft state
+            <span className="text-[var(--accent)]">{pack.features_draft}</span> in draft state
           </div>
         </div>
 
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="flex items-center gap-2 mb-2 text-[var(--foreground)]">
-            <Activity size={14} className="text-emerald-400" />
+            <Activity size={14} className="text-[var(--accent)]" />
             <span className="text-xs uppercase tracking-wider font-mono">Support Queue</span>
           </div>
           <div className="text-2xl font-bold text-[var(--foreground)] flex items-baseline gap-2">
@@ -72,7 +72,7 @@ export function OverviewTab() {
 
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="flex items-center gap-2 mb-2 text-[var(--foreground)]">
-            <GitMerge size={14} className="text-emerald-400" />
+            <GitMerge size={14} className="text-[var(--accent)]" />
             <span className="text-xs uppercase tracking-wider font-mono">Decisions</span>
           </div>
           <div className="text-2xl font-bold text-[var(--foreground)] flex items-baseline gap-2">
@@ -83,7 +83,7 @@ export function OverviewTab() {
 
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="flex items-center gap-2 mb-2 text-[var(--foreground)]">
-            <Workflow size={14} className="text-emerald-400" />
+            <Workflow size={14} className="text-[var(--accent)]" />
             <span className="text-xs uppercase tracking-wider font-mono">Inbox Tasks</span>
           </div>
           <div className="text-2xl font-bold text-[var(--foreground)] flex items-baseline gap-2">
@@ -104,11 +104,11 @@ export function OverviewTab() {
           <div className="p-4 space-y-3 font-mono text-xs">
             <div className="flex justify-between items-center py-1 border-b border-[var(--border-subtle)]">
               <span className="text-[var(--foreground)]">Codegraph Indexed</span>
-              <span className="text-emerald-400">{pack.codegraph_indexed_at ? new Date(pack.codegraph_indexed_at).toLocaleString() : 'N/A'}</span>
+              <span className="text-[var(--accent)]">{pack.codegraph_indexed_at ? new Date(pack.codegraph_indexed_at).toLocaleString() : 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-1 border-b border-[var(--border-subtle)]">
               <span className="text-[var(--foreground)]">Generated At</span>
-              <span className="text-emerald-400">{new Date(pack.generated_at).toLocaleString()}</span>
+              <span className="text-[var(--accent)]">{new Date(pack.generated_at).toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center py-1">
               <span className="text-[var(--foreground)]">Codegraph Head</span>

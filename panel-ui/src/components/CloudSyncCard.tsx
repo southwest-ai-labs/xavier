@@ -88,9 +88,12 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
       let authStatus: any = null;
       let syncStatus: any = null;
 
-      // 1. Attempt to fetch /v1/auth/status or daemon auth status
+      // 1. Attempt to fetch /auth/status (live daemon route) or /v1/auth/status
       try {
-        const res = await fetch(getApiUrl("/v1/auth/status"), { headers });
+        let res = await fetch(getApiUrl("/auth/status"), { headers });
+        if (!res.ok) {
+          res = await fetch(getApiUrl("/v1/auth/status"), { headers });
+        }
         if (res.ok) {
           authStatus = await res.json();
         }

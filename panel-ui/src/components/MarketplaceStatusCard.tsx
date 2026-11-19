@@ -52,19 +52,19 @@ export function MarketplaceStatusCard({
   return (
     <div
       data-testid="marketplace-status-card"
-      className={`glass-panel p-4 rounded-xl border border-white/10 bg-[#0a0a0a]/90 text-white font-sans ${className}`}
+      className={`p-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--foreground)] shadow-xl font-sans ${className}`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <ShoppingBag className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-mono font-bold tracking-wider uppercase text-white/90">
+          <ShoppingBag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span className="text-xs font-mono font-bold tracking-wider uppercase text-[var(--foreground)]">
             Marketplace v2
           </span>
         </div>
         <button
           type="button"
           onClick={() => void fetchStatus()}
-          className="text-white/40 hover:text-white transition-colors"
+          className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
           title="Refresh Status"
           aria-label="Refresh Status"
         >
@@ -73,15 +73,15 @@ export function MarketplaceStatusCard({
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-          <div className="text-[10px] font-mono text-white/50 uppercase">Active Listings</div>
-          <div data-testid="card-active-listings" className="text-lg font-bold text-white font-mono">
+        <div className="p-2.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)]">
+          <div className="text-[10px] font-mono text-[var(--foreground-muted)] uppercase">Active Listings</div>
+          <div data-testid="card-active-listings" className="text-lg font-bold text-[var(--foreground)] font-mono">
             {loading ? "..." : (activeListingsCount ?? 0)}
           </div>
         </div>
-        <div className="p-2 rounded-lg bg-black/40 border border-white/5">
-          <div className="text-[10px] font-mono text-white/50 uppercase">Consent Tier</div>
-          <div className="text-xs font-bold font-mono uppercase text-emerald-400 mt-1">
+        <div className="p-2.5 rounded-lg bg-[var(--surface)] border border-[var(--border-subtle)]">
+          <div className="text-[10px] font-mono text-[var(--foreground-muted)] uppercase">Consent Tier</div>
+          <div className="text-xs font-bold font-mono uppercase text-emerald-600 dark:text-emerald-400 mt-1">
             {loading ? "..." : consentStatus}
           </div>
         </div>
@@ -90,7 +90,7 @@ export function MarketplaceStatusCard({
       <button
         type="button"
         onClick={handleOpen}
-        className="w-full flex items-center justify-between px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-mono transition-all group"
+        className="w-full flex items-center justify-between px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 rounded-lg text-xs font-mono transition-all group cursor-pointer shadow-xs"
       >
         <span>Open Maloca Console</span>
         <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />

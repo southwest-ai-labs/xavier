@@ -102,7 +102,10 @@ pub use protocol::{MeshHandshake, MeshManifest, MeshSyncRequest};
 pub use public_rag::{search_public, PublicRagQuery, PublicRagResult};
 pub use registry::PeerRegistrySyncAdapter;
 pub use service_network::{ServiceInfo, ServiceKind, ServiceRegistry, TelemetrySample};
-pub use telemetry_collector::{RetentionPolicy, TelemetryAggregate, TelemetryCollector};
+pub use telemetry_collector::{
+    global_telemetry_collector, set_global_telemetry_collector, RetentionPolicy,
+    TelemetryAggregate, TelemetryCollector,
+};
 pub use tokenomics::{
     ContributionType, RewardEngine, RewardEvent, Transaction, TransactionKind, Wallet,
     WalletBalance,

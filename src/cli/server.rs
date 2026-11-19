@@ -10,6 +10,7 @@ use axum::{
 };
 use axum_server::tls_rustls::RustlsConfig;
 
+use axum::http::{header, HeaderName, HeaderValue, Method, StatusCode};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,7 +20,7 @@ use std::time::Instant;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing::{debug, info};
 
 use crate::cli::config::{
@@ -81,6 +82,87 @@ pub(crate) fn skill_api_routes() -> Router<CliState> {
 pub async fn metrics_handler() -> axum::response::Response {
     use axum::response::IntoResponse;
     autometrics::prometheus_exporter::encode_http_response().into_response()
+}
+
+/// Resolve the allowed CORS origins.
+///
+/// Reads allowed origins from `XAVIER_ALLOWED_ORIGINS` (comma-separated). If unset or empty,
+/// defaults strictly to `["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:8006", "http://127.0.0.1:8006", "tauri://localhost"]`.
+pub fn resolve_allowed_origins() -> Vec<HeaderValue> {
+    const DEFAULT_ORIGINS: &[&str] = &[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8006",
+        "http://127.0.0.1:8006",
+        "tauri://localhost",
+    ];
+
+    if let Ok(val) = std::env::var("XAVIER_ALLOWED_ORIGINS") {
+        let parsed: Vec<HeaderValue> = val
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .filter_map(|s| HeaderValue::try_from(s).ok())
+            .collect();
+        if !parsed.is_empty() {
+            return parsed;
+        }
+    }
+
+    DEFAULT_ORIGINS
+        .iter()
+        .map(|&s| HeaderValue::from_static(s))
+        .collect()
+}
+
+/// Build secure CORS policy layer (SEC-01).
+pub fn build_cors_layer() -> CorsLayer {
+    let origins = resolve_allowed_origins();
+
+    let allowed_headers = [
+        header::AUTHORIZATION,
+        header::CONTENT_TYPE,
+        HeaderName::from_static("x-xavier-token"),
+        HeaderName::from_static("x-workspace-id"),
+        HeaderName::from_static("x-session-id"),
+        HeaderName::from_static("x-clearance"),
+    ];
+
+    let allowed_methods = [
+        Method::GET,
+        Method::POST,
+        Method::PUT,
+        Method::DELETE,
+        Method::OPTIONS,
+    ];
+
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(origins))
+        .allow_headers(allowed_headers)
+        .allow_methods(allowed_methods)
+        .allow_credentials(true)
+}
+
+/// Security headers middleware (SEC-06).
+pub async fn security_headers_middleware(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        HeaderName::from_static("x-content-type-options"),
+        HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        HeaderName::from_static("x-frame-options"),
+        HeaderValue::from_static("SAMEORIGIN"),
+    );
+    headers.insert(
+        HeaderName::from_static("referrer-policy"),
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    response
 }
 
 /// Handler to list lab segments with clearance levels (WAVE-22.02)
@@ -1256,6 +1338,28 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
             axum::routing::delete(crate::cli::handlers::notifications::delete_subscription_handler),
         )
         .merge(explain_routes(&state).with_state(()))
+        .route(
+            "/system/alerts",
+            get(crate::cli::handlers::system::system_alerts_handler),
+        )
+        .route("/health/history", get(health_history_handler))
+        .route(
+            "/v1/messaging/status",
+            get(crate::cli::handlers::config::get_messaging_status_handler),
+        )
+        .route("/health/cloud", get(cloud_health_handler));
+
+    let metrics_auth_disabled = std::env::var("XAVIER_METRICS_AUTH_DISABLED")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+
+    let protected_routes = if !metrics_auth_disabled {
+        protected_routes.route("/metrics", get(metrics_handler))
+    } else {
+        protected_routes
+    };
+
+    let protected_routes = protected_routes
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -1325,22 +1429,17 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
             "/healthz",
             get(crate::cli::handlers::system::healthz_handler),
         )
-        .route("/health/history", get(health_history_handler))
-        .route("/metrics", get(metrics_handler))
-        .route("/health/cloud", get(cloud_health_handler))
-        .route(
-            "/system/alerts",
-            get(crate::cli::handlers::system::system_alerts_handler),
-        )
-        .route(
-            "/v1/messaging/status",
-            get(crate::cli::handlers::config::get_messaging_status_handler),
-        )
         .route("/v1/version", get(version_handler))
         .route("/build", get(build_handler))
         .route("/ready", get(readiness_handler))
         .route("/readiness", get(readiness_handler))
         .route("/v1/health/ready", get(readiness_handler));
+
+    let app = if metrics_auth_disabled {
+        app.route("/metrics", get(metrics_handler))
+    } else {
+        app
+    };
 
     #[cfg(feature = "panel-ui")]
     let app = if !no_ui {
@@ -1368,7 +1467,8 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
 
     let app = app
         .merge(maloca_router)
-        .layer(CorsLayer::permissive())
+        .layer(build_cors_layer())
+        .layer(middleware::from_fn(security_headers_middleware))
         .layer(middleware::from_fn(
             xavier::adapters::inbound::http::middleware::timeout::timeout_middleware,
         ));
@@ -3816,5 +3916,228 @@ mod tests {
             retention_interval(Some(" 3600 ")),
             Some(Duration::from_secs(3600))
         );
+    }
+}
+
+#[cfg(test)]
+mod security_hardening_tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::{header, Request, StatusCode};
+    use tower::ServiceExt;
+
+    #[test]
+    fn test_cors_resolve_allowed_origins_default_when_unset() {
+        let prev = std::env::var("XAVIER_ALLOWED_ORIGINS").ok();
+        std::env::remove_var("XAVIER_ALLOWED_ORIGINS");
+
+        let origins = resolve_allowed_origins();
+        let origin_strs: Vec<&str> = origins.iter().map(|h| h.to_str().unwrap()).collect();
+
+        assert_eq!(
+            origin_strs,
+            vec![
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:8006",
+                "http://127.0.0.1:8006",
+                "tauri://localhost"
+            ]
+        );
+
+        if let Some(val) = prev {
+            std::env::set_var("XAVIER_ALLOWED_ORIGINS", val);
+        }
+    }
+
+    #[test]
+    fn test_cors_resolve_allowed_origins_default_when_empty() {
+        let prev = std::env::var("XAVIER_ALLOWED_ORIGINS").ok();
+        std::env::set_var("XAVIER_ALLOWED_ORIGINS", "   ,  ");
+
+        let origins = resolve_allowed_origins();
+        let origin_strs: Vec<&str> = origins.iter().map(|h| h.to_str().unwrap()).collect();
+
+        assert_eq!(
+            origin_strs,
+            vec![
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "http://localhost:8006",
+                "http://127.0.0.1:8006",
+                "tauri://localhost"
+            ]
+        );
+
+        if let Some(val) = prev {
+            std::env::set_var("XAVIER_ALLOWED_ORIGINS", val);
+        } else {
+            std::env::remove_var("XAVIER_ALLOWED_ORIGINS");
+        }
+    }
+
+    #[test]
+    fn test_cors_resolve_allowed_origins_custom() {
+        let prev = std::env::var("XAVIER_ALLOWED_ORIGINS").ok();
+        std::env::set_var(
+            "XAVIER_ALLOWED_ORIGINS",
+            "https://app.swal.dev, http://custom.origin:3000",
+        );
+
+        let origins = resolve_allowed_origins();
+        let origin_strs: Vec<&str> = origins.iter().map(|h| h.to_str().unwrap()).collect();
+
+        assert_eq!(
+            origin_strs,
+            vec!["https://app.swal.dev", "http://custom.origin:3000"]
+        );
+
+        if let Some(val) = prev {
+            std::env::set_var("XAVIER_ALLOWED_ORIGINS", val);
+        } else {
+            std::env::remove_var("XAVIER_ALLOWED_ORIGINS");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_cors_preflight_allowed_origin_succeeds_without_auth() {
+        let app = Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(build_cors_layer());
+
+        let req = Request::builder()
+            .uri("/test")
+            .method(Method::OPTIONS)
+            .header(header::ORIGIN, "http://localhost:5173")
+            .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
+            .header(
+                header::ACCESS_CONTROL_REQUEST_HEADERS,
+                "Authorization, Content-Type, X-Xavier-Token, X-Workspace-Id, X-Session-Id, X-Clearance",
+            )
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .unwrap(),
+            "http://localhost:5173"
+        );
+        assert_eq!(
+            resp.headers()
+                .get(header::ACCESS_CONTROL_ALLOW_CREDENTIALS)
+                .unwrap(),
+            "true"
+        );
+        let methods = resp
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_METHODS)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(methods.contains("GET"));
+        assert!(methods.contains("POST"));
+        assert!(methods.contains("PUT"));
+        assert!(methods.contains("DELETE"));
+        assert!(methods.contains("OPTIONS"));
+
+        let headers_allowed = resp
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_HEADERS)
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(headers_allowed.to_lowercase().contains("authorization"));
+        assert!(headers_allowed.to_lowercase().contains("content-type"));
+        assert!(headers_allowed.to_lowercase().contains("x-xavier-token"));
+        assert!(headers_allowed.to_lowercase().contains("x-workspace-id"));
+        assert!(headers_allowed.to_lowercase().contains("x-session-id"));
+        assert!(headers_allowed.to_lowercase().contains("x-clearance"));
+    }
+
+    #[tokio::test]
+    async fn test_cors_disallowed_origin_does_not_get_allow_header() {
+        let app = Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(build_cors_layer());
+
+        let req = Request::builder()
+            .uri("/test")
+            .method(Method::OPTIONS)
+            .header(header::ORIGIN, "http://untrusted-hacker.com")
+            .header(header::ACCESS_CONTROL_REQUEST_METHOD, "POST")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert!(resp
+            .headers()
+            .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn test_security_headers_middleware_applied() {
+        let app = Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(middleware::from_fn(security_headers_middleware));
+
+        let req = Request::builder()
+            .uri("/test")
+            .method(Method::GET)
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers()
+                .get(HeaderName::from_static("x-content-type-options"))
+                .unwrap(),
+            "nosniff"
+        );
+        assert_eq!(
+            resp.headers()
+                .get(HeaderName::from_static("x-frame-options"))
+                .unwrap(),
+            "SAMEORIGIN"
+        );
+        assert_eq!(
+            resp.headers()
+                .get(HeaderName::from_static("referrer-policy"))
+                .unwrap(),
+            "strict-origin-when-cross-origin"
+        );
+    }
+
+    #[test]
+    fn test_metrics_auth_disabled_environment_flag() {
+        let prev = std::env::var("XAVIER_METRICS_AUTH_DISABLED").ok();
+
+        std::env::set_var("XAVIER_METRICS_AUTH_DISABLED", "true");
+        assert!(std::env::var("XAVIER_METRICS_AUTH_DISABLED")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false));
+
+        std::env::set_var("XAVIER_METRICS_AUTH_DISABLED", "1");
+        assert!(std::env::var("XAVIER_METRICS_AUTH_DISABLED")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false));
+
+        std::env::set_var("XAVIER_METRICS_AUTH_DISABLED", "false");
+        assert!(!std::env::var("XAVIER_METRICS_AUTH_DISABLED")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false));
+
+        std::env::remove_var("XAVIER_METRICS_AUTH_DISABLED");
+        assert!(!std::env::var("XAVIER_METRICS_AUTH_DISABLED")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false));
+
+        if let Some(val) = prev {
+            std::env::set_var("XAVIER_METRICS_AUTH_DISABLED", val);
+        }
     }
 }

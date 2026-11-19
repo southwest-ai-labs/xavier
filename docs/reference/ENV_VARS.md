@@ -141,6 +141,7 @@
 | `XAVIER_JWT_SECRET` | `string` | (none) | HMAC signing secret for user-session JWTs issued by `/auth/login` and validated by the MCP/API JWT middleware. Must be set for `/auth/*` login to work at all. | ✅ |
 | `XAVIER_LOG_LEVEL` | `string` | `"info"` | Log level: `trace`, `debug`, `info`, `warn`, `error` | ❌ |
 | `XAVIER_MCP_PORT` | `u16` | `crate::cli::mcp::DEFAULT_MCP_PORT` | Port for the MCP HTTP+SSE server started alongside `xavier http`. `0` disables the MCP HTTP endpoint. | ❌ |
+| `XAVIER_METRICS_AUTH_DISABLED` | `bool` | `false` | Disable authentication requirement on the /metrics Prometheus endpoint | ❌ |
 | `XAVIER_PANEL_STORE_DIR` | `string` | (see `XAVIER_PANEL_UI_DIR` resolution) | Override directory for the Maloca/panel conversations store. | ❌ |
 | `XAVIER_PORT` | `u16` | `8006` | HTTP server port | ❌ |
 | `XAVIER_SECRET_EGRESS` | `string` | `—` | Egress policy configuration | ❌ |
@@ -447,6 +448,7 @@
 |----------|------|---------|-------------|--------|
 | `XAVIER_AUTO_UPDATE` | `bool` | `false` | Enable background auto-updater from GitHub release/main branch | ❌ |
 | `XAVIER_UPDATE_BRANCH` | `string` | `main` | Target git branch for the background auto-updater | ❌ |
+| `XAVIER_UPDATE_CANDIDATE_PATH` | `string` |  | Optional filesystem path to a candidate Xavier binary for testing blue-green auto-update slot staging and verification. | ❌ |
 | `XAVIER_UPDATE_HOOK` | `string` | `None` | Optional post-update shell command hook | ❌ |
 | `XAVIER_UPDATE_INTERVAL_SECS` | `u64` | `3600` | Polling interval in seconds for the background auto-updater | ❌ |
 | `XAVIER_UPDATE_REPO` | `string` | `southwest-ai-labs/xavier` | GitHub repository slug for auto-updater checks | ❌ |

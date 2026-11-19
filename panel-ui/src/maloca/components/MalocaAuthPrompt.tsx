@@ -57,20 +57,20 @@ export function MalocaAuthPrompt() {
           autoComplete="off"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="w-full bg-white/5 border border-[var(--border-subtle)] rounded-lg p-3 text-sm focus:border-[#39ff14] focus:outline-none font-mono"
+          className="w-full bg-white/5 border border-[var(--border-subtle)] rounded-lg p-3 text-sm focus:border-[var(--border-focus)] focus:outline-none font-mono"
         />
         <div className="flex justify-end gap-2">
           <button
             type="button"
             onClick={cancelMalocaToken}
-            className="px-4 py-2 text-xs font-mono rounded-lg text-[var(--foreground)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="px-4 py-2 text-xs font-mono rounded-lg text-[var(--foreground)] hover:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={!value.trim()}
-            className="px-4 py-2 text-xs font-mono rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="px-4 py-2 text-xs font-mono rounded-lg bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           >
             Save and retry
           </button>

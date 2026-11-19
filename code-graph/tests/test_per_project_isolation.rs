@@ -79,3 +79,96 @@ fn test_per_project_isolation() {
     let stats_global = db.stats().unwrap();
     assert_eq!(stats_global.total_symbols, 2);
 }
+
+#[test]
+fn test_parser_per_project_isolation() {
+    use code_graph::parser::parse_native_with_root;
+    use code_graph::parser::rust::RustParser;
+
+    let proj_a = "/workspace/projA";
+    let proj_b = "/workspace/projB";
+
+    let src_a = r#"
+        pub fn process_order(id: u64) -> bool {
+            true
+        }
+        pub struct Order {
+            pub id: u64,
+        }
+    "#;
+
+    let src_b = r#"
+        pub fn process_payment(amount: f64) -> bool {
+            true
+        }
+        pub struct Payment {
+            pub amount: f64,
+        }
+    "#;
+
+    // 1. Parse using RustParser builder with_project_root
+    let mut parser_a = RustParser::new().unwrap().with_project_root(Some(proj_a));
+    let syms_a = parser_a.parse(src_a, "src/order.rs").unwrap();
+    assert!(!syms_a.is_empty());
+    for s in &syms_a {
+        assert_eq!(
+            s.project_root.as_deref(),
+            Some(proj_a),
+            "symbol {} must retain projA project_root",
+            s.name
+        );
+    }
+
+    // 2. Parse using parse_native_with_root
+    let syms_b =
+        parse_native_with_root(src_b, &Language::Rust, "src/payment.rs", Some(proj_b)).unwrap();
+    assert!(!syms_b.is_empty());
+    for s in &syms_b {
+        assert_eq!(
+            s.project_root.as_deref(),
+            Some(proj_b),
+            "symbol {} must retain projB project_root",
+            s.name
+        );
+    }
+
+    // 3. Insert both symbol sets into the database
+    let db = CodeGraphDB::in_memory().expect("in-memory db");
+    db.insert_symbols(&syms_a).unwrap();
+    db.insert_symbols(&syms_b).unwrap();
+
+    let engine = QueryEngine::new(Arc::new(db.clone()));
+
+    // 4. Query independently by project root
+    let query_a = engine
+        .search_with_root("process", 10, Some(proj_a))
+        .unwrap();
+    assert_eq!(query_a.symbols.len(), 1);
+    assert_eq!(query_a.symbols[0].name, "process_order");
+    assert_eq!(query_a.symbols[0].project_root.as_deref(), Some(proj_a));
+
+    let query_b = engine
+        .search_with_root("process", 10, Some(proj_b))
+        .unwrap();
+    assert_eq!(query_b.symbols.len(), 1);
+    assert_eq!(query_b.symbols[0].name, "process_payment");
+    assert_eq!(query_b.symbols[0].project_root.as_deref(), Some(proj_b));
+
+    // 5. Test stats_for_project
+    let stats_a = db.stats_for_project(Some(proj_a)).unwrap();
+    assert_eq!(stats_a.total_symbols, syms_a.len() as u64);
+
+    let stats_b = db.stats_for_project(Some(proj_b)).unwrap();
+    assert_eq!(stats_b.total_symbols, syms_b.len() as u64);
+
+    let engine_stats_a = engine.stats_for_project(Some(proj_a)).unwrap();
+    assert_eq!(engine_stats_a.total_symbols, syms_a.len() as u64);
+
+    // 6. Test find_by_name_with_root
+    let found_a = db.find_by_name_with_root("Order", 5, Some(proj_a)).unwrap();
+    assert_eq!(found_a.len(), 1);
+    assert_eq!(found_a[0].project_root.as_deref(), Some(proj_a));
+
+    let found_a_in_b = db.find_by_name_with_root("Order", 5, Some(proj_b)).unwrap();
+    assert_eq!(found_a_in_b.len(), 0);
+}

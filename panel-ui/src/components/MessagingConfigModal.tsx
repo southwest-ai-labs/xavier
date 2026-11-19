@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Bell,
+  CheckCircle2,
   ChevronRight,
   Copy,
   Eye,
@@ -17,7 +18,8 @@ import {
   Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiClient } from "../api/client";
 
 interface MessagingConfigModalProps {
   onClose: () => void;
@@ -310,16 +312,147 @@ function PermissionsPanel() {
 function PlatformForm({ platform }: { platform: PlatformConfig }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
-  const [status, setStatus] = useState<ConnectionStatus>(
-    MOCK_STATUS[platform.id],
-  );
+  const [status, setStatus] = useState<ConnectionStatus>("disconnected");
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<
     "credentials" | "permissions" | "advanced"
   >("credentials");
 
-  const handleTest = () => {
+  const client = useMemo(() => {
+    const token =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("xavier_token") || ""
+        : "";
+    return new ApiClient(token);
+  }, []);
+
+  const isSupported = platform.id === "telegram" || platform.id === "discord";
+
+  useEffect(() => {
+    let cancelled = false;
+    setFeedbackMsg(null);
+
+    const loadPlatformConfig = async () => {
+      try {
+        if (platform.id === "telegram") {
+          const res = await client.getTelegramSettings();
+          if (!cancelled && res?.data) {
+            setValues({
+              bot_token: res.data.bot_token || "",
+              webhook_url: res.data.webhook_url || "",
+              chat_id: res.data.notification_chat_id || "",
+            });
+            setStatus(res.data.enabled && res.data.bot_token ? "connected" : "disconnected");
+          }
+        } else if (platform.id === "discord") {
+          const res = await client.getDiscordSettings();
+          if (!cancelled && res?.data) {
+            setValues({
+              webhook_url: res.data.webhook_url || "",
+              bot_token: res.data.bot_token || "",
+            });
+            setStatus(
+              res.data.enabled && (res.data.webhook_url || res.data.bot_token)
+                ? "connected"
+                : "disconnected",
+            );
+          }
+        } else {
+          setStatus("disconnected");
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setStatus("disconnected");
+        }
+      }
+    };
+
+    void loadPlatformConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [platform.id, client]);
+
+  const handleTest = async () => {
+    if (!isSupported) {
+      setStatus("error");
+      setFeedbackMsg(`Platform ${platform.label} backend integration is not supported in this Xavier daemon.`);
+      return;
+    }
+
     setStatus("testing");
-    setTimeout(() => setStatus("error"), 2000); // Mock: always error until backend
+    setFeedbackMsg(null);
+
+    try {
+      if (platform.id === "telegram") {
+        const res = await client.testTelegramConnection();
+        if (res.status === "ok") {
+          setStatus("connected");
+          setFeedbackMsg(res.message || "Telegram connection test successful");
+        } else {
+          setStatus("error");
+          setFeedbackMsg(res.message || "Telegram connection test failed");
+        }
+      } else if (platform.id === "discord") {
+        const res = await client.testDiscordConnection();
+        if (res.status === "ok") {
+          setStatus("connected");
+          setFeedbackMsg(res.message || "Discord connection test successful");
+        } else {
+          setStatus("error");
+          setFeedbackMsg(res.message || "Discord connection test failed");
+        }
+      }
+    } catch (e: any) {
+      setStatus("error");
+      setFeedbackMsg(e?.message || "Test connection failed with daemon error");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!isSupported) {
+      setStatus("error");
+      setFeedbackMsg(`Platform ${platform.label} configuration cannot be saved because no daemon route exists.`);
+      return;
+    }
+
+    setStatus("testing");
+    setFeedbackMsg(null);
+
+    try {
+      if (platform.id === "telegram") {
+        const res = await client.updateTelegramSettings({
+          enabled: Boolean(values.bot_token),
+          bot_token: values.bot_token || undefined,
+          webhook_url: values.webhook_url || undefined,
+          notification_chat_id: values.chat_id || undefined,
+        });
+        if (res.status === "ok") {
+          setStatus(values.bot_token ? "connected" : "disconnected");
+          setFeedbackMsg("Telegram configuration saved to daemon");
+        } else {
+          setStatus("error");
+          setFeedbackMsg(res.message || "Failed to save Telegram settings");
+        }
+      } else if (platform.id === "discord") {
+        const res = await client.updateDiscordSettings({
+          enabled: Boolean(values.webhook_url || values.bot_token),
+          webhook_url: values.webhook_url || undefined,
+          bot_token: values.bot_token || undefined,
+        });
+        if (res.status === "ok") {
+          setStatus(values.webhook_url || values.bot_token ? "connected" : "disconnected");
+          setFeedbackMsg("Discord configuration saved to daemon");
+        } else {
+          setStatus("error");
+          setFeedbackMsg(res.message || "Failed to save Discord settings");
+        }
+      }
+    } catch (e: any) {
+      setStatus("error");
+      setFeedbackMsg(e?.message || "Failed to save configuration to daemon");
+    }
   };
 
   const handleCopy = (val: string) => {
@@ -458,23 +591,30 @@ function PlatformForm({ platform }: { platform: PlatformConfig }) {
                 </button>
                 <button
                   type="button"
-                  className="flex-1 py-2 bg-[#39ff14]/10 border border-[#39ff14]/20 rounded-lg text-xs text-[#39ff14] hover:bg-[#39ff14]/15 hover:border-[#39ff14]/30 transition-all font-medium tracking-wide"
+                  onClick={handleSave}
+                  disabled={status === "testing"}
+                  className="flex-1 py-2 bg-[#39ff14]/10 border border-[#39ff14]/20 rounded-lg text-xs text-[#39ff14] hover:bg-[#39ff14]/15 hover:border-[#39ff14]/30 transition-all font-medium tracking-wide disabled:opacity-40"
                 >
                   Save Configuration
                 </button>
               </div>
 
-              {status === "error" && (
+              {feedbackMsg && (
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 p-3 rounded-lg bg-red-500/5 border border-red-500/20 text-red-400 text-xs"
+                  className={`flex items-center gap-2 p-3 rounded-lg border text-xs ${
+                    status === "connected"
+                      ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400"
+                      : "bg-red-500/5 border-red-500/20 text-red-400"
+                  }`}
                 >
-                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                  <span>
-                    Connection failed. Backend integration not yet implemented —
-                    see GitHub issue #backend-messaging.
-                  </span>
+                  {status === "connected" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  )}
+                  <span>{feedbackMsg}</span>
                 </motion.div>
               )}
             </motion.div>

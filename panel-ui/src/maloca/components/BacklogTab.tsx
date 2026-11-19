@@ -26,7 +26,7 @@ export function BacklogTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <div className="text-emerald-400 font-mono text-sm animate-pulse">Loading Global Backlog...</div>
+        <div className="text-[var(--accent)] font-mono text-sm animate-pulse">Loading Global Backlog...</div>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function BacklogTab() {
 
   const getStatusIcon = (status: string) => {
     if (status.toLowerCase().includes('done') || status.toLowerCase().includes('complete')) {
-      return <CheckCircle2 size={16} className="text-emerald-400" />;
+      return <CheckCircle2 size={16} className="text-[var(--accent)]" />;
     }
     return <CircleDashed size={16} className="text-amber-400" />;
   };
@@ -51,7 +51,7 @@ export function BacklogTab() {
       <div className="flex justify-between items-center mb-4">
         <div>
           <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
-            <ListTodo size={18} className="text-emerald-400" />
+            <ListTodo size={18} className="text-[var(--accent)]" />
             Global Backlog
           </h3>
           <p className="text-xs text-[var(--foreground)] mt-1">Unified task queue & work-item scheduling</p>
@@ -89,12 +89,12 @@ export function BacklogTab() {
                 </div>
 
                 <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                  <div className="text-xs font-mono text-emerald-400 flex items-center gap-2">
+                  <div className="text-xs font-mono text-[var(--accent)] flex items-center gap-2">
                     <span>{item.progress_pct.toFixed(0)}% Complete</span>
                   </div>
                   <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-400 rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(52,211,153,0.5)]"
+                      className="h-full bg-[var(--accent)] rounded-full transition-all duration-500 shadow-[0_0_8px_color-mix(in_srgb,var(--accent)_50%,transparent)]"
                       style={{ width: `${Math.max(5, item.progress_pct)}%` }}
                     />
                   </div>

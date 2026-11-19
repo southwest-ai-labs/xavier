@@ -430,7 +430,7 @@ export const PureRagView: React.FC<PureRagViewProps> = ({
             <span className="text-xs font-mono font-bold text-[var(--foreground)]/80 uppercase tracking-wider">
               Documentos & Textos RAG
             </span>
-            <span className="text-[11px] font-mono text-[#39ff14] font-medium">
+            <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-medium">
               Orden: Mayor % de Similitud primero
             </span>
           </div>

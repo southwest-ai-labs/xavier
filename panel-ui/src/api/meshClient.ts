@@ -109,3 +109,5 @@ export class MeshApiClient {
     });
   }
 }
+
+export { MeshApiClient as MeshClient };

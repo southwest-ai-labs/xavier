@@ -41,3 +41,9 @@ description = "SWAL dev emails (public identity, but block accidental real creds
 regex = '''[a-zA-Z0-9._%+-]+@swal\.dev'''
 secretGroup = 1
 allowlist = { paths = ['''Cargo\.toml$'''] }
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot Token"
+regex = '''[0-9]{9,10}:[a-zA-Z0-9_-]{35}'''
+secretGroup = 0

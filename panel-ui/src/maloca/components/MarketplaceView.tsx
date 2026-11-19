@@ -183,7 +183,7 @@ export function MarketplaceView() {
             onClick={() => setSubView("catalogue")}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
               subView === "catalogue"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                ? "bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
                 : "text-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-white/5"
             }`}
           >
@@ -194,7 +194,7 @@ export function MarketplaceView() {
             onClick={() => setSubView("seller")}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
               subView === "seller"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                ? "bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
                 : "text-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-white/5"
             }`}
           >
@@ -205,7 +205,7 @@ export function MarketplaceView() {
             onClick={() => setSubView("consent")}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors ${
               subView === "consent"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                ? "bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)]"
                 : "text-[var(--foreground)] hover:text-[var(--foreground)] hover:bg-white/5"
             }`}
           >
@@ -227,8 +227,8 @@ export function MarketplaceView() {
 
       {/* Action Banners */}
       {actionMessage && (
-        <div className="p-3 bg-emerald-950/40 border border-emerald-600/40 rounded-xl text-emerald-300 text-xs font-mono flex items-center gap-2">
-          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+        <div className="p-3 bg-[color-mix(in_srgb,var(--accent)_5%,transparent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] rounded-xl text-[var(--accent)] text-xs font-mono flex items-center gap-2">
+          <CheckCircle2 size={16} className="text-[var(--accent)] shrink-0" />
           <span>{actionMessage}</span>
         </div>
       )}
@@ -261,7 +261,7 @@ export function MarketplaceView() {
               <button
                 type="button"
                 onClick={() => setSubView("seller")}
-                className="mt-3 px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-lg text-xs font-mono transition-colors"
+                className="mt-3 px-3 py-1.5 bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_30%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] rounded-lg text-xs font-mono transition-colors"
               >
                 Create First Listing
               </button>
@@ -278,7 +278,7 @@ export function MarketplaceView() {
                     className={`glass-panel p-5 rounded-2xl border transition-all ${
                       isRevoked
                         ? "border-rose-900/40 bg-[var(--surface)] opacity-60"
-                        : "border-[var(--border-subtle)] bg-[var(--surface)] hover:border-emerald-500/30"
+                        : "border-[var(--border-subtle)] bg-[var(--surface)] hover:border-[color-mix(in_srgb,var(--accent)_30%,transparent)]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -287,7 +287,7 @@ export function MarketplaceView() {
                         className={`text-[11px] font-mono px-2 py-0.5 rounded-full border ${
                           isRevoked
                             ? "border-rose-500/40 text-rose-400 bg-rose-500/10"
-                            : "border-emerald-500/40 text-emerald-300 bg-emerald-500/10 font-bold"
+                            : "border-[color-mix(in_srgb,var(--accent)_40%,transparent)] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] font-bold"
                         }`}
                       >
                         {item.price_credits} CREDITS
@@ -300,7 +300,7 @@ export function MarketplaceView() {
 
                     <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-[var(--foreground)] mb-4 border-t border-[var(--border-subtle)] pt-3">
                       <span className="flex items-center gap-1">
-                        <Tag size={12} className="text-emerald-400" />
+                        <Tag size={12} className="text-[var(--accent)]" />
                         License: {item.license}
                       </span>
                       <span>·</span>
@@ -315,7 +315,7 @@ export function MarketplaceView() {
                           <XCircle size={14} /> Revoked by seller
                         </span>
                       ) : hasPurchased ? (
-                        <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+                        <span className="text-xs font-mono text-[var(--accent)] flex items-center gap-1">
                           <CheckCircle2 size={14} /> Purchased
                         </span>
                       ) : (
@@ -323,7 +323,7 @@ export function MarketplaceView() {
                           type="button"
                           onClick={() => void handleBuy(item)}
                           disabled={buyingId === item.id}
-                          className="px-4 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs font-mono font-medium transition-all"
+                          className="px-4 py-1.5 bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_30%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] rounded-xl text-xs font-mono font-medium transition-all"
                         >
                           {buyingId === item.id ? "Processing..." : `Buy for ${item.price_credits} credits`}
                         </button>
@@ -350,7 +350,7 @@ export function MarketplaceView() {
                       <span className="text-[var(--foreground)] font-bold">Listing ID:</span> {r.listing_id}
                       <span className="text-[var(--foreground)] ml-2">Receipt: {r.id.slice(0, 8)}...</span>
                     </div>
-                    <span className="text-emerald-400 font-bold">{r.amount_credits} CREDITS</span>
+                    <span className="text-[var(--accent)] font-bold">{r.amount_credits} CREDITS</span>
                   </div>
                 ))}
               </div>
@@ -376,7 +376,7 @@ export function MarketplaceView() {
                   required
                   value={sellerId}
                   onChange={(e) => setSellerId(e.target.value)}
-                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                 />
               </div>
 
@@ -388,7 +388,7 @@ export function MarketplaceView() {
                   placeholder="e.g. Colombian Biology QA Dataset (ICFES High Quality)"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                 />
               </div>
 
@@ -399,7 +399,7 @@ export function MarketplaceView() {
                   placeholder="Package contents, schema information, provenance details..."
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
-                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)] resize-none"
                 />
               </div>
 
@@ -412,7 +412,7 @@ export function MarketplaceView() {
                     required
                     value={newPrice}
                     onChange={(e) => setNewPrice(Number(e.target.value))}
-                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
 
@@ -421,7 +421,7 @@ export function MarketplaceView() {
                   <select
                     value={newLicense}
                     onChange={(e) => setNewLicense(e.target.value)}
-                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   >
                     <option value="cc-by-4.0">cc-by-4.0</option>
                     <option value="cc0-1.0">cc0-1.0</option>
@@ -437,7 +437,7 @@ export function MarketplaceView() {
                     type="text"
                     value={newTermsVersion}
                     onChange={(e) => setNewTermsVersion(e.target.value)}
-                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
               </div>
@@ -449,7 +449,7 @@ export function MarketplaceView() {
                   className={`flex items-center gap-2 px-5 py-2.5 font-semibold rounded-xl text-xs font-mono transition-all ${
                     !isSigningAvailable
                       ? "bg-white/10 text-[var(--foreground)] cursor-not-allowed border border-[var(--border-subtle)]"
-                      : "bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_15px_rgba(57,255,20,0.3)]"
+                      : "bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent)] shadow-[0_0_15px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
                   }`}
                   title={!isSigningAvailable ? "Signing required (ed25519 publisher signature)" : undefined}
                 >
@@ -481,7 +481,7 @@ export function MarketplaceView() {
                     <span className="text-[var(--foreground)] ml-2 font-mono text-[11px]">{l.id}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-emerald-400 font-bold">{l.price_credits} credits</span>
+                    <span className="text-[var(--accent)] font-bold">{l.price_credits} credits</span>
                     {!l.revoked_at_ms ? (
                       <button
                         type="button"
@@ -512,7 +512,7 @@ export function MarketplaceView() {
         <div className="space-y-6">
           <div className="glass-panel p-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface)]">
             <div className="flex items-center gap-2 mb-2">
-              <Shield className="w-5 h-5 text-emerald-400" />
+              <Shield className="w-5 h-5 text-[var(--accent)]" />
               <h2 className="text-base font-semibold text-[var(--foreground)]">Data Node Participation Consent</h2>
             </div>
             <p className="text-xs text-[var(--foreground)] mb-6 font-mono leading-relaxed">
@@ -536,7 +536,7 @@ export function MarketplaceView() {
                         setActiveConsentNodeId(consentNodeId.trim());
                       }
                     }}
-                    className="flex-1 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="flex-1 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   />
                   <button
                     type="button"
@@ -563,7 +563,7 @@ export function MarketplaceView() {
                       onClick={() => setConsentState(tier.id as any)}
                       className={`p-3 rounded-xl border text-left transition-all ${
                         consentState === tier.id
-                          ? "border-emerald-500/60 bg-emerald-500/10 text-[var(--foreground)] shadow-[inset_0_0_8px_rgba(57,255,20,0.1)]"
+                          ? "border-[color-mix(in_srgb,var(--accent)_60%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--foreground)] shadow-[inset_0_0_8px_color-mix(in_srgb,var(--accent)_10%,transparent)]"
                           : "border-[var(--border-subtle)] bg-[var(--surface)] text-[var(--foreground)] hover:border-[var(--border-subtle)]"
                       }`}
                     >
@@ -585,7 +585,7 @@ export function MarketplaceView() {
                     aria-label="Terms Version"
                     value={consentTermsVer}
                     onChange={(e) => setConsentTermsVer(e.target.value)}
-                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
 
@@ -597,7 +597,7 @@ export function MarketplaceView() {
                     aria-label="Consent Version"
                     value={consentVer}
                     onChange={(e) => setConsentVer(e.target.value)}
-                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-[var(--surface)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs font-mono text-[var(--foreground)] focus:outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
               </div>
@@ -609,7 +609,7 @@ export function MarketplaceView() {
                   className={`flex items-center gap-2 px-5 py-2.5 font-semibold rounded-xl text-xs font-mono transition-all ${
                     !isSigningAvailable
                       ? "bg-white/10 text-[var(--foreground)] cursor-not-allowed border border-[var(--border-subtle)]"
-                      : "bg-emerald-500 text-black hover:bg-emerald-400 shadow-[0_0_15px_rgba(57,255,20,0.3)]"
+                      : "bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent)] shadow-[0_0_15px_color-mix(in_srgb,var(--accent)_30%,transparent)]"
                   }`}
                   title={!isSigningAvailable ? "Signing required (ed25519 node signature)" : undefined}
                 >
@@ -644,7 +644,7 @@ export function MarketplaceView() {
                     className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
                       c.state === "off"
                         ? "border-rose-500/30 text-rose-400 bg-rose-500/10"
-                        : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                        : "border-[color-mix(in_srgb,var(--accent)_30%,transparent)] text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]"
                     }`}
                   >
                     {c.state}

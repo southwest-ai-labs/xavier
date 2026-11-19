@@ -578,6 +578,7 @@ impl CodeGraphDB {
             .map_err(|e| GraphError::Database(format!("lock poisoned: {}", e)))?;
         let symbol = normalize_symbol_for_insert(symbol);
         let stable_id = symbol.stable_id.clone().unwrap_or_default();
+        let root = project_root.or(symbol.project_root.as_deref());
 
         conn.execute(
             r#"INSERT INTO symbols (stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root)
@@ -608,7 +609,7 @@ impl CodeGraphDB {
                 symbol.signature,
                 symbol.parent,
                 symbol.complexity,
-                project_root,
+                root,
             ],
         )
         .map_err(|e| GraphError::Database(e.to_string()))?;
@@ -685,6 +686,7 @@ impl CodeGraphDB {
             for symbol in symbols {
                 let symbol = normalize_symbol_for_insert(symbol);
                 let stable_id = symbol.stable_id.clone().unwrap_or_default();
+                let root = project_root.or(symbol.project_root.as_deref());
                 stmt.execute(params![
                     &stable_id,
                     symbol.name,
@@ -698,7 +700,7 @@ impl CodeGraphDB {
                     symbol.signature,
                     symbol.parent,
                     symbol.complexity,
-                    project_root,
+                    root,
                 ])
                 .map_err(|e| GraphError::Database(e.to_string()))?;
 
@@ -942,6 +944,15 @@ impl CodeGraphDB {
 
     /// Find symbols in a specific file
     pub fn find_by_file(&self, file_path: &str) -> Result<Vec<Symbol>> {
+        self.find_by_file_with_root(file_path, None)
+    }
+
+    /// Find symbols in a specific file, optionally filtered by project_root
+    pub fn find_by_file_with_root(
+        &self,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
         let conn = self
             .conn
             .lock()
@@ -951,12 +962,12 @@ impl CodeGraphDB {
             .prepare(
                 r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols
-                   WHERE file_path = ?1"#,
+                   WHERE file_path = ?1 AND (project_root = ?2 OR ?2 IS NULL)"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         let symbols = stmt
-            .query_map(params![file_path], |row| {
+            .query_map(params![file_path, project_root], |row| {
                 Ok(Symbol {
                     id: Some(row.get(0)?),
                     stable_id: Some(row.get(1)?),
@@ -979,6 +990,20 @@ impl CodeGraphDB {
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         Ok(symbols)
+    }
+
+    /// Alias for find_by_file
+    pub fn get_symbols_by_file(&self, file_path: &str) -> Result<Vec<Symbol>> {
+        self.find_by_file_with_root(file_path, None)
+    }
+
+    /// Alias for find_by_file_with_root
+    pub fn get_symbols_by_file_with_root(
+        &self,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        self.find_by_file_with_root(file_path, project_root)
     }
 
     /// Find symbols by kind
@@ -1250,6 +1275,15 @@ impl CodeGraphDB {
 
     /// O3 situ core: all symbols defined in one file (exact path match).
     pub fn symbols_in_file(&self, file_path: &str) -> Result<Vec<Symbol>> {
+        self.symbols_in_file_with_root(file_path, None)
+    }
+
+    /// O3 situ core: all symbols defined in one file, optionally filtered by project_root.
+    pub fn symbols_in_file_with_root(
+        &self,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
         let conn = self
             .conn
             .lock()
@@ -1257,11 +1291,11 @@ impl CodeGraphDB {
         let mut stmt = conn
             .prepare(
                 r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
-                   FROM symbols WHERE file_path = ?1"#,
+                   FROM symbols WHERE file_path = ?1 AND (project_root = ?2 OR ?2 IS NULL)"#,
             )
             .map_err(|e| GraphError::Database(e.to_string()))?;
         let rows = stmt
-            .query_map(params![file_path], |row| {
+            .query_map(params![file_path, project_root], |row| {
                 Ok(Symbol {
                     id: Some(row.get(0)?),
                     stable_id: Some(row.get(1)?),
@@ -1428,20 +1462,36 @@ impl CodeGraphDB {
 
     /// Get all symbols in the database
     pub fn get_all_symbols(&self) -> Result<Vec<Symbol>> {
+        self.get_all_symbols_with_root(None)
+    }
+
+    /// Get all symbols in the database, optionally filtered by project_root
+    pub fn get_all_symbols_with_root(&self, project_root: Option<&str>) -> Result<Vec<Symbol>> {
         let conn = self
             .conn
             .lock()
             .map_err(|e| GraphError::Database(format!("lock poisoned: {}", e)))?;
 
-        let mut stmt = conn
-            .prepare(
+        let (sql, params): (&str, Vec<&str>) = if let Some(root) = project_root {
+            (
+                r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
+                   FROM symbols WHERE project_root = ?1"#,
+                vec![root],
+            )
+        } else {
+            (
                 r#"SELECT id, stable_id, name, kind, lang, file_path, start_line, end_line, start_col, end_col, signature, parent, complexity, project_root
                    FROM symbols"#,
+                vec![],
             )
+        };
+
+        let mut stmt = conn
+            .prepare(sql)
             .map_err(|e| GraphError::Database(e.to_string()))?;
 
         let symbols = stmt
-            .query_map([], |row| {
+            .query_map(rusqlite::params_from_iter(params.iter()), |row| {
                 Ok(Symbol {
                     id: Some(row.get(0)?),
                     stable_id: Some(row.get(1)?),
@@ -2324,7 +2374,7 @@ mod tests {
         };
 
         // 1. insert_symbols leaves it NULL
-        db.insert_symbols(&[sym1.clone()]).unwrap();
+        db.insert_symbols(std::slice::from_ref(&sym1)).unwrap();
 
         let conn = db.conn.lock().unwrap();
         let root1: Option<String> = conn
@@ -2338,7 +2388,7 @@ mod tests {
         drop(conn);
 
         // 2. insert_symbols_with_root writes the root
-        db.insert_symbols_with_root(&[sym2.clone()], Some("/path/to/proj"))
+        db.insert_symbols_with_root(std::slice::from_ref(&sym2), Some("/path/to/proj"))
             .unwrap();
         let conn = db.conn.lock().unwrap();
         let root2: Option<String> = conn
@@ -2352,7 +2402,7 @@ mod tests {
         drop(conn);
 
         // 3. re-inserting same stable_id updates the root
-        db.insert_symbols_with_root(&[sym1.clone()], Some("/new/root"))
+        db.insert_symbols_with_root(std::slice::from_ref(&sym1), Some("/new/root"))
             .unwrap();
         let conn = db.conn.lock().unwrap();
         let root1_updated: Option<String> = conn

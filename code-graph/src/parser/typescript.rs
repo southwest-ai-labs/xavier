@@ -8,6 +8,7 @@ use tree_sitter::{Node, Parser};
 pub struct TypeScriptParser {
     parser: Parser,
     lang: Language,
+    pub project_root: Option<String>,
 }
 
 impl Default for TypeScriptParser {
@@ -23,16 +24,44 @@ impl TypeScriptParser {
         parser.set_language(&grammar).map_err(|e| {
             GraphError::TreeSitter(format!("failed to set TypeScript language: {}", e))
         })?;
-        Ok(Self { parser, lang })
+        Ok(Self {
+            parser,
+            lang,
+            project_root: None,
+        })
+    }
+
+    pub fn with_project_root(mut self, project_root: Option<&str>) -> Self {
+        self.project_root = project_root.map(|s| s.to_string());
+        self
+    }
+
+    pub fn set_project_root(&mut self, project_root: Option<&str>) {
+        self.project_root = project_root.map(|s| s.to_string());
     }
 
     pub fn parse(&mut self, source: &str, file_path: &str) -> Result<Vec<Symbol>> {
+        let root = self.project_root.clone();
+        self.parse_with_root(source, file_path, root.as_deref())
+    }
+
+    pub fn parse_with_root(
+        &mut self,
+        source: &str,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        let prev_root = self.project_root.clone();
+        if project_root.is_some() {
+            self.project_root = project_root.map(|s| s.to_string());
+        }
         let tree = self
             .parser
             .parse(source.as_bytes(), None)
             .ok_or_else(|| GraphError::Parser("Failed to parse TypeScript source".to_string()))?;
         let mut symbols = Vec::new();
         self.extract(tree.root_node(), source, file_path, &mut symbols, None);
+        self.project_root = prev_root;
         Ok(symbols)
     }
 
@@ -145,6 +174,7 @@ impl TypeScriptParser {
                 name: name.clone(),
                 depth: 0,
                 parent,
+                project_root: self.project_root.clone(),
             },
         );
         Some(name)
@@ -221,6 +251,7 @@ impl TypeScriptParser {
                             name: name.to_string(),
                             depth: 0,
                             parent,
+                            project_root: self.project_root.clone(),
                         },
                     );
                 }
@@ -262,6 +293,7 @@ impl TypeScriptParser {
                             name: name.to_string(),
                             depth: 0,
                             parent,
+                            project_root: self.project_root.clone(),
                         },
                     );
                 }
@@ -318,6 +350,7 @@ impl TypeScriptParser {
                 name,
                 depth: 0,
                 parent: None,
+                project_root: self.project_root.clone(),
             },
         );
     }
@@ -328,7 +361,7 @@ impl TypeScriptParser {
         let complexity = matches!(args.kind, SymbolKind::Function | SymbolKind::Method)
             .then(|| cyclomatic_complexity(args.node, args.source));
         symbols.push(Symbol {
-            project_root: None,
+            project_root: args.project_root,
             id: None,
             stable_id: None,
             name: args.name,

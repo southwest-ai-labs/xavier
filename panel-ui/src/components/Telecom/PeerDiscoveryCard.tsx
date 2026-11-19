@@ -145,11 +145,14 @@ export const PeerDiscoveryCard: React.FC<PeerDiscoveryCardProps> = ({
     });
   }, [publicKey]);
 
-  const handlePingNode = useCallback(() => {
+  const handlePingNode = useCallback(async () => {
     if (onPing) {
       setIsPinging(true);
-      onPing(publicKey);
-      setTimeout(() => setIsPinging(false), 1000);
+      try {
+        await Promise.resolve(onPing(publicKey));
+      } finally {
+        setIsPinging(false);
+      }
     }
   }, [onPing, publicKey]);
 
