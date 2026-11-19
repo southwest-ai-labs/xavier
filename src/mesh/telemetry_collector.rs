@@ -12,7 +12,6 @@
 //!        - TelemetrySample { timestamp, metric_name, value, labels }
 
 use crate::mesh::NodeId;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -38,7 +37,7 @@ impl RetentionPolicy {
     pub fn should_retain(&self, sample_ts: i64) -> bool {
         match self {
             RetentionPolicy::Standard { days } | RetentionPolicy::Extended { days } => {
-                let cutoff = Utc::now().timestamp() - (days * 86400) as i64;
+                let cutoff = jiff::Timestamp::now().as_second() - (days * 86400) as i64;
                 sample_ts >= cutoff
             }
             RetentionPolicy::Infinite => true,
@@ -120,7 +119,7 @@ impl TelemetryCollector {
     /// The timestamp is automatically set to the current system time.
     pub fn record(&self, name: &str, value: f64, labels: HashMap<String, String>) {
         let sample = TelemetrySample {
-            timestamp: Utc::now().timestamp(),
+            timestamp: jiff::Timestamp::now().as_second(),
             metric_name: name.to_string(),
             value,
             labels,
@@ -158,7 +157,7 @@ impl TelemetryCollector {
 
     /// Record a new telemetry sample subject to the retention policy check before pushing.
     pub fn record_checked(&self, name: &str, value: f64, labels: HashMap<String, String>) -> bool {
-        self.record_with_timestamp_checked(name, value, labels, Utc::now().timestamp())
+        self.record_with_timestamp_checked(name, value, labels, jiff::Timestamp::now().as_second())
     }
 
     /// Query samples for a given metric recorded since the specified timestamp.
@@ -219,7 +218,7 @@ impl TelemetryCollector {
         let cutoff = match &self.retention_policy {
             RetentionPolicy::Infinite => None,
             RetentionPolicy::Standard { days } | RetentionPolicy::Extended { days } => {
-                Some(Utc::now().timestamp() - (days * 86400) as i64)
+                Some(jiff::Timestamp::now().as_second() - (days * 86400) as i64)
             }
         };
 
@@ -328,7 +327,7 @@ mod tests {
     #[test]
     fn test_retention_policy_standard() {
         let policy = RetentionPolicy::Standard { days: 7 };
-        let recent = Utc::now().timestamp();
+        let recent = jiff::Timestamp::now().as_second();
         let old = recent - (8 * 86400);
         assert!(policy.should_retain(recent));
         assert!(!policy.should_retain(old));
@@ -348,7 +347,7 @@ mod tests {
         collector.set_retention_policy(RetentionPolicy::Standard { days: 7 });
 
         let labels = HashMap::new();
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         let old_ts = now - (8 * 86400);
 
         let recorded =
@@ -382,7 +381,7 @@ mod tests {
         let mut collector = TelemetryCollector::new(node_id);
         collector.set_retention_policy(RetentionPolicy::Standard { days: 7 });
 
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         let old_ts = now - (10 * 86400); // 10 days ago (stale)
         let fresh_ts = now - (2 * 86400); // 2 days ago (fresh)
 

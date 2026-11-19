@@ -31,14 +31,13 @@ pub struct SpaceLink {
     pub path_prefix: Option<String>,
 }
 
-fn ts(t: DateTime<Utc>) -> String {
-    t.to_rfc3339_opts(SecondsFormat::Nanos, true)
+fn ts(t: jiff::Timestamp) -> String {
+    t.to_string()
 }
 
-fn parse_ts(s: &str) -> Result<DateTime<Utc>> {
-    Ok(DateTime::parse_from_rfc3339(s)
-        .map_err(|e| anyhow!("bad timestamp {s}: {e}"))?
-        .with_timezone(&Utc))
+fn parse_ts(s: &str) -> Result<jiff::Timestamp> {
+    s.parse::<jiff::Timestamp>()
+        .map_err(|e| anyhow!("bad timestamp {s}: {e}"))
 }
 
 /// `target_node` value naming the space that may read.
@@ -201,15 +200,19 @@ pub async fn create_link(
     }
     manager.get(grantor).await?;
     manager.get(grantee).await?;
+    let expires_at_ts = expires_at.map(|dt| {
+        jiff::Timestamp::from_millisecond(dt.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now())
+    });
     let link = SpaceLink {
         grant: CrossGrant {
             id: format!("lnk_{}", uuid::Uuid::new_v4().simple()),
             resource_id: link_resource(grantor),
             target_node: link_target(grantee),
             permission: Permission::Read,
-            expires_at,
+            expires_at: expires_at_ts,
             revoked: false,
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
         },
         namespace: namespace.filter(|s| !s.is_empty()),
         path_prefix: path_prefix.filter(|s| !s.is_empty()),
@@ -384,7 +387,7 @@ mod tests {
                 permission: Permission::Read,
                 expires_at: None,
                 revoked: false,
-                created_at: Utc::now(),
+                created_at: jiff::Timestamp::now(),
             },
             namespace: None,
             path_prefix: None,
@@ -503,7 +506,11 @@ mod tests {
         l.grant.revoked = true;
         assert!(!l.grants_read("esp_b", "esp_a"));
         let mut l = link("esp_b", "esp_a");
-        l.grant.expires_at = Some(Utc::now() - chrono::Duration::seconds(5));
+        l.grant.expires_at = Some(
+            jiff::Timestamp::now()
+                .checked_sub(jiff::Span::new().seconds(5))
+                .unwrap(),
+        );
         assert!(!l.grants_read("esp_b", "esp_a"));
     }
 

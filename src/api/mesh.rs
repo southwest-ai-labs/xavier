@@ -121,7 +121,7 @@ async fn add_peer(
         alias: req.alias,
         endpoint_url: req.endpoint_url,
         public_key_hex: String::new(),
-        added_at: chrono::Utc::now().timestamp(),
+        added_at: jiff::Timestamp::now().as_second(),
         last_seen_at: None,
         sync_enabled: true,
         is_cloud: false,
@@ -192,7 +192,7 @@ async fn heartbeat(
     let state = state.read().await;
     let mut registry = state.registry.write().await;
     if let Some(peer) = registry.get_peer_mut(&NodeId(req.node_id.clone())) {
-        peer.last_seen_at = Some(chrono::Utc::now().timestamp());
+        peer.last_seen_at = Some(jiff::Timestamp::now().as_second());
         registry
             .save()
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Save: {e}")))?;

@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use chrono::Utc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -153,7 +152,7 @@ impl RewardEngine {
     ///
     /// Defaults: reward_rate = 1.0, daily_cap = 10_000 XP.
     pub fn new(wallet: Arc<Mutex<Wallet>>) -> Self {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         RewardEngine {
             wallet,
             reward_rate: 1.0,
@@ -227,7 +226,7 @@ impl RewardEngine {
 
     /// Check and perform daily reset if the day has changed.
     pub fn daily_reset(&self) {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         let last = self.last_reset.load(Ordering::Relaxed);
 
         // If more than 24 hours have passed, reset the daily counter
@@ -306,7 +305,7 @@ impl RewardEngine {
             event_id: Uuid::new_v4(),
             contribution,
             xp_awarded,
-            timestamp: Utc::now().timestamp(),
+            timestamp: jiff::Timestamp::now().as_second(),
         };
 
         tracing::debug!(
@@ -441,7 +440,7 @@ mod tests {
         engine.today_earned.store(50_000, Ordering::Relaxed);
 
         // Set last_reset to 25 hours ago to trigger reset
-        let old_ts = Utc::now().timestamp() - 90_000; // 25 hours ago
+        let old_ts = jiff::Timestamp::now().as_second() - 90_000; // 25 hours ago
         engine.last_reset.store(old_ts, Ordering::Relaxed);
 
         engine.daily_reset();

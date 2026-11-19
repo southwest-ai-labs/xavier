@@ -195,7 +195,7 @@ impl CloudPeer {
                 "node_id": self.local_identity.node_id.as_str(),
                 "hash": hash,
                 "data": crate::crypto::base64_encode(data),
-                "created_at": chrono::Utc::now().to_rfc3339()
+                "created_at": jiff::Timestamp::now().to_string()
             });
 
             let payload_hash = compute_payload_hash(&payload);
@@ -262,7 +262,7 @@ impl CloudPeer {
             "node_id": peer.node_id.as_str(),
             "sender_node_id": self.local_identity.node_id.as_str(),
             "bundle": bundle,
-            "created_at": chrono::Utc::now().to_rfc3339()
+            "created_at": jiff::Timestamp::now().to_string()
         });
 
         let payload_hash = compute_payload_hash(&payload);
@@ -368,7 +368,7 @@ pub const CAPSULE_SCHEME: &str = "swal-capsule://";
 pub struct CapsuleEnvelope {
     pub version: u8,
     pub capsule_id: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
     pub original_size: usize,
     pub compressed_size: usize,
     pub nonce_hex: String,
@@ -442,7 +442,7 @@ pub fn seal_capsule(capsule_id: &str, data: &[u8], secret: &str) -> Result<Vec<u
     let envelope = CapsuleEnvelope {
         version: CAPSULE_VERSION,
         capsule_id: capsule_id.to_string(),
-        created_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
         original_size: data.len(),
         compressed_size: compressed.len(),
         nonce_hex: crate::crypto::hex_encode(nonce_bytes),

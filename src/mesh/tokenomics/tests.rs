@@ -5,7 +5,6 @@ mod tokenomics_tests {
     use crate::mesh::tokenomics::rewards::{ContributionType, RewardEngine};
     use crate::mesh::tokenomics::vesting::VestingEngine;
     use crate::mesh::tokenomics::wallet::{InvestmentTier, VestingState, Wallet};
-    use chrono::{Duration, Utc};
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
@@ -27,12 +26,15 @@ mod tokenomics_tests {
 
     #[test]
     fn test_vesting_calculation() {
-        let _now = Utc::now().timestamp();
+        let _now = jiff::Timestamp::now().as_second();
         let mut state = VestingState {
             tier: InvestmentTier::Bronze, // 2m cliff, 2m 50%, 4m 100%
             amount_total: 1000,
             amount_released: 0,
-            start_timestamp: (Utc::now() - Duration::days(65)).timestamp(), // ~2 months ago
+            start_timestamp: jiff::Timestamp::now()
+                .checked_sub(jiff::Span::new().hours(65 * 24))
+                .unwrap()
+                .as_second(), // ~2 months ago
             last_claim_timestamp: 0,
         };
 
@@ -41,7 +43,10 @@ mod tokenomics_tests {
         assert_eq!(releasable, 500);
 
         // At 4 months, 100% should be releasable
-        state.start_timestamp = (Utc::now() - Duration::days(125)).timestamp();
+        state.start_timestamp = jiff::Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(125 * 24))
+            .unwrap()
+            .as_second();
         let releasable_full = VestingEngine::calculate_releasable(&state);
         assert_eq!(releasable_full, 1000);
     }

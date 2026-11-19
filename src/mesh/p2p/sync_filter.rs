@@ -864,7 +864,7 @@ mod tests {
         let active_consent = ActiveConsent {
             token_id: "tok_123".to_string(),
             workspace_id: "ws_test".to_string(),
-            expires_at: chrono::Utc::now().timestamp() as u64 + 3600,
+            expires_at: (jiff::Timestamp::now().as_second() + 3600) as u64,
             token: "secret_token".to_string(),
         };
         DataConsentManager::register_active_consent(active_consent.clone()).unwrap();

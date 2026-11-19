@@ -51,7 +51,7 @@ impl MeshTransport {
             public_key_hex: crate::crypto::hex_encode(&self.local_identity.public_key),
             xavier_version: env!("CARGO_PKG_VERSION").to_string(),
             capabilities: vec!["sync-v1".to_string()],
-            timestamp: chrono::Utc::now().timestamp(),
+            timestamp: jiff::Timestamp::now().as_second(),
             nonce,
             signature_hex: crate::crypto::hex_encode(signature),
             pairing_secret,
@@ -80,7 +80,7 @@ impl MeshTransport {
 
     /// Fetch the sync manifest from a peer.
     pub async fn fetch_manifest(&self, peer: &PeerInfo, token: &str) -> Result<MeshManifest> {
-        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let timestamp = jiff::Timestamp::now().as_second().to_string();
         let nonce = uuid::Uuid::new_v4().to_string();
         let message = format!("{}:{}", timestamp, nonce);
         let signature = crate::crypto::hex_encode(self.local_identity.sign(message.as_bytes()));
@@ -121,7 +121,7 @@ impl MeshTransport {
             peer.endpoint_url.trim_end_matches('/')
         );
 
-        let timestamp = chrono::Utc::now().timestamp();
+        let timestamp = jiff::Timestamp::now().as_second();
         let nonce = uuid::Uuid::new_v4().to_string();
         let message = format!("{}:{}", timestamp, nonce);
         let signature_hex = crate::crypto::hex_encode(self.local_identity.sign(message.as_bytes()));
@@ -236,7 +236,7 @@ impl MeshTransport {
         let request = crate::mesh::protocol::MeshOfferGossipRequest {
             node_id: self.local_identity.node_id.clone(),
             offers: local_offers,
-            timestamp: chrono::Utc::now().timestamp_millis(),
+            timestamp: jiff::Timestamp::now().as_millisecond(),
         };
 
         let mut req = self.client.post(&url).json(&request);

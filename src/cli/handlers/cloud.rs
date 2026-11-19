@@ -342,7 +342,7 @@ async fn handle_cloud_restore(
         println!("═══════════════════════════════════════════");
         println!("  {:<22} {}", "Instance:", r.instance_id);
         if let Some(t) = r.backup_created_at {
-            println!("  {:<22} {}", "Backup taken at:", t.to_rfc3339());
+            println!("  {:<22} {}", "Backup taken at:", t);
         }
         println!("  {:<22} {}", "Records in backup:", r.records_in_backup);
         if !r.backup_complete {
@@ -420,7 +420,7 @@ async fn handle_cloud_verify(
             );
         } else {
             if let Some(t) = v.backup_created_at {
-                println!("  {:<22} {}", "Latest backup:", t.to_rfc3339());
+                println!("  {:<22} {}", "Latest backup:", t);
             }
             println!("  {:<22} {} in {} packs", "Records:", v.records, v.packs);
             if v.packs_missing.is_empty() {

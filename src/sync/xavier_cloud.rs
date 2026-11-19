@@ -551,7 +551,7 @@ pub struct PackRef {
 pub struct BackupManifest {
     pub format: String,
     pub instance_id: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
     pub xavier_version: String,
     pub kdf: KdfParams,
     pub kcv: String,
@@ -980,7 +980,7 @@ pub async fn run_backup(
     let mut manifest = BackupManifest {
         format: FORMAT.into(),
         instance_id: instance.clone(),
-        created_at: Utc::now(),
+        created_at: jiff::Timestamp::now(),
         xavier_version: env!("CARGO_PKG_VERSION").into(),
         kdf,
         kcv,
@@ -1005,7 +1005,7 @@ pub async fn run_backup(
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RestoreReport {
     pub instance_id: String,
-    pub backup_created_at: Option<DateTime<Utc>>,
+    pub backup_created_at: Option<jiff::Timestamp>,
     pub records_in_backup: usize,
     /// False when the restored backup left locked records out.
     pub backup_complete: bool,
@@ -1107,7 +1107,7 @@ pub async fn run_restore(
 pub struct VerifyReport {
     pub instance_id: String,
     pub manifest_found: bool,
-    pub backup_created_at: Option<DateTime<Utc>>,
+    pub backup_created_at: Option<jiff::Timestamp>,
     pub records: usize,
     pub packs: usize,
     pub packs_missing: Vec<String>,

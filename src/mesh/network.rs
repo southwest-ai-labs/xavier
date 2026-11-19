@@ -5,7 +5,7 @@
 //! Permission → expiry → revocation).
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -27,12 +27,12 @@ pub struct CrossGrant {
     /// Permission level granted.
     pub permission: Permission,
     /// Optional expiry; None means no expiry.
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<Timestamp>,
     /// Whether the grant has been revoked.
     #[serde(default)]
     pub revoked: bool,
     /// Creation timestamp.
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 impl CrossGrant {
@@ -42,7 +42,7 @@ impl CrossGrant {
             return false;
         }
         if let Some(exp) = self.expires_at {
-            if Utc::now() > exp {
+            if Timestamp::now() > exp {
                 return false;
             }
         }
@@ -108,14 +108,14 @@ pub struct MeshNetwork {
     /// Network ACL with cross-grants.
     #[serde(default)]
     pub acl: NetworkAcl,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl MeshNetwork {
     /// Create a new network with owner as first member.
     pub fn create_network(id: String, name: String, owner_node: String) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id,
             name,
@@ -137,7 +137,7 @@ impl MeshNetwork {
             ));
         }
         self.members.push(node_id);
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
         Ok(())
     }
 
@@ -162,7 +162,7 @@ impl MeshNetwork {
                 )
             })?;
         self.members.remove(pos);
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
         Ok(())
     }
 
@@ -172,7 +172,7 @@ impl MeshNetwork {
         resource_id: String,
         target_node: String,
         permission: Permission,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: Option<Timestamp>,
     ) -> CrossGrant {
         let grant = CrossGrant {
             id: ulid::Ulid::new().to_string(),
@@ -181,10 +181,10 @@ impl MeshNetwork {
             permission,
             expires_at,
             revoked: false,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         self.acl.grants.push(grant.clone());
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
         grant
     }
 
@@ -200,7 +200,7 @@ impl MeshNetwork {
             return Err(anyhow!("Grant '{}' is already revoked", grant_id));
         }
         grant.revoked = true;
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
         Ok(())
     }
 
@@ -236,7 +236,7 @@ impl MeshNetwork {
     ///
     /// Removes grants where `revoked == true` OR (`expires_at` is set and `now > exp`).
     /// Returns the count of removed grants, updates `updated_at = now`, and logs an audit line.
-    pub fn prune_expired_grants(&mut self, now: DateTime<Utc>) -> usize {
+    pub fn prune_expired_grants(&mut self, now: Timestamp) -> usize {
         let initial_len = self.acl.grants.len();
         self.acl.grants.retain(|g| {
             if g.revoked {
@@ -304,7 +304,6 @@ impl MeshNetworkRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Duration;
 
     fn net(id: &str, owner: &str) -> MeshNetwork {
         MeshNetwork::create_network(id.to_string(), format!("Network {}", id), owner.to_string())
@@ -378,7 +377,9 @@ mod tests {
     fn test_check_permission_expiry() {
         let mut n = net("net-1", "node-a");
         // expired grant
-        let past = Utc::now() - Duration::hours(1);
+        let past = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(1))
+            .unwrap();
         n.grant_cross(
             "res-1".to_string(),
             "node-b".to_string(),
@@ -388,7 +389,9 @@ mod tests {
         assert!(!n.check_permission("node-b", "res-1", &Permission::Read));
 
         // future grant still active
-        let future = Utc::now() + Duration::hours(1);
+        let future = Timestamp::now()
+            .checked_add(jiff::Span::new().hours(1))
+            .unwrap();
         let mut n2 = net("net-2", "node-a");
         n2.grant_cross(
             "res-1".to_string(),
@@ -452,7 +455,9 @@ mod tests {
     #[test]
     fn test_grant_cross_with_expiry_future_then_revoked() {
         let mut n = net("net-1", "node-a");
-        let future = Utc::now() + Duration::hours(2);
+        let future = Timestamp::now()
+            .checked_add(jiff::Span::new().hours(2))
+            .unwrap();
         let g = n.grant_cross(
             "doc-1".to_string(),
             "node-x".to_string(),
@@ -478,10 +483,10 @@ mod tests {
     #[test]
     fn test_prune_expired_grants_expired() {
         let mut n = net("net-1", "node-a");
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         // Expired grant
-        let past = now - Duration::hours(2);
+        let past = now.checked_sub(jiff::Span::new().hours(2)).unwrap();
         n.grant_cross(
             "res-1".to_string(),
             "node-b".to_string(),
@@ -490,7 +495,7 @@ mod tests {
         );
 
         // Future grant (active)
-        let future = now + Duration::hours(2);
+        let future = now.checked_add(jiff::Span::new().hours(2)).unwrap();
         n.grant_cross(
             "res-2".to_string(),
             "node-b".to_string(),
@@ -508,7 +513,7 @@ mod tests {
     #[test]
     fn test_prune_expired_grants_revoked() {
         let mut n = net("net-1", "node-a");
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         // Grant 1: to be revoked
         let g1 = n.grant_cross(
@@ -537,14 +542,14 @@ mod tests {
     #[test]
     fn test_prune_expired_grants_mixed_and_permission_check() {
         let mut n = net("net-1", "node-a");
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         // 1. Expired grant
         n.grant_cross(
             "res-expired".to_string(),
             "node-b".to_string(),
             Permission::Read,
-            Some(now - Duration::hours(5)),
+            Some(now.checked_sub(jiff::Span::new().hours(5)).unwrap()),
         );
 
         // 2. Active grant with future expiry
@@ -552,7 +557,7 @@ mod tests {
             "res-future".to_string(),
             "node-b".to_string(),
             Permission::Read,
-            Some(now + Duration::hours(5)),
+            Some(now.checked_add(jiff::Span::new().hours(5)).unwrap()),
         );
 
         // 3. Active grant with no expiry
@@ -568,7 +573,7 @@ mod tests {
             "res-revoked".to_string(),
             "node-b".to_string(),
             Permission::Delete,
-            Some(now + Duration::hours(5)),
+            Some(now.checked_add(jiff::Span::new().hours(5)).unwrap()),
         );
         n.revoke_grant(&g4.id).unwrap();
 

@@ -1,4 +1,3 @@
-use chrono::Utc;
 use criterion::{criterion_group, criterion_main, Criterion};
 use std::sync::Arc;
 use tokio::runtime::Runtime;
@@ -32,8 +31,8 @@ fn bench_retrieval_hormer(c: &mut Criterion) {
             description: None,
             occurrence_count: 1,
             memory_count: 1,
-            first_seen: Utc::now(),
-            last_seen: Utc::now(),
+            first_seen: jiff::Timestamp::now(),
+            last_seen: jiff::Timestamp::now(),
             merged_from: vec![],
             trust_score: 0.5,
             trust_rank: 0,

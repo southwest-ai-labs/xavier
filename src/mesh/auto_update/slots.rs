@@ -192,7 +192,7 @@ impl SlotManager {
         let stage_filename = format!(
             "{}.staging.{}",
             self.config.binary_name,
-            chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+            jiff::Timestamp::now().as_nanosecond() as i64
         );
         let stage_path = self.config.staging_dir.join(stage_filename);
 
@@ -359,7 +359,7 @@ impl SlotManager {
                 let tmp_link = self.config.base_dir.join(format!(
                     "{}.tmp.{}",
                     self.config.binary_name,
-                    chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+                    jiff::Timestamp::now().as_nanosecond() as i64
                 ));
 
                 #[cfg(unix)]
@@ -426,7 +426,7 @@ impl SlotManager {
                 let tmp_link = self.config.base_dir.join(format!(
                     "{}.rollback.tmp.{}",
                     self.config.binary_name,
-                    chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0)
+                    jiff::Timestamp::now().as_nanosecond() as i64
                 ));
 
                 #[cfg(unix)]

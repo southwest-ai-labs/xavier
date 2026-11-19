@@ -3,7 +3,6 @@
 //! Provides HTTP endpoints for cognitive calendar navigation (Time Travel).
 
 use axum::{extract::Extension, response::IntoResponse, Json};
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::context::timeline::{TimelineEngine, TimelineQuery};
@@ -12,8 +11,8 @@ use crate::workspace::WorkspaceContext;
 #[derive(Debug, Deserialize)]
 pub struct TimeSliceRequest {
     pub query: String,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
+    pub start_date: Option<jiff::Timestamp>,
+    pub end_date: Option<jiff::Timestamp>,
     pub agent_id: Option<String>,
     #[serde(default = "default_limit")]
     pub limit: usize,
@@ -25,15 +24,15 @@ fn default_limit() -> usize {
 
 #[derive(Debug, Serialize)]
 pub struct TimeSliceResponse {
-    pub period_start: DateTime<Utc>,
-    pub period_end: DateTime<Utc>,
+    pub period_start: jiff::Timestamp,
+    pub period_end: jiff::Timestamp,
     pub memories: Vec<crate::api::skills::MemoryRefResponse>,
     pub timeline_events: Vec<TimelineEventResponse>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct TimelineEventResponse {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: jiff::Timestamp,
     pub operation: String,
     pub summary: String,
     pub agent_id: String,
@@ -48,8 +47,12 @@ pub async fn get_time_slice(
 
     let query = TimelineQuery {
         query: request.query,
-        start_date: request.start_date,
-        end_date: request.end_date,
+        start_date: request
+            .start_date
+            .and_then(|ts| chrono::DateTime::from_timestamp_millis(ts.as_millisecond())),
+        end_date: request
+            .end_date
+            .and_then(|ts| chrono::DateTime::from_timestamp_millis(ts.as_millisecond())),
         agent_id: request.agent_id,
         limit: request.limit,
     };
@@ -57,8 +60,12 @@ pub async fn get_time_slice(
     match engine.get_time_slice(&query).await {
         Ok(slice) => {
             let response = TimeSliceResponse {
-                period_start: slice.period_start,
-                period_end: slice.period_end,
+                period_start: jiff::Timestamp::from_millisecond(
+                    slice.period_start.timestamp_millis(),
+                )
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
+                period_end: jiff::Timestamp::from_millisecond(slice.period_end.timestamp_millis())
+                    .unwrap_or_else(|_| jiff::Timestamp::now()),
                 memories: slice
                     .memories
                     .into_iter()
@@ -73,7 +80,10 @@ pub async fn get_time_slice(
                     .timeline_events
                     .into_iter()
                     .map(|e| TimelineEventResponse {
-                        timestamp: e.timestamp,
+                        timestamp: jiff::Timestamp::from_millisecond(
+                            e.timestamp.timestamp_millis(),
+                        )
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
                         operation: e.operation,
                         summary: e.summary,
                         agent_id: e.agent_id,

@@ -5,7 +5,7 @@
 
 xavier::isolate_test_process!();
 
-use chrono::{Duration, Utc};
+use jiff::Timestamp;
 use tempfile::tempdir;
 use xavier::enterprise::rbac::Permission;
 use xavier::mesh::node::NodeIdentity;
@@ -26,7 +26,7 @@ async fn test_unauthorized_cross_wallet_sync_rejection() {
         wallet_id: wallet_1.clone(),
         name: "Node A".to_string(),
         iroh_addr: "".to_string(),
-        last_seen: Utc::now(),
+        last_seen: chrono::Utc::now(),
     };
     reg.register_wallet_node_with_key(node_a, &wallet_1, &node_a_id.public_key)
         .unwrap();
@@ -38,7 +38,7 @@ async fn test_unauthorized_cross_wallet_sync_rejection() {
         wallet_id: wallet_2.clone(),
         name: "Node C".to_string(),
         iroh_addr: "".to_string(),
-        last_seen: Utc::now(),
+        last_seen: chrono::Utc::now(),
     };
     reg.register_wallet_node_with_key(node_c, &wallet_2, &node_c_id.public_key)
         .unwrap();
@@ -80,7 +80,7 @@ async fn test_cross_grant_issuance_and_signing() {
             "shared/collab/*".to_string(),
             node_c_id.node_id.to_string(),
             Permission::Read,
-            None,
+            None::<Timestamp>,
         )
         .unwrap();
 
@@ -109,7 +109,7 @@ async fn test_scoped_federation_sync_success() {
         "shared/collab/".to_string(), // we can match prefix or just check
         node_c_id.node_id.to_string(),
         Permission::Read,
-        None,
+        None::<Timestamp>,
     )
     .unwrap();
 
@@ -119,7 +119,7 @@ async fn test_scoped_federation_sync_success() {
             path: "shared/collab/doc1".to_string(),
             content: "Secret doc".to_string(),
             metadata: serde_json::json!({}),
-            created_at: Utc::now().timestamp(),
+            created_at: Timestamp::now().as_second(),
         }],
         vectors: vec![],
         snapshots: vec![],
@@ -162,7 +162,7 @@ async fn test_strict_namespace_isolation_boundary() {
         "shared/collab/".to_string(),
         node_c_id.node_id.to_string(),
         Permission::Read,
-        None,
+        None::<Timestamp>,
     )
     .unwrap();
 
@@ -172,7 +172,7 @@ async fn test_strict_namespace_isolation_boundary() {
             path: "private/confidential/doc1".to_string(),
             content: "Super Secret doc".to_string(),
             metadata: serde_json::json!({}),
-            created_at: Utc::now().timestamp(),
+            created_at: Timestamp::now().as_second(),
         }],
         vectors: vec![],
         snapshots: vec![],
@@ -214,7 +214,9 @@ async fn test_cross_grant_expiration() {
     )
     .unwrap();
 
-    let expired_time = Utc::now() - Duration::minutes(5);
+    let expired_time = Timestamp::now()
+        .checked_sub(jiff::Span::new().minutes(5))
+        .unwrap();
 
     reg.grant_cross(
         "net-test",
@@ -249,7 +251,7 @@ async fn test_cross_grant_revocation() {
             "shared/collab/".to_string(),
             node_c_id.node_id.to_string(),
             Permission::Read,
-            None,
+            None::<Timestamp>,
         )
         .unwrap();
 

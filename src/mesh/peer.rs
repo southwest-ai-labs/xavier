@@ -17,7 +17,7 @@ impl Default for PeerInfo {
             alias: None,
             endpoint_url: String::new(),
             public_key_hex: String::new(),
-            added_at: chrono::Utc::now().timestamp(),
+            added_at: jiff::Timestamp::now().as_second(),
             last_seen_at: None,
             sync_enabled: true,
             is_cloud: false,
@@ -34,7 +34,7 @@ impl PeerInfo {
     pub fn is_healthy(&self) -> bool {
         match self.last_seen_at {
             Some(last_seen) => {
-                let now = chrono::Utc::now().timestamp();
+                let now = jiff::Timestamp::now().as_second();
                 (now - last_seen) < 90
             }
             None => false,
@@ -141,7 +141,7 @@ impl PeerRegistry {
 
     /// Get all peers that are currently unhealthy (not seen in the last 90 seconds)
     pub fn get_unhealthy_peers(&self) -> Vec<&PeerInfo> {
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         self.peers
             .values()
             .filter(|p| match p.last_seen_at {
@@ -227,7 +227,7 @@ mod tests {
 
         // Test random maintainer selection
         let mut healthy_peer = registry.get_peer(&node_id).unwrap().clone();
-        healthy_peer.last_seen_at = Some(chrono::Utc::now().timestamp());
+        healthy_peer.last_seen_at = Some(jiff::Timestamp::now().as_second());
         registry.add_peer(healthy_peer).unwrap();
 
         let chosen = registry.select_random_maintainer();

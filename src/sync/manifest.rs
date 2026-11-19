@@ -11,7 +11,7 @@ use tokio::fs;
 pub struct ChunkMeta {
     pub hash: String,
     pub path: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
     pub size_bytes: u64,
 }
 
@@ -19,8 +19,8 @@ pub struct ChunkMeta {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Manifest {
     pub version: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
+    pub updated_at: jiff::Timestamp,
     #[serde(rename = "chunks")]
     chunks: Vec<ChunkMeta>,
 }
@@ -28,7 +28,7 @@ pub struct Manifest {
 impl Manifest {
     /// Create a new empty manifest
     pub fn new() -> Self {
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         Self {
             version: "1.0".to_string(),
             created_at: now,
@@ -44,11 +44,11 @@ impl Manifest {
             self.chunks.push(ChunkMeta {
                 hash: chunk.hash.clone(),
                 path,
-                created_at: chrono::DateTime::from_timestamp(chunk.created_at, 0)
-                    .unwrap_or_default(),
+                created_at: jiff::Timestamp::from_second(chunk.created_at)
+                    .unwrap_or(jiff::Timestamp::UNIX_EPOCH),
                 size_bytes,
             });
-            self.updated_at = chrono::Utc::now();
+            self.updated_at = jiff::Timestamp::now();
         }
     }
 
