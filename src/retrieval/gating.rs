@@ -469,7 +469,7 @@ impl AdaptiveGating {
         telemetry: Option<Arc<crate::memory::telemetry::NavTelemetry>>,
         user_id: Option<String>,
     ) -> Vec<ScoredResult> {
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let start_time = std::time::Instant::now();
 
         // 1. Score each layer independently (may use parallel execution internally)
@@ -752,7 +752,7 @@ impl AdaptiveGating {
         working: &[MemoryDocument],
         query: &str,
     ) -> Vec<ScoredResult> {
-        self.score_working_layer_at(working, query, chrono::Utc::now(), None)
+        self.score_working_layer_at(working, query, jiff::Timestamp::now(), None)
             .await
     }
 
@@ -762,7 +762,7 @@ impl AdaptiveGating {
         episodic: &[SessionSummary],
         query: &str,
     ) -> Vec<ScoredResult> {
-        self.score_episodic_layer_at(episodic, query, chrono::Utc::now())
+        self.score_episodic_layer_at(episodic, query, jiff::Timestamp::now())
             .await
     }
 
@@ -772,7 +772,7 @@ impl AdaptiveGating {
         semantic: &[EntityRecord],
         query: &str,
     ) -> Vec<ScoredResult> {
-        self.score_semantic_layer_at(semantic, query, chrono::Utc::now())
+        self.score_semantic_layer_at(semantic, query, jiff::Timestamp::now())
             .await
     }
 
@@ -781,7 +781,7 @@ impl AdaptiveGating {
         &self,
         working: &[MemoryDocument],
         query: &str,
-        now: chrono::DateTime<chrono::Utc>,
+        now: jiff::Timestamp,
         user_id: Option<&str>,
     ) -> Vec<ScoredResult> {
         let query_lower = query.to_lowercase();
@@ -802,8 +802,7 @@ impl AdaptiveGating {
             }
         }
 
-        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now());
+        let now_ts = now;
 
         let mut results: Vec<ScoredResult> = if working.len() > 100 {
             let working = working.to_vec();
@@ -870,7 +869,7 @@ impl AdaptiveGating {
         &self,
         episodic: &[SessionSummary],
         query: &str,
-        now: chrono::DateTime<chrono::Utc>,
+        now: jiff::Timestamp,
     ) -> Vec<ScoredResult> {
         let query_lower = query.to_lowercase();
         let query_terms_owned: Vec<String> = query_lower
@@ -878,8 +877,7 @@ impl AdaptiveGating {
             .map(|s| s.to_string())
             .collect();
 
-        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now());
+        let now_ts = now;
 
         let mut results: Vec<ScoredResult> = if episodic.len() > 100 {
             let episodic = episodic.to_vec();
@@ -934,11 +932,10 @@ impl AdaptiveGating {
         &self,
         semantic: &[EntityRecord],
         query: &str,
-        now: chrono::DateTime<chrono::Utc>,
+        now: jiff::Timestamp,
     ) -> Vec<ScoredResult> {
         let query_lower = query.to_lowercase();
-        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now());
+        let now_ts = now;
 
         let mut results: Vec<ScoredResult> = if semantic.len() > 100 {
             let semantic = semantic.to_vec();
@@ -1044,7 +1041,7 @@ impl AdaptiveGating {
         semantic: &[EntityRecord],
         query: &str,
     ) -> LayeredSearchResult {
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         // Level 0: Working Memory (Bounded hot set)
         let level_0_results = self
             .score_working_layer_at(working_docs, query, now, None)
@@ -1062,7 +1059,7 @@ impl AdaptiveGating {
 
         LayeredSearchResult {
             topic: query.to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             level_0_working: level_0_results,
             level_1_entity_graph: level_1_results,
             level_2_semantic: level_2_results,
@@ -1122,8 +1119,8 @@ impl AdaptiveGating {
                             .metadata
                             .get("updated_at")
                             .and_then(|v| v.as_str())
-                            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                            .map(|dt| dt.timestamp_millis()),
+                            .and_then(|s| s.parse::<jiff::Timestamp>().ok())
+                            .map(|ts| ts.as_millisecond()),
                         zone: None,
                     })
                 } else {
@@ -1267,7 +1264,7 @@ mod tests {
         ];
 
         let results = gating
-            .score_working_layer_at(&docs, "BELA", chrono::Utc::now(), None)
+            .score_working_layer_at(&docs, "BELA", jiff::Timestamp::now(), None)
             .await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "doc1");
@@ -1311,7 +1308,7 @@ mod tests {
         ];
 
         let results = gating
-            .score_semantic_layer_at(&entities, "BELA", chrono::Utc::now())
+            .score_semantic_layer_at(&entities, "BELA", jiff::Timestamp::now())
             .await;
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].id, "entity1");
@@ -1371,7 +1368,7 @@ mod tests {
         ];
 
         let results = gating
-            .score_working_layer_at(&docs, "search term", chrono::Utc::now(), None)
+            .score_working_layer_at(&docs, "search term", jiff::Timestamp::now(), None)
             .await;
 
         assert_eq!(results.len(), 2);
@@ -1393,9 +1390,9 @@ mod tests {
     #[tokio::test]
     async fn test_recency_bias() {
         let gating = AdaptiveGating::with_defaults();
-        let now = chrono::Utc::now();
-        let yesterday = now - chrono::Duration::days(1);
-        let last_month = now - chrono::Duration::days(30);
+        let now = jiff::Timestamp::now();
+        let yesterday = now.checked_sub(jiff::Span::new().hours(24)).unwrap();
+        let last_month = now.checked_sub(jiff::Span::new().hours(30 * 24)).unwrap();
 
         let docs = vec![
             MemoryDocument {
@@ -1403,7 +1400,7 @@ mod tests {
                 path: "test/recent".to_string(),
                 content: "BELA works at SWAL".to_string(),
                 metadata: serde_json::json!({
-                    "updated_at": yesterday.to_rfc3339()
+                    "updated_at": yesterday.to_string()
                 }),
                 ..Default::default()
             },
@@ -1412,7 +1409,7 @@ mod tests {
                 path: "test/old".to_string(),
                 content: "BELA works at SWAL".to_string(),
                 metadata: serde_json::json!({
-                    "updated_at": last_month.to_rfc3339()
+                    "updated_at": last_month.to_string()
                 }),
                 ..Default::default()
             },
@@ -1503,7 +1500,7 @@ mod tests {
             .collect();
 
         let parallel_results = gating
-            .score_working_layer_at(&docs, "bela", chrono::Utc::now(), None)
+            .score_working_layer_at(&docs, "bela", jiff::Timestamp::now(), None)
             .await;
 
         assert_eq!(sequential_results.len(), parallel_results.len());
