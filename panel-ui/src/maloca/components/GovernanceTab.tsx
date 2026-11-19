@@ -43,7 +43,7 @@ export function GovernanceTab() {
 const getStatusIcon = (status: string) => {
   switch (status.toLowerCase()) {
     case 'open': return <Clock size={16} className="text-amber-400" />;
-    case 'closed': return <CheckCircle2 size={16} className="text-emerald-400" />;
+    case 'closed': return <CheckCircle2 size={16} className="text-[var(--accent)]" />;
     case 'reconsidering': return <XCircle size={16} className="text-rose-400" />;
     case 'analyzing': return <BarChart3 size={16} className="text-cyan-400" />;
     default: return <Target size={16} className="text-[var(--foreground)]" />;
@@ -53,7 +53,7 @@ const getStatusIcon = (status: string) => {
 const getStatusColor = (status: string) => {
   switch (status.toLowerCase()) {
     case 'open': return 'text-amber-400 border-amber-400/20 bg-amber-400/10';
-    case 'closed': return 'text-emerald-400 border-emerald-400/20 bg-emerald-400/10';
+    case 'closed': return 'text-[var(--accent)] border-[color-mix(in_srgb,var(--accent)_20%,transparent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)]';
     case 'reconsidering': return 'text-rose-400 border-rose-400/20 bg-rose-400/10';
     case 'analyzing': return 'text-cyan-400 border-cyan-400/20 bg-cyan-400/10';
     default: return 'text-[var(--foreground)] border-[var(--border-subtle)] bg-white/5';
@@ -131,7 +131,7 @@ const ProposalItem = React.memo(function ProposalItem({ proposal }: { proposal: 
         </div>
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="text-[var(--foreground)] text-xs font-mono mb-1">Total Passed</div>
-          <div className="text-2xl font-bold text-emerald-400">{proposals.filter(p => p.status === 'closed').length}</div>
+          <div className="text-2xl font-bold text-[var(--accent)]">{proposals.filter(p => p.status === 'closed').length}</div>
         </div>
         <div className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)]">
           <div className="text-[var(--foreground)] text-xs font-mono mb-1">Participation Rate</div>

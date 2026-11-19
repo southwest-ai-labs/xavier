@@ -26,7 +26,7 @@ export function SupportTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <div className="text-emerald-400 font-mono text-sm animate-pulse">Loading Support Queue...</div>
+        <div className="text-[var(--accent)] font-mono text-sm animate-pulse">Loading Support Queue...</div>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function SupportTab() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'open': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+      case 'open': return 'text-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] border-[color-mix(in_srgb,var(--accent)_20%,transparent)]';
       case 'closed': return 'text-[var(--foreground)] bg-white/5 border-[var(--border-subtle)]';
       case 'in_progress': return 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20';
       default: return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
@@ -52,11 +52,11 @@ export function SupportTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
-          <MessageSquare size={18} className="text-emerald-400" />
+          <MessageSquare size={18} className="text-[var(--accent)]" />
           Active Support Tickets
         </h3>
         <button
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded transition-colors"
           onClick={() => alert("Create ticket functionality coming soon")}
         >
           <Plus size={14} />
@@ -73,7 +73,7 @@ export function SupportTab() {
       ) : (
         <div className="grid gap-3">
           {tickets.map((ticket) => (
-            <div key={ticket.id} className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)] hover:border-emerald-500/30 transition-colors group cursor-pointer">
+            <div key={ticket.id} className="glass-panel p-4 border border-[var(--border-subtle)] rounded-xl bg-[var(--surface)] hover:border-[color-mix(in_srgb,var(--accent)_30%,transparent)] transition-colors group cursor-pointer">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
