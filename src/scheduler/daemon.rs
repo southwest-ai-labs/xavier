@@ -262,10 +262,34 @@ impl MemoryDaemon {
                     .and_then(|v| v.parse::<u64>().ok())
                     .unwrap_or(900); // 15 minutes default
                 info!(
-                    "MemoryDaemon: Scheduled main branch auto-updater loop started ({}s interval)",
+                    "MemoryDaemon: Resilient auto-updater service started (immediate startup check enabled, {}s interval)",
                     interval_secs
                 );
                 let updater = crate::mesh::auto_update::AutoUpdateService::new();
+
+                // 1. Immediate trigger on startup (with 500ms settle delay for listener initialization)
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                info!("MemoryDaemon: Triggering immediate startup auto-update check...");
+                match updater.run_startup_check().await {
+                    Ok(report) => {
+                        if report.applied {
+                            info!(
+                                "MemoryDaemon: Startup update applied: {} ({})",
+                                report.title, report.current_sha
+                            );
+                        } else {
+                            info!("MemoryDaemon: Startup check complete: system up to date or sentinel verified.");
+                        }
+                    }
+                    Err(e) => {
+                        warn!(
+                            "MemoryDaemon: Immediate startup auto-update check error: {}",
+                            e
+                        );
+                    }
+                }
+
+                // 2. Continuous periodic interval loop
                 loop {
                     sleep(Duration::from_secs(interval_secs)).await;
                     match updater.run_silent_update_cycle().await {

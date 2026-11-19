@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { Brain, MessageSquare, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiUrl } from "./api/client";
 import { useAuthStore } from "./auth/AuthProvider";
@@ -731,7 +732,7 @@ function AppContent() {
 	}
 
 	return (
-		<div className="relative w-full h-screen font-sans bg-slate-50 dark:bg-[#050505] flex flex-col overflow-hidden text-slate-900 dark:text-white transition-colors duration-200">
+		<div className="relative w-full h-screen font-sans bg-[var(--background)] flex flex-col overflow-hidden text-[var(--foreground)] transition-colors duration-200">
 			<ParticleBackground />
 			<TopStatusBar
 				isModalOpen={isConfigOpen}
@@ -745,46 +746,47 @@ function AppContent() {
 			/>
 			<ErrorToast message={error} onClose={() => setError(null)} />
 
-			{/* Top Navigation Bar: PURERAG (Primary) vs Chat */}
-			<div className="w-full flex items-center justify-center mt-16 sm:mt-14 pb-2 px-4 z-30 shrink-0">
-				<div className="flex items-center gap-1.5 p-1 bg-black/60 backdrop-blur-md rounded-xl border border-white/10 shadow-xl">
+			{/* Top Navigation Bar: Clean Cybernetic Header Flow */}
+			<div className="w-full flex items-center justify-center mt-16 sm:mt-14 pb-2 px-3 sm:px-4 z-30 shrink-0">
+				<div className="flex items-center gap-1 sm:gap-1.5 p-1 bg-[var(--surface-card)]/90 backdrop-blur-md rounded-xl border border-[var(--border-subtle)] shadow-md max-w-full overflow-x-auto no-scrollbar">
 					<button
 						type="button"
 						data-testid="brain2-tab"
 						onClick={() => handleSelectTopTab("brain2")}
-						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+						className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 cursor-pointer ${
 							activeTopTab === "brain2"
-								? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20"
-								: "text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+								? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 shadow-xs"
+								: "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
 						}`}
 					>
-						<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-						<span>🧠 Brain 2 VRAM</span>
+						<Brain className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+						<span className="truncate">Brain 2 VRAM</span>
 					</button>
 					<button
 						type="button"
 						data-testid="purerag-tab"
 						onClick={() => handleSelectTopTab("purerag")}
-						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+						className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 cursor-pointer ${
 							activeTopTab === "purerag"
-								? "bg-emerald-500/25 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-500/20"
-								: "text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+								? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 shadow-xs"
+								: "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
 						}`}
 					>
-						<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-						<span>⚡ PURERAG</span>
+						<Zap className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+						<span className="truncate">PURERAG</span>
 					</button>
 					<button
 						type="button"
 						data-testid="chat-tab"
 						onClick={() => handleSelectTopTab("chat")}
-						className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+						className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 cursor-pointer ${
 							activeTopTab === "chat"
-								? "bg-white/15 text-white border border-white/20 shadow-sm"
-								: "text-slate-400 hover:text-white hover:bg-white/5"
+								? "bg-[var(--surface)] dark:bg-white/15 text-[var(--foreground)] border border-[var(--border-subtle)] dark:border-white/20 shadow-xs"
+								: "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
 						}`}
 					>
-						<span>💬 Chat</span>
+						<MessageSquare className="w-3.5 h-3.5 text-[var(--foreground-muted)] dark:text-slate-300 shrink-0" />
+						<span className="truncate">Chat</span>
 					</button>
 				</div>
 			</div>

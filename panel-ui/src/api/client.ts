@@ -549,10 +549,89 @@ export class ApiClient {
     return this.fetch<unknown>("/plugins");
   }
 
+  async getPluginsHealth() {
+    return this.fetch<{
+      status: string;
+      total: number;
+      healthy: number;
+      plugins: Array<{
+        name: string;
+        healthy: boolean;
+        last_sync?: number | null;
+        details?: string | null;
+      }>;
+    }>("/plugins/health");
+  }
+
   async installPlugin(name: string) {
     return this.fetch<{ status: string; message?: string }>("/plugins/install", {
       method: "POST",
       body: JSON.stringify({ name }),
+    });
+  }
+
+  // Messaging & Notifications Settings (Discord & Telegram)
+  async getDiscordSettings() {
+    return this.fetch<{
+      status: string;
+      data?: {
+        enabled?: boolean;
+        webhook_url?: string;
+        bot_token?: string;
+        rate_limit_per_min?: number;
+      };
+    }>("/api/settings/discord");
+  }
+
+  async updateDiscordSettings(payload: {
+    enabled?: boolean;
+    webhook_url?: string;
+    bot_token?: string;
+    rate_limit_per_min?: number;
+  }) {
+    return this.fetch<{ status: string; message: string }>("/api/settings/discord", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async testDiscordConnection() {
+    return this.fetch<{ status: string; message: string }>("/api/settings/discord/test", {
+      method: "POST",
+    });
+  }
+
+  async getTelegramSettings() {
+    return this.fetch<{
+      status: string;
+      data?: {
+        enabled?: boolean;
+        bot_token?: string;
+        webhook_url?: string;
+        webhook_port?: number;
+        admin_ids?: number[];
+        notification_chat_id?: string;
+      };
+    }>("/api/settings/telegram");
+  }
+
+  async updateTelegramSettings(payload: {
+    enabled?: boolean;
+    bot_token?: string;
+    webhook_url?: string;
+    webhook_port?: number;
+    admin_ids?: number[];
+    notification_chat_id?: string;
+  }) {
+    return this.fetch<{ status: string; message: string }>("/api/settings/telegram", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async testTelegramConnection() {
+    return this.fetch<{ status: string; message: string }>("/api/settings/telegram/test", {
+      method: "POST",
     });
   }
 

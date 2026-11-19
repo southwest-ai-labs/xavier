@@ -109,12 +109,12 @@ export default function MalocaView({ onClose }: Props) {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left cursor-pointer
                     ${isActive
-                      ? 'bg-white/10 text-[var(--foreground)] shadow-[inset_3px_0_0_#39ff14]'
-                      : 'text-[var(--foreground)] hover:bg-white/5 hover:text-[var(--foreground)]'}`}
+                      ? 'bg-[var(--surface-active)] text-[var(--foreground)] border-l-2 border-emerald-500 font-semibold shadow-xs'
+                      : 'border-l-2 border-transparent text-[var(--foreground-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]'}`}
                 >
-                  <Icon size={18} className={isActive ? 'text-[#39ff14]' : ''} />
+                  <Icon size={18} className={isActive ? 'text-emerald-500 dark:text-emerald-400' : 'opacity-70'} />
                   <div className="hidden sm:block">
                     <div className={`text-sm font-medium ${isActive ? 'text-[var(--foreground)]' : ''}`}>{tab.label}</div>
                     <div className="text-[10px] opacity-60 hidden lg:block mt-0.5 line-clamp-1">{tab.description}</div>

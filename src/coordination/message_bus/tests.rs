@@ -414,3 +414,42 @@ fn test_message_bus_error_display() {
     let err = MessageBusError::ChannelClosed;
     assert!(err.to_string().contains("Channel closed"));
 }
+
+#[tokio::test]
+async fn test_get_metrics_queue_sizes() {
+    let bus = MessageBus::new();
+
+    bus.register_agent("sender", "Sender Agent", vec![])
+        .await
+        .expect("register sender");
+    let mut rx = bus
+        .register_agent("receiver", "Receiver Agent", vec![])
+        .await
+        .expect("register receiver");
+
+    // Initially queue sizes should report 0 pending messages
+    let metrics = bus.get_metrics().await;
+    assert_eq!(metrics.queue_sizes.get("receiver").copied(), Some(0));
+
+    // Send 2 messages to receiver
+    bus.send_direct("sender", "receiver", serde_json::json!({"item": 1}))
+        .await
+        .expect("send 1");
+    bus.send_direct("sender", "receiver", serde_json::json!({"item": 2}))
+        .await
+        .expect("send 2");
+
+    // Metrics should report exactly 2 pending messages in receiver's queue
+    let metrics = bus.get_metrics().await;
+    assert_eq!(metrics.queue_sizes.get("receiver").copied(), Some(2));
+
+    // Drain one message
+    let _ = rx.recv().await;
+    let metrics = bus.get_metrics().await;
+    assert_eq!(metrics.queue_sizes.get("receiver").copied(), Some(1));
+
+    // Drain second message
+    let _ = rx.recv().await;
+    let metrics = bus.get_metrics().await;
+    assert_eq!(metrics.queue_sizes.get("receiver").copied(), Some(0));
+}

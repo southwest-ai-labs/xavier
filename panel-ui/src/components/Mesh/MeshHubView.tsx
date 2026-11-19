@@ -14,7 +14,8 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { MeshClient } from "../../api/meshClient";
 import MeshConfig from "../MeshConfig";
 import TopStatusBar from "../TopStatusBar";
 
@@ -243,6 +244,49 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<MeshTab>(initialTab);
   const [chatMessage, setChatMessage] = useState("");
+  const [proposals, setProposals] = useState<GovernanceProposal[]>([]);
+  const [loadingProposals, setLoadingProposals] = useState(false);
+  const meshClient = useMemo(() => new MeshClient(token), [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activeTab === "governance") {
+      setLoadingProposals(true);
+      meshClient
+        .listDaoProposals()
+        .then((data) => {
+          if (!cancelled) {
+            if (Array.isArray(data) && data.length > 0) {
+              setProposals(
+                data.map((p) => ({
+                  id: p.id,
+                  title: p.title,
+                  proposer: p.proposer,
+                  votesFor: p.votes_for,
+                  votesAgainst: p.votes_against,
+                  status: (p.status as any) || "active",
+                  expiresAt: p.expires_at,
+                })),
+              );
+            } else {
+              setProposals([]);
+            }
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setProposals([]);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingProposals(false);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, meshClient]);
+
   const [chatLog, setChatLog] = useState<
     Array<{ sender: string; text: string; time: string }>
   >([
@@ -510,11 +554,25 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {MOCK_PROPOSALS.map((prop) => (
-                <MeshHubProposalItem key={prop.id} prop={prop} />
-              ))}
-            </div>
+            {loadingProposals ? (
+              <div className="flex items-center justify-center p-8 text-white/40 text-xs">
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                Loading DAO proposals from mesh consensus...
+              </div>
+            ) : proposals.length === 0 ? (
+              <div className="text-center py-12 bg-white/[0.01] border border-dashed border-white/10 rounded-2xl p-6">
+                <Vote className="w-8 h-8 text-white/20 mx-auto mb-2" />
+                <p className="text-sm text-white/50">
+                  No active DAO proposals found in mesh consensus.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {proposals.map((prop) => (
+                  <MeshHubProposalItem key={prop.id} prop={prop} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

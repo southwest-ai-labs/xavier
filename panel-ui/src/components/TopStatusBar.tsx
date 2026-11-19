@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  SlidersHorizontal,
   Users,
   Wifi,
   WifiOff,
@@ -87,6 +88,7 @@ export default React.memo(function TopStatusBar({
   const [showMessaging, setShowMessaging] = useState(false);
   const [messagingTab, setMessagingTab] = useState<MessagingPlatform>("telegram");
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const [nodeStatus, setNodeStatus] = useState<"connected" | "disconnected" | "retrying">("connected");
   const [retryCount, setRetryCount] = useState(0);
@@ -300,19 +302,19 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-3 md:left-4 top-6 flex-row items-start z-[60]"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute left-2 lg:left-4 top-1/2 -translate-y-1/2 flex-col items-start z-[60]" : "absolute left-2 sm:left-3 md:left-4 top-3 sm:top-4 flex-row items-center z-[60]"}`}
         >
           {/* Time & Date Pill */}
           {modules.time && (
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-3 py-1 flex items-center gap-2 h-7 text-white/80 shrink-0"
+              className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-3 py-1 flex items-center gap-2 h-7 text-[var(--foreground)]/80 shrink-0"
             >
               <span className="font-mono text-[10px] hidden md:inline-block">
                 {time.toLocaleDateString(undefined, { month: "numeric", day: "numeric" })}
               </span>
-              <div className="w-px h-2.5 bg-white/20 hidden md:block" />
+              <div className="w-px h-2.5 bg-[var(--border-subtle)] hidden md:block" />
               <span className="font-mono text-[10px] min-w-[50px] text-center">
                 {time.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
               </span>
@@ -327,15 +329,15 @@ export default React.memo(function TopStatusBar({
                 transition={spring}
                 type="button"
                 onClick={() => setShowFounderCard((prev) => !prev)}
-                className="bg-[#0a0a0a]/80 backdrop-blur-md border border-amber-500/30 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:bg-amber-500/10 transition-colors"
+                className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-amber-500/30 shadow-md rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:bg-amber-500/10 transition-colors cursor-pointer"
                 title="SWAL Genesis Founder Node Telemetry"
                 aria-label="Founder Node Telemetry HUD Card"
               >
-                <Crown className="w-3 h-3 text-amber-400" />
-                <span className="font-mono text-[9px] text-amber-300 font-bold tracking-wider uppercase hidden sm:inline-block">
+                <Crown className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                <span className="font-mono text-[9px] text-amber-600 dark:text-amber-300 font-bold tracking-wider uppercase hidden sm:inline-block">
                   Founder Node
                 </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               </motion.button>
 
               <AnimatePresence>
@@ -344,7 +346,7 @@ export default React.memo(function TopStatusBar({
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute left-0 top-full mt-2 z-[80]"
+                    className="absolute left-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] z-[80]"
                   >
                     <FounderNodeStatusCard onClose={() => setShowFounderCard(false)} />
                   </motion.div>
@@ -458,15 +460,15 @@ export default React.memo(function TopStatusBar({
           <motion.div
             layout
             transition={spring}
-            className="absolute pointer-events-auto top-6 left-1/2 -translate-x-1/2 z-[40] hidden lg:block"
+            className="absolute pointer-events-auto top-3 sm:top-4 left-1/2 -translate-x-1/2 z-[40] hidden lg:block"
           >
           <div className="relative group">
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/90 backdrop-blur-md border border-[#39ff14]/20 shadow-[0_0_12px_rgba(57,255,20,0.08)] rounded-full px-3 py-1 flex items-center justify-center cursor-default shrink-0 min-h-[28px]"
+              className="bg-[var(--surface-card)]/90 backdrop-blur-md border border-emerald-500/25 shadow-xs rounded-full px-3 py-1 flex items-center justify-center cursor-default shrink-0 min-h-[28px]"
             >
-              <span className="text-[#39ff14] font-mono tracking-widest text-[8px] uppercase font-bold">
+              <span className="text-emerald-600 dark:text-[#39ff14] font-mono tracking-widest text-[8px] uppercase font-bold">
                 Xavier {liveVersion || (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.2.20")}
               </span>
             </motion.div>
@@ -474,7 +476,7 @@ export default React.memo(function TopStatusBar({
             <button
               type="button"
               onClick={() => setShowConfig(!showConfig)}
-              className="absolute -right-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-white/30 hover:text-[#39ff14] p-1.5 outline-none"
+              className="absolute -right-7 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[var(--foreground-muted)] hover:text-emerald-500 p-1.5 outline-none cursor-pointer"
               title="Configure Status Bar"
               aria-label="Configure Status Bar"
             >
@@ -487,9 +489,9 @@ export default React.memo(function TopStatusBar({
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-48 bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl flex flex-col gap-2 z-[60]"
+                  className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-48 max-w-[calc(100vw-2rem)] bg-[var(--surface-card)] backdrop-blur-xl border border-[var(--border-subtle)] rounded-xl p-3 shadow-2xl flex flex-col gap-2 z-[60] text-[var(--foreground)]"
                 >
-                  <h3 className="text-[10px] uppercase tracking-widest text-white/40 mb-1 px-1">Modules</h3>
+                  <h3 className="text-[10px] uppercase tracking-widest text-[var(--foreground-muted)] mb-1 px-1">Modules</h3>
                   {Object.entries({
                     time: "Time & Date",
                     founder: "Founder Node",
@@ -505,12 +507,12 @@ export default React.memo(function TopStatusBar({
                       type="button"
                       key={key}
                       onClick={() => toggleModule(key as keyof typeof modules)}
-                      className="flex items-center justify-between px-2 py-1.5 hover:bg-white/5 rounded-lg transition-colors group/btn outline-none"
+                      className="flex items-center justify-between px-2 py-1.5 hover:bg-[var(--surface-hover)] rounded-lg transition-colors group/btn outline-none cursor-pointer"
                       aria-label={`Toggle ${label} module`}
                     >
-                      <span className="text-xs text-white/80 font-mono">{label}</span>
-                      <div className={`w-3 h-3 rounded-sm border flex items-center justify-center transition-colors ${modules[key as keyof typeof modules] ? "bg-[#39ff14]/20 border-[#39ff14]/50" : "border-white/20 group-hover/btn:border-white/40"}`}>
-                        {modules[key as keyof typeof modules] && <div className="w-1.5 h-1.5 bg-[#39ff14] rounded-[1px]" />}
+                      <span className="text-xs text-[var(--foreground)] font-mono">{label}</span>
+                      <div className={`w-3 h-3 rounded-sm border flex items-center justify-center transition-colors ${modules[key as keyof typeof modules] ? "bg-emerald-500/20 border-emerald-500/50" : "border-[var(--border-subtle)] group-hover/btn:border-[var(--foreground-muted)]"}`}>
+                        {modules[key as keyof typeof modules] && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-[1px]" />}
                       </div>
                     </button>
                   ))}
@@ -525,7 +527,7 @@ export default React.memo(function TopStatusBar({
         <motion.div
           layout
           transition={spring}
-          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-3 md:right-4 top-6 flex-row items-start z-[70]"}`}
+          className={`flex gap-1.5 pointer-events-auto ${isModalOpen ? "absolute right-2 lg:right-4 top-1/2 -translate-y-1/2 flex-col items-end z-[60]" : "absolute right-2 sm:right-3 md:right-4 top-3 sm:top-4 flex-row items-center z-[70]"}`}
         >
           {/* Active Node Indicator */}
           <motion.button
@@ -533,41 +535,41 @@ export default React.memo(function TopStatusBar({
             transition={spring}
             type="button"
             onClick={() => setShowNodeModal(true)}
-            className={`bg-[#0a0a0a]/80 backdrop-blur-md border ${
+            className={`bg-[var(--surface-card)]/80 backdrop-blur-md border ${
               nodeStatus === "connected"
                 ? "border-emerald-500/30 hover:border-emerald-400/50"
                 : "border-amber-500/50 hover:border-amber-400/80 bg-amber-500/10"
-            } shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 transition-colors cursor-pointer`}
+            } shadow-md rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 transition-colors cursor-pointer`}
             title={`Node: ${remoteUrl || "Local"} | Status: ${nodeStatus}${retryCount > 0 ? ` (Retries: ${retryCount})` : ""}`}
             aria-label="Node Connection Settings"
           >
             {nodeStatus === "connected" ? (
-              <Server className="w-3 h-3 text-emerald-400" />
+              <Server className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
             ) : (
-              <WifiOff className="w-3 h-3 text-amber-400 animate-pulse" />
+              <WifiOff className="w-3 h-3 text-amber-500 dark:text-amber-400 animate-pulse" />
             )}
-            <span className={`font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block ${nodeStatus === "connected" ? "text-emerald-300" : "text-amber-300 font-bold"}`}>
+            <span className={`font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block ${nodeStatus === "connected" ? "text-emerald-600 dark:text-emerald-300" : "text-amber-600 dark:text-amber-300 font-bold"}`}>
               {remoteUrl ? "Remote Node" : "Local Node"}
             </span>
             {nodeStatus !== "connected" && (
-              <span className="font-mono text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded animate-pulse">
+              <span className="font-mono text-[8px] bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40 px-1 rounded animate-pulse">
                 Retry #{retryCount}
               </span>
             )}
           </motion.button>
 
-          {/* Maloca ops workspace */}
+          {/* Maloca ops workspace (Desktop / Tablet) */}
           <motion.button
             layout
             transition={spring}
             type="button"
             onClick={() => { window.location.hash = "#/maloca"; }}
-            className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors"
+            className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-2.5 py-1 hidden md:flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/30 hover:bg-emerald-500/5 transition-colors cursor-pointer text-[var(--foreground)]"
             title="Abrir Maloca (ops workspace)"
             aria-label="Abrir Maloca (ops workspace)"
           >
-            <Home className="w-3 h-3 text-emerald-300/80" />
-            <span className="font-mono text-[9px] text-emerald-200/80 uppercase tracking-wide hidden sm:inline-block">
+            <Home className="w-3 h-3 text-emerald-600 dark:text-emerald-300" />
+            <span className="font-mono text-[9px] text-emerald-700 dark:text-emerald-200 uppercase tracking-wide hidden lg:inline-block">
               Maloca
             </span>
           </motion.button>
@@ -579,36 +581,36 @@ export default React.memo(function TopStatusBar({
               transition={spring}
               type="button"
               onClick={onOpenConfig}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/50 hover:bg-emerald-500/10 transition-colors text-slate-300 hover:text-white cursor-pointer"
+              className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 hover:border-emerald-400/50 hover:bg-emerald-500/10 transition-colors text-[var(--foreground)]/80 hover:text-[var(--foreground)] cursor-pointer"
               title="Control Node Settings"
               aria-label="Control Node Settings"
               data-testid="topbar-settings-btn"
             >
-              <Settings className="w-3.5 h-3.5 text-emerald-400" />
+              <Settings className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
               <span className="font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block">
                 Settings
               </span>
             </motion.button>
           )}
 
-          {/* Marketplace Status Card Pill */}
+          {/* Marketplace Status Card Pill (Desktop) */}
           {modules.marketplace && (
-            <div className="relative">
+            <div className="relative hidden md:block">
               <motion.button
                 layout
                 transition={spring}
                 type="button"
                 onClick={() => setShowMarketplaceCard((prev) => !prev)}
-                className={`bg-[#0a0a0a]/80 backdrop-blur-md border ${
+                className={`bg-[var(--surface-card)]/80 backdrop-blur-md border ${
                   showMarketplaceCard
-                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-300"
-                    : "border-white/10 text-white/70 hover:border-emerald-400/30 hover:bg-emerald-500/5 hover:text-white"
-                } shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 transition-colors`}
+                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
+                    : "border-[var(--border-subtle)] text-[var(--foreground)]/80 hover:border-emerald-400/30 hover:bg-emerald-500/5 hover:text-[var(--foreground)]"
+                } shadow-md rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 transition-colors cursor-pointer`}
                 title="Marketplace v2 Status"
                 aria-label="Marketplace v2 Status"
               >
-                <ShoppingBag className="w-3 h-3 text-emerald-400" />
-                <span className="font-mono text-[9px] uppercase tracking-wide hidden sm:inline-block">
+                <ShoppingBag className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                <span className="font-mono text-[9px] uppercase tracking-wide hidden lg:inline-block">
                   Market
                 </span>
               </motion.button>
@@ -619,7 +621,7 @@ export default React.memo(function TopStatusBar({
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full mt-3 right-0 w-72 z-[70]"
+                    className="absolute top-full mt-2 right-0 w-72 max-w-[calc(100vw-2rem)] z-[70]"
                   >
                     <MarketplaceStatusCard
                       onOpenMarketplace={() => {
@@ -633,46 +635,46 @@ export default React.memo(function TopStatusBar({
             </div>
           )}
 
-          {/* Security & Proxy */}
+          {/* Security & Proxy (Desktop) */}
           {modules.security && (
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 hidden sm:flex items-center gap-2 h-7 shrink-0"
+              className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-2.5 py-1 hidden md:flex items-center gap-2 h-7 shrink-0 text-[var(--foreground)]"
             >
               <div className="flex items-center gap-1" title="TPM HW Encryption Active">
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                <ShieldCheck className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
               </div>
-              <div className="w-px h-2.5 bg-white/20" />
+              <div className="w-px h-2.5 bg-[var(--border-subtle)]" />
               <div className="flex items-center gap-1" title="API Token Proxy">
-                <Key className="w-3 h-3 text-yellow-500" />
+                <Key className="w-3 h-3 text-amber-500" />
               </div>
             </motion.div>
           )}
 
-          {/* Node Sync Pill */}
+          {/* Node Sync Pill (Desktop) */}
           {modules.sync && (
-            <div className="relative hidden sm:block">
+            <div className="relative hidden md:block">
               <motion.button
                 layout
                 transition={spring}
                 type="button"
                 onClick={() => setShowSyncPopover((prev) => !prev)}
-                className="bg-[#0a0a0a]/80 backdrop-blur-md border border-cyan-500/30 hover:border-cyan-400/60 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 sm:flex cursor-pointer transition-colors"
+                className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-cyan-500/30 hover:border-cyan-400/60 shadow-md rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0 sm:flex cursor-pointer transition-colors"
                 title="Cloud & Peer Memory Synchronization Status"
                 aria-label="Memory Sync Control & Status"
               >
-                <Wifi className={`w-3 h-3 text-cyan-400 ${isSyncing ? "animate-pulse text-cyan-300" : ""}`} />
-                <span className="font-mono text-[9px] text-cyan-300 uppercase tracking-wide hidden md:inline-block">
+                <Wifi className={`w-3 h-3 text-cyan-500 dark:text-cyan-400 ${isSyncing ? "animate-pulse text-cyan-400" : ""}`} />
+                <span className="font-mono text-[9px] text-cyan-600 dark:text-cyan-300 uppercase tracking-wide hidden lg:inline-block">
                   Sync
                 </span>
-                <div className="w-8 h-0.5 bg-black/50 rounded-full overflow-hidden border border-white/5 mx-0.5 hidden xl:block">
-                  <div className={`h-full bg-cyan-400 w-[98%] shadow-[0_0_6px_rgba(34,211,238,0.5)] ${isSyncing ? "animate-pulse" : ""}`} />
+                <div className="w-8 h-0.5 bg-[var(--surface)] rounded-full overflow-hidden border border-[var(--border-subtle)] mx-0.5 hidden xl:block">
+                  <div className={`h-full bg-cyan-500 dark:bg-cyan-400 w-[98%] shadow-[0_0_6px_rgba(34,211,238,0.5)] ${isSyncing ? "animate-pulse" : ""}`} />
                 </div>
                 {isSyncing ? (
-                  <RefreshCw className="w-2.5 h-2.5 text-cyan-300 animate-spin" aria-label="Syncing progress indicator" />
+                  <RefreshCw className="w-2.5 h-2.5 text-cyan-500 dark:text-cyan-300 animate-spin" aria-label="Syncing progress indicator" />
                 ) : (
-                  <span className="font-mono text-[9px] text-cyan-400 font-bold">
+                  <span className="font-mono text-[9px] text-cyan-600 dark:text-cyan-400 font-bold">
                     {syncLatencyMs !== null ? `${syncLatencyMs}ms` : "98%"}
                   </span>
                 )}
@@ -689,28 +691,151 @@ export default React.memo(function TopStatusBar({
             </div>
           )}
 
-          {/* AI Providers Pill */}
+          {/* AI Providers Pill (Desktop) */}
           {modules.ai && (config.has_gemini || config.has_openai) && (
             <motion.div
               layout
               transition={spring}
-              className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2.5 py-1 flex items-center gap-1.5 h-7 shrink-0"
+              className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-2.5 py-1 hidden md:flex items-center gap-1.5 h-7 shrink-0"
             >
-              <Bot className="w-3 h-3 text-purple-400" />
+              <Bot className="w-3 h-3 text-purple-500 dark:text-purple-400" />
               <div className="flex items-center gap-1">
                 {config.has_gemini && (
-                  <span className="hidden md:inline-block text-[8px] bg-blue-500/15 text-blue-300 border border-blue-500/25 px-1 py-px rounded uppercase tracking-wider font-mono">
+                  <span className="hidden lg:inline-block text-[8px] bg-blue-500/15 text-blue-600 dark:text-blue-300 border border-blue-500/25 px-1 py-px rounded uppercase tracking-wider font-mono">
                     GEM
                   </span>
                 )}
                 {config.has_openai && (
-                  <span className="hidden md:inline-block text-[8px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 px-1 py-px rounded uppercase tracking-wider font-mono">
+                  <span className="hidden lg:inline-block text-[8px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/25 px-1 py-px rounded uppercase tracking-wider font-mono">
                     OAI
                   </span>
                 )}
               </div>
             </motion.div>
           )}
+
+          {/* Mobile Secondary Menu Dropdown (Collapsed < 768px) */}
+          <div className="relative md:hidden">
+            <motion.button
+              layout
+              transition={spring}
+              type="button"
+              onClick={() => setShowMobileMenu((prev) => !prev)}
+              className={`bg-[var(--surface-card)]/80 backdrop-blur-md border ${
+                showMobileMenu
+                  ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                  : "border-[var(--border-subtle)] text-[var(--foreground)]/80 hover:text-[var(--foreground)] hover:border-[var(--border-focus)]"
+              } shadow-md rounded-full h-7 w-7 flex items-center justify-center shrink-0 transition-colors cursor-pointer`}
+              title="More Actions & Telemetry"
+              aria-label="More Actions & Telemetry"
+              aria-expanded={showMobileMenu}
+            >
+              <SlidersHorizontal className="w-3 h-3" />
+            </motion.button>
+
+            <AnimatePresence>
+              {showMobileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  className="absolute top-full mt-2 right-0 w-64 max-w-[calc(100vw-2rem)] bg-[var(--surface-card)] backdrop-blur-xl border border-[var(--border-subtle)] rounded-2xl p-2.5 shadow-2xl z-[80] space-y-2 text-xs font-mono text-[var(--foreground)]"
+                >
+                  <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-[var(--foreground-muted)] font-bold border-b border-[var(--border-subtle)] flex items-center justify-between">
+                    <span>Xavier Telemetry</span>
+                    <span className="text-emerald-600 dark:text-[#39ff14] text-[9px]">ONLINE</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMobileMenu(false);
+                      window.location.hash = "#/maloca";
+                    }}
+                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[var(--surface)] hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-transparent transition-colors text-[var(--foreground)] cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Home className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                      <span>Maloca Ops</span>
+                    </div>
+                    <span className="text-[10px] text-[var(--foreground-muted)]">#/maloca</span>
+                  </button>
+
+                  <div className="p-2 rounded-xl bg-[var(--surface)] border border-[var(--border-subtle)] space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400">
+                        <Wifi className="w-3 h-3" />
+                        <span className="text-[11px] font-semibold">Sync</span>
+                      </div>
+                      <span className="text-[10px] text-cyan-600 dark:text-cyan-300">
+                        {syncLatencyMs !== null ? `${syncLatencyMs}ms` : "98%"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleTriggerSync();
+                        setShowMobileMenu(false);
+                      }}
+                      disabled={isSyncing}
+                      className="w-full py-1 px-2 bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-600 dark:text-cyan-300 rounded-lg text-[10px] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+                    >
+                      <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? "animate-spin" : ""}`} />
+                      <span>{isSyncing ? "Sincronizando..." : "Sincronizar"}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border-subtle)]">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                      <span>TPM Crypto</span>
+                    </div>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">
+                      ACTIVE
+                    </span>
+                  </div>
+
+                  {modules.ai && (config.has_gemini || config.has_openai) && (
+                    <div className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border-subtle)]">
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />
+                        <span>AI Engines</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {config.has_gemini && (
+                          <span className="text-[8px] bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 px-1 rounded">
+                            GEM
+                          </span>
+                        )}
+                        {config.has_openai && (
+                          <span className="text-[8px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 px-1 rounded">
+                            OAI
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {modules.marketplace && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        window.location.hash = "#/maloca";
+                      }}
+                      className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-[var(--surface)] hover:bg-emerald-500/10 text-[var(--foreground)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                        <span>Marketplace</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Explorar</span>
+                    </button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Notifications Bell */}
           {modules.notifications && (
@@ -722,13 +847,13 @@ export default React.memo(function TopStatusBar({
                 onClick={() => setShowNotifications((prev) => !prev)}
                 aria-label="Notifications"
                 aria-expanded={showNotifications}
-                className="bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10 shadow-lg rounded-full px-2 hover:bg-white/5 hover:border-white/20 transition-all flex items-center justify-center h-7 w-7 shrink-0"
+                className="bg-[var(--surface-card)]/80 backdrop-blur-md border border-[var(--border-subtle)] shadow-md rounded-full px-2 hover:bg-[var(--surface-hover)] hover:border-[var(--border-focus)] transition-all flex items-center justify-center h-7 w-7 shrink-0 cursor-pointer text-[var(--foreground)]"
                 title={`${memoryCount} Memories | ${streamUnreadCount} Unread`}
               >
                 <div className="relative flex items-center justify-center">
-                  <Bell className="w-3.5 h-3.5 text-white/60" />
+                  <Bell className="w-3.5 h-3.5 text-[var(--foreground)]/70" />
                   {streamUnreadCount > 0 && (
-                    <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full border border-[#0a0a0a] min-w-[13px] text-center shadow-[0_0_5px_rgba(239,68,68,0.4)]">
+                    <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[7px] font-bold px-1 rounded-full border border-[var(--surface-card)] min-w-[13px] text-center shadow-[0_0_5px_rgba(239,68,68,0.4)]">
                       {streamUnreadCount > 9 ? "9+" : streamUnreadCount}
                     </div>
                   )}
