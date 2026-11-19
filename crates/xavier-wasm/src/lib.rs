@@ -28,7 +28,7 @@ impl WasmMemoryRecord {
             clearance: ClearanceLevel::Unclassified,
             zone: ContextZone::Atomic,
             embedding: None,
-            created_at: chrono::Utc::now().to_rfc3339(),
+            created_at: jiff::Timestamp::now().to_string(),
         }
     }
 }

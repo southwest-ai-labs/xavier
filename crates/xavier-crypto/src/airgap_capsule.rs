@@ -8,7 +8,7 @@ use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Nonce};
 use anyhow::{bail, Context, Result};
 use argon2::{Algorithm, Argon2, Params, Version};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +66,7 @@ pub struct AirgapCapsuleHeader {
     pub payload_kind: CapsulePayloadKind,
     pub original_filename: String,
     pub author: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub salt: String,
     pub nonce: String,
     pub ciphertext_length: usize,
@@ -105,7 +105,7 @@ impl AirgapCapsule {
             payload_kind,
             original_filename,
             author,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             salt: crate::hex_encode(salt),
             nonce: crate::hex_encode(nonce_bytes),
             ciphertext_length: ciphertext.len(),

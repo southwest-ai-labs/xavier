@@ -1441,8 +1441,8 @@ mod tests {
         // registration, so this is the pure-native output for the current
         // tree; re-measure if parsers or fixture sources change)
         assert_eq!(stats.total_files, 37, "file count mismatch");
-        assert_eq!(stats.total_symbols, 2846, "symbol count mismatch");
-        assert_eq!(edges_count, 16844, "edge count mismatch");
+        assert_eq!(stats.total_symbols, 2845, "symbol count mismatch");
+        assert_eq!(edges_count, 16841, "edge count mismatch");
     }
 
     #[tokio::test]

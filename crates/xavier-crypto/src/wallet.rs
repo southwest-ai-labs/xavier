@@ -5,8 +5,8 @@
 //! integration with mesh identities via the capabilities in
 //! `crate::domain::cycle_breaks::w30_05` (wave 30).
 
-use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use jiff::{Span, Timestamp};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -71,9 +71,9 @@ pub struct KeyMetadata {
     /// Lowercase hex-encoded 32-byte Ed25519 public key.
     pub public_key_hex: String,
     /// Timestamp when key was initially created.
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// Timestamp of last key rotation (if any).
-    pub last_rotated_at: Option<DateTime<Utc>>,
+    pub last_rotated_at: Option<Timestamp>,
     /// TTL in seconds. `None` means key does not expire.
     pub ttl_seconds: Option<u64>,
     /// Key version (increments on rotation, starts at 1).
@@ -104,7 +104,7 @@ struct EncryptedKeystoreFile {
     salt_hex: String,
     active_alias: Option<String>,
     records: Vec<EncryptedKeyRecord>,
-    created_at: DateTime<Utc>,
+    created_at: Timestamp,
 }
 
 /// In-memory representation of an unencrypted key entry.
@@ -184,18 +184,22 @@ impl Ed25519Wallet {
     }
 
     /// Set default TTL for newly generated / imported keys in this wallet.
-    pub fn set_default_ttl(&mut self, ttl: Option<Duration>) {
-        self.default_ttl_seconds = ttl.map(|d| d.num_seconds() as u64);
+    pub fn set_default_ttl(&mut self, ttl: Option<Span>) {
+        self.default_ttl_seconds = ttl.map(|s| {
+            s.total(jiff::Unit::Second)
+                .map(|secs| secs.max(0.0) as u64)
+                .unwrap_or_else(|_| s.get_seconds().max(0) as u64)
+        });
     }
 
     /// Get default TTL.
-    pub fn default_ttl(&self) -> Option<Duration> {
+    pub fn default_ttl(&self) -> Option<Span> {
         self.default_ttl_seconds
-            .map(|s| Duration::seconds(s as i64))
+            .map(|s| Span::new().seconds(s as i64))
     }
 
     /// Generate a new Ed25519 keypair for the given alias.
-    pub fn generate_keypair(&mut self, alias: &str, ttl: Option<Duration>) -> WalletResult<NodeId> {
+    pub fn generate_keypair(&mut self, alias: &str, ttl: Option<Span>) -> WalletResult<NodeId> {
         if self.entries.contains_key(alias) {
             return Err(WalletError::KeyAlreadyExists(alias.to_string()));
         }
@@ -207,14 +211,18 @@ impl Ed25519Wallet {
         let node_id = NodeId::from_public_key_bytes(&public_bytes);
 
         let effective_ttl = ttl
-            .map(|d| d.num_seconds() as u64)
+            .map(|s| {
+                s.total(jiff::Unit::Second)
+                    .map(|secs| secs.max(0.0) as u64)
+                    .unwrap_or_else(|_| s.get_seconds().max(0) as u64)
+            })
             .or(self.default_ttl_seconds);
 
         let metadata = KeyMetadata {
             alias: alias.to_string(),
             node_id: node_id.0.clone(),
             public_key_hex: hex_encode(public_bytes),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             last_rotated_at: None,
             ttl_seconds: effective_ttl,
             version: 1,
@@ -241,7 +249,7 @@ impl Ed25519Wallet {
         &mut self,
         alias: &str,
         secret_bytes: &[u8; 32],
-        ttl: Option<Duration>,
+        ttl: Option<Span>,
     ) -> WalletResult<NodeId> {
         if self.entries.contains_key(alias) {
             return Err(WalletError::KeyAlreadyExists(alias.to_string()));
@@ -253,14 +261,18 @@ impl Ed25519Wallet {
         let node_id = NodeId::from_public_key_bytes(&public_bytes);
 
         let effective_ttl = ttl
-            .map(|d| d.num_seconds() as u64)
+            .map(|s| {
+                s.total(jiff::Unit::Second)
+                    .map(|secs| secs.max(0.0) as u64)
+                    .unwrap_or_else(|_| s.get_seconds().max(0) as u64)
+            })
             .or(self.default_ttl_seconds);
 
         let metadata = KeyMetadata {
             alias: alias.to_string(),
             node_id: node_id.0.clone(),
             public_key_hex: hex_encode(public_bytes),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             last_rotated_at: None,
             ttl_seconds: effective_ttl,
             version: 1,
@@ -287,7 +299,7 @@ impl Ed25519Wallet {
         &mut self,
         alias: &str,
         secret_hex: &str,
-        ttl: Option<Duration>,
+        ttl: Option<Span>,
     ) -> WalletResult<NodeId> {
         let bytes = hex_decode(secret_hex.trim())
             .map_err(|e| WalletError::HexDecodeError(e.to_string()))?;
@@ -304,7 +316,7 @@ impl Ed25519Wallet {
         &mut self,
         alias: &str,
         identity: &V,
-        ttl: Option<Duration>,
+        ttl: Option<Span>,
     ) -> WalletResult<NodeId> {
         let priv_bytes = identity.private_key_bytes();
         if priv_bytes.len() != 32 {
@@ -336,7 +348,7 @@ impl Ed25519Wallet {
         &mut self,
         alias: &str,
         keys: &DerivedNodeKeys,
-        ttl: Option<Duration>,
+        ttl: Option<Span>,
     ) -> WalletResult<NodeId> {
         let node_id = self.import_secret_bytes(alias, &keys.ed25519_secret, ttl)?;
         if let Some(entry) = self.entries.get_mut(alias) {
@@ -493,12 +505,14 @@ impl Ed25519Wallet {
             .metadata
             .last_rotated_at
             .unwrap_or(entry.metadata.created_at);
-        let expiration_time = base_time + Duration::seconds(ttl_sec as i64);
-        Ok(Utc::now() > expiration_time)
+        let expiration_time = base_time
+            .checked_add(Span::new().seconds(ttl_sec as i64))
+            .map_err(|e| WalletError::KeyDerivationError(e.to_string()))?;
+        Ok(Timestamp::now() > expiration_time)
     }
 
     /// Return remaining TTL duration for a key, or `None` if key has no TTL.
-    pub fn ttl_remaining(&self, alias: &str) -> WalletResult<Option<Duration>> {
+    pub fn ttl_remaining(&self, alias: &str) -> WalletResult<Option<Span>> {
         let entry = self.get_entry(alias)?;
         let Some(ttl_sec) = entry.metadata.ttl_seconds else {
             return Ok(None);
@@ -507,22 +521,31 @@ impl Ed25519Wallet {
             .metadata
             .last_rotated_at
             .unwrap_or(entry.metadata.created_at);
-        let expiration_time = base_time + Duration::seconds(ttl_sec as i64);
-        let now = Utc::now();
+        let expiration_time = base_time
+            .checked_add(Span::new().seconds(ttl_sec as i64))
+            .map_err(|e| WalletError::KeyDerivationError(e.to_string()))?;
+        let now = Timestamp::now();
         if now >= expiration_time {
-            Ok(Some(Duration::zero()))
+            Ok(Some(Span::new()))
         } else {
-            Ok(Some(expiration_time - now))
+            let remaining = expiration_time
+                .since(now)
+                .map_err(|e| WalletError::KeyDerivationError(e.to_string()))?;
+            Ok(Some(remaining))
         }
     }
 
     /// Update TTL for a key alias.
-    pub fn set_ttl(&mut self, alias: &str, ttl: Option<Duration>) -> WalletResult<()> {
+    pub fn set_ttl(&mut self, alias: &str, ttl: Option<Span>) -> WalletResult<()> {
         let entry = self
             .entries
             .get_mut(alias)
             .ok_or_else(|| WalletError::KeyNotFound(alias.to_string()))?;
-        entry.metadata.ttl_seconds = ttl.map(|d| d.num_seconds() as u64);
+        entry.metadata.ttl_seconds = ttl.map(|s| {
+            s.total(jiff::Unit::Second)
+                .map(|secs| secs.max(0.0) as u64)
+                .unwrap_or_else(|_| s.get_seconds().max(0) as u64)
+        });
         Ok(())
     }
 
@@ -543,7 +566,7 @@ impl Ed25519Wallet {
         entry.ed25519_public = public_bytes;
         entry.metadata.node_id = node_id.0.clone();
         entry.metadata.public_key_hex = hex_encode(public_bytes);
-        entry.metadata.last_rotated_at = Some(Utc::now());
+        entry.metadata.last_rotated_at = Some(Timestamp::now());
         entry.metadata.version += 1;
 
         Ok(node_id)
@@ -611,7 +634,7 @@ impl Ed25519Wallet {
             salt_hex: hex_encode(self.salt),
             active_alias: self.active_alias.clone(),
             records,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         serde_json::to_vec_pretty(&store_file)
@@ -899,15 +922,15 @@ mod tests {
         let mut wallet = Ed25519Wallet::new(MASTER_PASS).unwrap();
         // Set key with 0 seconds TTL so it expires immediately
         wallet
-            .generate_keypair("short-lived", Some(Duration::seconds(0)))
+            .generate_keypair("short-lived", Some(Span::new().seconds(0)))
             .unwrap();
 
-        // Wait brief moment to guarantee Utc::now() > created_at
+        // Wait brief moment to guarantee Timestamp::now() > created_at
         std::thread::sleep(std::time::Duration::from_millis(10));
 
         assert!(wallet.is_expired("short-lived").unwrap());
         let remaining = wallet.ttl_remaining("short-lived").unwrap().unwrap();
-        assert_eq!(remaining, Duration::zero());
+        assert!(remaining.is_zero());
 
         // Signing with expired key should fail
         let err = wallet.sign("short-lived", b"hello").unwrap_err();
@@ -921,7 +944,7 @@ mod tests {
     fn test_9_rotate_expired_keys() {
         let mut wallet = Ed25519Wallet::new(MASTER_PASS).unwrap();
         wallet
-            .generate_keypair("exp1", Some(Duration::seconds(0)))
+            .generate_keypair("exp1", Some(Span::new().seconds(0)))
             .unwrap();
         wallet.generate_keypair("permanent", None).unwrap();
 
@@ -1186,7 +1209,7 @@ mod tests {
     fn test_wallet_export_import_roundtrip() {
         let mut src_wallet = Ed25519Wallet::new(MASTER_PASS).unwrap();
         let node_id = src_wallet
-            .generate_keypair("original", Some(Duration::seconds(3600)))
+            .generate_keypair("original", Some(Span::new().seconds(3600)))
             .unwrap();
 
         let (_pub_hex, sec_hex) = src_wallet.export_keypair_hex("original").unwrap();
@@ -1218,7 +1241,7 @@ mod tests {
                 alias: "sensitive-entry".into(),
                 node_id: "xv1-test".into(),
                 public_key_hex: "00".repeat(32),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
                 last_rotated_at: None,
                 ttl_seconds: None,
                 version: 1,

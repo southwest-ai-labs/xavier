@@ -1,11 +1,11 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 /// A single recorded metrics entry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetricsEntry {
-    pub ts: DateTime<Utc>,
+    pub ts: Timestamp,
     pub latency_ms: u64,
     pub success: bool,
     pub error: Option<String>,
@@ -60,7 +60,7 @@ mod tests {
         let mut buffer = MetricsRingBuffer::new(10);
         for i in 0..11 {
             buffer.push(MetricsEntry {
-                ts: Utc::now(),
+                ts: Timestamp::now(),
                 latency_ms: i,
                 success: true,
                 error: None,
@@ -200,7 +200,7 @@ pub struct PluginMetrics {
 /// Monitors plugin health using a ring buffer and circuit breaker.
 pub struct PluginHealthMonitor {
     states: RwLock<HashMap<String, CircuitState>>,
-    last_open: RwLock<HashMap<String, DateTime<Utc>>>,
+    last_open: RwLock<HashMap<String, Timestamp>>,
     metrics: RwLock<HashMap<String, MetricsRingBuffer>>,
     check_interval: Duration,
 }
@@ -227,7 +227,7 @@ impl PluginHealthMonitor {
     /// Record a parse attempt for a plugin.
     pub fn record(&self, name: &str, latency_ms: u64, success: bool, error: Option<String>) {
         let entry = MetricsEntry {
-            ts: Utc::now(),
+            ts: Timestamp::now(),
             latency_ms,
             success,
             error,
@@ -258,11 +258,8 @@ impl PluginHealthMonitor {
             };
 
             if let Some(opened_at) = last_open {
-                if Utc::now()
-                    .signed_duration_since(opened_at)
-                    .to_std()
-                    .unwrap_or(Duration::ZERO)
-                    >= self.check_interval
+                if Timestamp::now().duration_since(opened_at).as_millis()
+                    >= self.check_interval.as_millis() as i128
                 {
                     return CircuitState::HalfOpen;
                 }
@@ -279,7 +276,7 @@ impl PluginHealthMonitor {
 
     fn update_state(&self, name: &str) {
         let current_state = self.circuit_state(name);
-        let now = Utc::now();
+        let now = Timestamp::now();
         let window = Duration::from_secs(60);
 
         let mut metrics_map = self.metrics.write();
@@ -294,10 +291,7 @@ impl PluginHealthMonitor {
                     .iter()
                     .rev()
                     .take_while(|e| {
-                        now.signed_duration_since(e.ts)
-                            .to_std()
-                            .unwrap_or(Duration::ZERO)
-                            <= window
+                        now.duration_since(e.ts).as_millis() <= window.as_millis() as i128
                     })
                     .filter(|e| !e.success)
                     .count();
