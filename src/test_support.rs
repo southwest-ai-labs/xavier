@@ -154,6 +154,12 @@ pub fn isolate_user_dirs() -> PathBuf {
                 return root;
             }
             for (var, sub) in DIR_VARS {
+                if let Some(existing) = std::env::var_os(var) {
+                    let p = PathBuf::from(&existing);
+                    if is_test_owned(&absolutize(&p)) {
+                        continue;
+                    }
+                }
                 let dir = if sub.is_empty() {
                     root.clone()
                 } else {
