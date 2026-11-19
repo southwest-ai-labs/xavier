@@ -1,6 +1,5 @@
 //! Pure memory contracts for ADR-033 Wave 0.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use xavier_core_logic::{ClearanceLevel, ContextZone, MemoryLevel, RelationKind};
 

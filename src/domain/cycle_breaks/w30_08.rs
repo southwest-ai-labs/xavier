@@ -1,6 +1,6 @@
 //! Owned by issue [WAVE-30.08] (ADR-033 Wave 0).
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
@@ -53,7 +53,7 @@ pub trait NightlyTgd {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SchedulerState {
-    pub last_run_at: Option<DateTime<Utc>>,
+    pub last_run_at: Option<Timestamp>,
     pub last_duration_ms: u64,
     pub items_processed: usize,
 }

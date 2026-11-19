@@ -3,7 +3,6 @@
 //! Manages background execution of memory consolidation and TGD rule generation
 //! on a cron-like schedule.
 
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::path::PathBuf;
@@ -167,7 +166,7 @@ impl TgdConsolidationScheduler {
 
         let duration = start.elapsed();
         let state = SchedulerState {
-            last_run_at: Some(Utc::now()),
+            last_run_at: Some(jiff::Timestamp::now()),
             last_duration_ms: duration.as_millis() as u64,
             items_processed: final_stats.selected,
         };
@@ -185,7 +184,7 @@ impl TgdConsolidationScheduler {
         );
 
         // Log results to chronicle (via memory document)
-        let date = Utc::now().format("%Y-%m-%d").to_string();
+        let date = jiff::Timestamp::now().strftime("%Y-%m-%d").to_string();
         let report_content = format!(
             "# Nightly TGD Consolidation Report\n\n- Date: {}\n- Duration: {}ms\n- Items Processed: {}\n- Memories Refined: {}\n- Avg Improvement: {:.4}\n- Errors: {}\n",
             date,
@@ -257,8 +256,8 @@ async fn run_cycle_loop<F, Fut>(
     F: Fn() -> Fut,
     Fut: Future<Output = anyhow::Result<()>>,
 {
-    while let Some(next) = schedule.upcoming(Utc).next() {
-        let now = Utc::now();
+    while let Some(next) = schedule.upcoming(chrono::Utc).next() {
+        let now = chrono::Utc::now();
         if next > now {
             let sleep_duration = next
                 .signed_duration_since(now)
@@ -405,7 +404,7 @@ pub async fn run_nightly_tgd() -> anyhow::Result<()> {
     }
     let report = format!(
         "# Nightly TGD Report\n\n- Time: {}\n- Memories refined: {}\n- Avg score improvement: {:.4}\n- Errors: {}\n",
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
+        jiff::Timestamp::now().strftime("%Y-%m-%d %H:%M:%S UTC"),
         stats.memories_refined,
         stats.avg_score_improvement,
         stats.errors,

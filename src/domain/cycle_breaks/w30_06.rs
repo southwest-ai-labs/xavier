@@ -14,7 +14,7 @@
 //! on `crate::domain` alone.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::memory::belief::BeliefEdge;
@@ -81,7 +81,7 @@ pub struct ConversationMessage {
     pub id: String,
     pub role: MessageRole,
     pub content: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// Author of a conversation message.
@@ -118,7 +118,7 @@ mod tests {
             id: "msg-1".to_string(),
             role: MessageRole::User,
             content: "hello".to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         };
 
         let encoded = serde_json::to_string(&message).expect("message serializes");

@@ -25,7 +25,7 @@ pub struct SessionCheckpoint {
     pub recent_messages: Vec<CompactMessage>,
     pub pending_tasks: Vec<String>,
     pub tool_state: HashMap<String, String>,
-    pub checkpoint_timestamp: chrono::DateTime<chrono::Utc>,
+    pub checkpoint_timestamp: jiff::Timestamp,
 }
 
 impl SessionCheckpoint {
