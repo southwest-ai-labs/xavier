@@ -49,6 +49,8 @@ impl GraphData {
         metadata: Option<&serde_json::Value>,
         now: DateTime<Utc>,
     ) -> String {
+        let now = jiff::Timestamp::from_millisecond(now.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now());
         let normalized_name = normalize_name(&entity.name);
         let lookup_key = entity_lookup_key(&normalized_name, entity.entity_type);
         let entity_id = self
@@ -241,12 +243,15 @@ impl GraphData {
                 relation.updated_at = now;
             }
         }
+        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now());
         for entity in self.entities.values_mut() {
-            let hours_since = (now - entity.last_seen).num_hours() as f32;
+            let hours_since =
+                (now_ts.duration_since(entity.last_seen).as_secs_f64() / 3600.0) as f32;
             if hours_since > 0.0 {
                 let decay = (1.0 - factor).powf(hours_since);
                 entity.trust_score *= decay;
-                entity.last_seen = now;
+                entity.last_seen = now_ts;
             }
         }
     }

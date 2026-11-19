@@ -2,7 +2,7 @@
 //!
 //! Free of I/O, database dependencies, or async runtimes. WASM compatible.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 /// Clearance levels for security gating.
@@ -309,7 +309,7 @@ impl MemoryDocument {
 /// Key event within an episodic session summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub description: String,
     pub event_type: String,
 }
@@ -318,7 +318,7 @@ pub struct Event {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionSummary {
     pub session_id: String,
-    pub start_time: DateTime<Utc>,
+    pub start_time: Timestamp,
     pub summary: String,
     pub key_events: Vec<Event>,
     #[serde(default)]
@@ -362,8 +362,8 @@ pub struct EntityRecord {
     pub description: Option<String>,
     pub occurrence_count: usize,
     pub memory_count: usize,
-    pub first_seen: DateTime<Utc>,
-    pub last_seen: DateTime<Utc>,
+    pub first_seen: Timestamp,
+    pub last_seen: Timestamp,
     #[serde(default)]
     pub merged_from: Vec<String>,
     #[serde(default)]

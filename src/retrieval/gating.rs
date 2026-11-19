@@ -802,6 +802,9 @@ impl AdaptiveGating {
             }
         }
 
+        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now());
+
         let mut results: Vec<ScoredResult> = if working.len() > 100 {
             let working = working.to_vec();
             let active_zones = self.config.active_zones.clone();
@@ -821,7 +824,7 @@ impl AdaptiveGating {
                                 active_zones: active_zones.as_ref(),
                                 zone_boost_multiplier: zone_boost,
                                 zone_penalty_multiplier: zone_penalty,
-                                now,
+                                now: now_ts,
                                 recency_weight,
                                 half_life_hours: half_life,
                             },
@@ -844,7 +847,7 @@ impl AdaptiveGating {
                             active_zones: self.config.active_zones.as_ref(),
                             zone_boost_multiplier: zone_boost,
                             zone_penalty_multiplier: zone_penalty,
-                            now,
+                            now: now_ts,
                             recency_weight: self.config.recency_weight,
                             half_life_hours: self.config.half_life_hours,
                         },
@@ -875,6 +878,9 @@ impl AdaptiveGating {
             .map(|s| s.to_string())
             .collect();
 
+        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now());
+
         let mut results: Vec<ScoredResult> = if episodic.len() > 100 {
             let episodic = episodic.to_vec();
             let recency_weight = self.config.recency_weight;
@@ -889,7 +895,7 @@ impl AdaptiveGating {
                             session,
                             &query_lower,
                             &query_terms,
-                            now,
+                            now_ts,
                             recency_weight,
                             half_life,
                         )
@@ -907,7 +913,7 @@ impl AdaptiveGating {
                         session,
                         &query_lower,
                         &query_terms,
-                        now,
+                        now_ts,
                         self.config.recency_weight,
                         self.config.half_life_hours,
                     )
@@ -931,6 +937,8 @@ impl AdaptiveGating {
         now: chrono::DateTime<chrono::Utc>,
     ) -> Vec<ScoredResult> {
         let query_lower = query.to_lowercase();
+        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
+            .unwrap_or_else(|_| jiff::Timestamp::now());
 
         let mut results: Vec<ScoredResult> = if semantic.len() > 100 {
             let semantic = semantic.to_vec();
@@ -941,7 +949,13 @@ impl AdaptiveGating {
                 semantic
                     .par_iter()
                     .filter_map(|entity| {
-                        score_single_semantic(entity, &query_lower, now, recency_weight, half_life)
+                        score_single_semantic(
+                            entity,
+                            &query_lower,
+                            now_ts,
+                            recency_weight,
+                            half_life,
+                        )
                     })
                     .collect()
             })
@@ -954,7 +968,7 @@ impl AdaptiveGating {
                     score_single_semantic(
                         entity,
                         &query_lower,
-                        now,
+                        now_ts,
                         self.config.recency_weight,
                         self.config.half_life_hours,
                     )
@@ -1273,8 +1287,8 @@ mod tests {
                 description: Some("Developer at SWAL".to_string()),
                 occurrence_count: 5,
                 memory_count: 3,
-                first_seen: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                first_seen: jiff::Timestamp::now(),
+                last_seen: jiff::Timestamp::now(),
                 merged_from: vec![],
                 trust_score: 0.5,
                 trust_rank: 1,
@@ -1288,8 +1302,8 @@ mod tests {
                 description: Some("Southwest AI Labs".to_string()),
                 occurrence_count: 10,
                 memory_count: 5,
-                first_seen: chrono::Utc::now(),
-                last_seen: chrono::Utc::now(),
+                first_seen: jiff::Timestamp::now(),
+                last_seen: jiff::Timestamp::now(),
                 merged_from: vec![],
                 trust_score: 0.5,
                 trust_rank: 1,
@@ -1480,7 +1494,7 @@ mod tests {
                         active_zones: None,
                         zone_boost_multiplier: 1.5,
                         zone_penalty_multiplier: 0.5,
-                        now: chrono::Utc::now(),
+                        now: jiff::Timestamp::now(),
                         recency_weight: 0.3,
                         half_life_hours: 168.0,
                     },

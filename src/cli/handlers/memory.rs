@@ -223,7 +223,8 @@ pub async fn export_pack_handler(
         };
         episodic_summaries.push(xavier::retrieval::gating::SessionSummary {
             session_id: s.id.clone(),
-            start_time: s.started_at,
+            start_time: jiff::Timestamp::from_millisecond(s.started_at.timestamp_millis())
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
             summary,
             key_events: vec![],
             sentiment_timeline: vec![],

@@ -248,6 +248,7 @@ autometrics = { version = "3.0", features = ["prometheus-exporter"] }
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
+jiff = { version = "1.0", features = ["serde"] }
 cron = "0.15"
 # State management
 rayon = "1.10"

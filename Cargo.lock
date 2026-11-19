@@ -15849,6 +15849,7 @@ dependencies = [
  "http-body-util",
  "image",
  "iroh",
+ "jiff",
  "jsonwebtoken",
  "keyring",
  "libc",
@@ -15918,7 +15919,7 @@ dependencies = [
 name = "xavier-core-logic"
 version = "0.2.1"
 dependencies = [
- "chrono",
+ "jiff",
  "serde",
  "serde_json",
 ]

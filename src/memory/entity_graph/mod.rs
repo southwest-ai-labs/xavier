@@ -64,7 +64,7 @@ impl EntityGraph {
             for entity_id in entities {
                 if let Some(entity) = data.entities.get_mut(&entity_id) {
                     entity.memory_count = entity.memory_count.saturating_sub(1);
-                    entity.last_seen = Utc::now();
+                    entity.last_seen = jiff::Timestamp::now();
                 }
             }
         }
@@ -593,7 +593,9 @@ mod tests {
                 r.updated_at = Utc::now() - chrono::Duration::hours(24);
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(24);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
         }
 
@@ -627,7 +629,9 @@ mod tests {
                 r.updated_at = Utc::now() - chrono::Duration::hours(12);
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(12);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
         }
         graph.apply_decay(0.0).await.unwrap();
@@ -642,7 +646,9 @@ mod tests {
                 r.updated_at = Utc::now() - chrono::Duration::hours(12);
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(12);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
         }
         graph.apply_decay(1.5).await.unwrap();
@@ -659,7 +665,9 @@ mod tests {
             }
             for e in data.entities.values_mut() {
                 e.trust_score = initial_trust;
-                e.last_seen = Utc::now() - chrono::Duration::hours(24);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
         }
 

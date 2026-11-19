@@ -286,7 +286,8 @@ async fn retrieve_with_arm(
         };
         episodic_summaries.push(SessionSummary {
             session_id: s.id.clone(),
-            start_time: s.started_at,
+            start_time: jiff::Timestamp::from_millisecond(s.started_at.timestamp_millis())
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
             summary,
             key_events: vec![],
             sentiment_timeline: vec![],
@@ -446,7 +447,8 @@ pub async fn memory_export_pack(
         };
         episodic_summaries.push(SessionSummary {
             session_id: s.id.clone(),
-            start_time: s.started_at,
+            start_time: jiff::Timestamp::from_millisecond(s.started_at.timestamp_millis())
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
             summary,
             key_events: vec![],
             sentiment_timeline: vec![],
