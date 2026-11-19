@@ -7,6 +7,7 @@ use tree_sitter::{Node, Parser};
 
 pub struct CParser {
     parser: Parser,
+    pub project_root: Option<String>,
 }
 
 impl Default for CParser {
@@ -22,16 +23,43 @@ impl CParser {
         parser
             .set_language(&language)
             .map_err(|e| GraphError::TreeSitter(format!("failed to set C language: {}", e)))?;
-        Ok(Self { parser })
+        Ok(Self {
+            parser,
+            project_root: None,
+        })
+    }
+
+    pub fn with_project_root(mut self, project_root: Option<&str>) -> Self {
+        self.project_root = project_root.map(|s| s.to_string());
+        self
+    }
+
+    pub fn set_project_root(&mut self, project_root: Option<&str>) {
+        self.project_root = project_root.map(|s| s.to_string());
     }
 
     pub fn parse(&mut self, source: &str, file_path: &str) -> Result<Vec<Symbol>> {
+        let root = self.project_root.clone();
+        self.parse_with_root(source, file_path, root.as_deref())
+    }
+
+    pub fn parse_with_root(
+        &mut self,
+        source: &str,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        let prev_root = self.project_root.clone();
+        if project_root.is_some() {
+            self.project_root = project_root.map(|s| s.to_string());
+        }
         let tree = self
             .parser
             .parse(source.as_bytes(), None)
             .ok_or_else(|| GraphError::Parser("Failed to parse C source".to_string()))?;
         let mut symbols = Vec::new();
         self.extract(tree.root_node(), source, file_path, &mut symbols, None);
+        self.project_root = prev_root;
         Ok(symbols)
     }
 
@@ -58,6 +86,7 @@ impl CParser {
                             name,
                             depth: 0,
                             parent: parent.clone(),
+                            project_root: self.project_root.clone(),
                         },
                     );
                 }
@@ -76,6 +105,7 @@ impl CParser {
                                 name: name.to_string(),
                                 depth: 0,
                                 parent: parent.clone(),
+                                project_root: self.project_root.clone(),
                             },
                         );
                     }
@@ -95,6 +125,7 @@ impl CParser {
                                 name: name.to_string(),
                                 depth: 0,
                                 parent: parent.clone(),
+                                project_root: self.project_root.clone(),
                             },
                         );
                     }
@@ -119,6 +150,7 @@ impl CParser {
                                     name: name.to_string(),
                                     depth: 0,
                                     parent: parent.clone(),
+                                    project_root: self.project_root.clone(),
                                 },
                             );
                         }
@@ -173,6 +205,7 @@ impl CParser {
                 name,
                 depth: 0,
                 parent: None,
+                project_root: self.project_root.clone(),
             },
         );
     }
@@ -185,7 +218,7 @@ impl CParser {
             .is_function_like()
             .then(|| cyclomatic_complexity(args.node, args.source));
         symbols.push(Symbol {
-            project_root: None,
+            project_root: args.project_root,
             id: None,
             stable_id: None,
             name: args.name,

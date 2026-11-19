@@ -1252,7 +1252,9 @@ impl QueryEngine {
         let content =
             std::fs::read_to_string(root.join(&target.file_path)).map_err(GraphError::Io)?;
         let mut tags = extract_rationale(&content, &target.file_path);
-        let siblings = self.db.symbols_in_file(&target.file_path)?;
+        let siblings = self
+            .db
+            .symbols_in_file_with_root(&target.file_path, target.project_root.as_deref())?;
         for tag in &mut tags {
             let mut best: Option<&Symbol> = None;
             for sym in &siblings {
@@ -1557,6 +1559,14 @@ impl QueryEngine {
     /// Get indexing statistics
     pub fn stats(&self) -> Result<crate::types::IndexStats> {
         self.db.stats()
+    }
+
+    /// Get indexing statistics for a specific project root
+    pub fn stats_for_project(
+        &self,
+        project_root: Option<&str>,
+    ) -> Result<crate::types::IndexStats> {
+        self.db.stats_for_project(project_root)
     }
     pub fn memories_for_symbol(&self, symbol: &str) -> Result<Vec<MemorySymbolLink>> {
         self.db.find_memories_for_symbol(symbol, 100)

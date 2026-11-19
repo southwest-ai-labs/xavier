@@ -214,20 +214,39 @@ impl TelemetryCollector {
         })
     }
 
-    /// Evict samples that fall outside the retention policy.
+    /// Evict samples that fall outside the retention policy, and clean up empty metric keys.
     pub fn evict_expired(&self) {
         let cutoff = match &self.retention_policy {
-            RetentionPolicy::Infinite => return,
+            RetentionPolicy::Infinite => None,
             RetentionPolicy::Standard { days } | RetentionPolicy::Extended { days } => {
-                Utc::now().timestamp() - (days * 86400) as i64
+                Some(Utc::now().timestamp() - (days * 86400) as i64)
             }
         };
 
         let mut store = self.collector.lock().expect("telemetry lock poisoned");
         store.retain(|_, samples| {
-            samples.retain(|s| s.timestamp >= cutoff);
+            if let Some(cutoff_ts) = cutoff {
+                samples.retain(|s| s.timestamp >= cutoff_ts);
+            }
             !samples.is_empty()
         });
+    }
+
+    /// Returns the number of distinct metric keys stored in memory.
+    pub fn metric_count(&self) -> usize {
+        let store = self.collector.lock().expect("telemetry lock poisoned");
+        store.len()
+    }
+
+    /// Checks if a metric key is present in memory.
+    pub fn has_metric(&self, name: &str) -> bool {
+        let store = self.collector.lock().expect("telemetry lock poisoned");
+        store.contains_key(name)
+    }
+
+    /// Access the underlying locked store directly (for testing and advanced inspection).
+    pub fn collector(&self) -> &Arc<Mutex<HashMap<String, Vec<TelemetrySample>>>> {
+        &self.collector
     }
 
     /// Returns the node ID this collector belongs to.
@@ -244,6 +263,21 @@ impl TelemetryCollector {
     pub fn uptime(&self) -> std::time::Duration {
         self.started_at.elapsed()
     }
+}
+
+static GLOBAL_TELEMETRY_COLLECTOR: std::sync::OnceLock<Arc<TelemetryCollector>> =
+    std::sync::OnceLock::new();
+
+/// Returns a clone of the global telemetry collector, if initialized.
+pub fn global_telemetry_collector() -> Option<Arc<TelemetryCollector>> {
+    GLOBAL_TELEMETRY_COLLECTOR.get().cloned()
+}
+
+/// Sets or gets the global telemetry collector singleton.
+pub fn set_global_telemetry_collector(
+    collector: Arc<TelemetryCollector>,
+) -> Arc<TelemetryCollector> {
+    GLOBAL_TELEMETRY_COLLECTOR.get_or_init(|| collector).clone()
 }
 
 #[cfg(test)]
@@ -340,5 +374,73 @@ mod tests {
             collector.record_with_timestamp_checked("infinite_metric", 99.0, labels, old_ts);
         assert!(recorded);
         assert_eq!(collector.query("infinite_metric", 0).len(), 1);
+    }
+
+    #[test]
+    fn test_evict_expired_removes_stale_metrics_and_empty_keys() {
+        let node_id = NodeId("xv1-test-node".to_string());
+        let mut collector = TelemetryCollector::new(node_id);
+        collector.set_retention_policy(RetentionPolicy::Standard { days: 7 });
+
+        let now = Utc::now().timestamp();
+        let old_ts = now - (10 * 86400); // 10 days ago (stale)
+        let fresh_ts = now - (2 * 86400); // 2 days ago (fresh)
+
+        {
+            let mut store = collector.collector().lock().expect("lock");
+            // 1. Stale-only sample
+            store.insert(
+                "stale_only".to_string(),
+                vec![TelemetrySample {
+                    timestamp: old_ts,
+                    metric_name: "stale_only".to_string(),
+                    value: 1.0,
+                    labels: HashMap::new(),
+                }],
+            );
+            // 2. Empty metric key
+            store.insert("empty_key".to_string(), Vec::new());
+            // 3. Mixed metric (stale + fresh)
+            store.insert(
+                "mixed_metric".to_string(),
+                vec![
+                    TelemetrySample {
+                        timestamp: old_ts,
+                        metric_name: "mixed_metric".to_string(),
+                        value: 10.0,
+                        labels: HashMap::new(),
+                    },
+                    TelemetrySample {
+                        timestamp: fresh_ts,
+                        metric_name: "mixed_metric".to_string(),
+                        value: 20.0,
+                        labels: HashMap::new(),
+                    },
+                ],
+            );
+        }
+
+        assert_eq!(collector.metric_count(), 3);
+        assert!(collector.has_metric("empty_key"));
+        assert!(collector.has_metric("stale_only"));
+        assert!(collector.has_metric("mixed_metric"));
+
+        // Trigger eviction
+        collector.evict_expired();
+
+        // Stale-only metric completely evicted
+        assert!(!collector.has_metric("stale_only"));
+        assert_eq!(collector.query("stale_only", 0).len(), 0);
+
+        // Empty key completely evicted
+        assert!(!collector.has_metric("empty_key"));
+
+        // Mixed metric retained only the fresh sample
+        assert!(collector.has_metric("mixed_metric"));
+        let mixed_samples = collector.query("mixed_metric", 0);
+        assert_eq!(mixed_samples.len(), 1);
+        assert_eq!(mixed_samples[0].value, 20.0);
+
+        assert_eq!(collector.metric_count(), 1);
     }
 }

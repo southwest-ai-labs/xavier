@@ -27,6 +27,7 @@ pub struct MemoryDaemon {
     manager: Arc<MemoryManager>,
     retry_policy: RetryPolicy,
     circuit_breaker: Arc<Mutex<CircuitBreaker>>,
+    telemetry_collector: Option<Arc<crate::mesh::TelemetryCollector>>,
 }
 
 impl MemoryDaemon {
@@ -36,6 +37,7 @@ impl MemoryDaemon {
             manager,
             retry_policy: RetryPolicy::default(),
             circuit_breaker: Arc::new(Mutex::new(CircuitBreaker::default())),
+            telemetry_collector: crate::mesh::global_telemetry_collector(),
         }
     }
 
@@ -49,6 +51,30 @@ impl MemoryDaemon {
             manager,
             retry_policy,
             circuit_breaker: Arc::new(Mutex::new(circuit_breaker)),
+            telemetry_collector: crate::mesh::global_telemetry_collector(),
+        }
+    }
+
+    /// Attach an explicit telemetry collector to the daemon.
+    pub fn with_telemetry_collector(
+        mut self,
+        collector: Arc<crate::mesh::TelemetryCollector>,
+    ) -> Self {
+        self.telemetry_collector = Some(collector);
+        self
+    }
+
+    /// Executes periodic maintenance tasks synchronously (telemetry eviction, etc.).
+    pub fn run_periodic_tasks(&self) {
+        self.run_telemetry_eviction();
+    }
+
+    /// Run one pass of periodic telemetry sample and key eviction.
+    pub fn run_telemetry_eviction(&self) {
+        if let Some(ref collector) = self.telemetry_collector {
+            collector.evict_expired();
+        } else if let Some(global) = crate::mesh::global_telemetry_collector() {
+            global.evict_expired();
         }
     }
 
@@ -91,6 +117,20 @@ impl MemoryDaemon {
             loop {
                 sleep(Duration::from_secs(3600)).await;
                 disk_monitor.check_and_notify();
+            }
+        });
+
+        // Run Telemetry Collector Eviction every 1 hour
+        let collector_opt = self.telemetry_collector.clone();
+        tokio::spawn(async move {
+            info!("MemoryDaemon: Scheduled telemetry eviction loop started (1h interval)");
+            loop {
+                sleep(Duration::from_secs(3600)).await;
+                if let Some(ref collector) = collector_opt {
+                    collector.evict_expired();
+                } else if let Some(global) = crate::mesh::global_telemetry_collector() {
+                    global.evict_expired();
+                }
             }
         });
 
@@ -689,5 +729,53 @@ mod alert_ticket_tests {
         let other = ticket_create_with(other, Some(&reg), &backends).unwrap();
         assert!(!other.deduplicated);
         assert_eq!(backends.maloca_calls.get(), 2);
+    }
+}
+
+#[cfg(test)]
+mod daemon_telemetry_tests {
+    use super::*;
+    use crate::memory::manager::core::MemoryManager;
+    use crate::memory::qmd_memory::QmdMemory;
+    use crate::mesh::{NodeId, RetentionPolicy, TelemetryCollector};
+    use chrono::Utc;
+    use std::collections::HashMap;
+
+    #[tokio::test]
+    async fn daemon_evicts_telemetry_stale_and_empty_keys() {
+        let node_id = NodeId("xv1-daemon-telemetry".to_string());
+        let mut collector = TelemetryCollector::new(node_id);
+        collector.set_retention_policy(RetentionPolicy::Standard { days: 1 });
+
+        let old_ts = Utc::now().timestamp() - (2 * 86400);
+        {
+            let mut store = collector.collector().lock().unwrap();
+            store.insert(
+                "stale_daemon".to_string(),
+                vec![crate::mesh::telemetry_collector::TelemetrySample {
+                    timestamp: old_ts,
+                    metric_name: "stale_daemon".to_string(),
+                    value: 42.0,
+                    labels: HashMap::new(),
+                }],
+            );
+            store.insert("empty_daemon".to_string(), Vec::new());
+        }
+
+        let collector = Arc::new(collector);
+        let docs = Arc::new(tokio::sync::RwLock::new(Vec::new()));
+        let qmd = Arc::new(QmdMemory::new(docs));
+        let manager = Arc::new(MemoryManager::new(qmd, None));
+        let daemon = MemoryDaemon::new(manager).with_telemetry_collector(collector.clone());
+
+        assert_eq!(collector.metric_count(), 2);
+        assert!(collector.has_metric("stale_daemon"));
+        assert!(collector.has_metric("empty_daemon"));
+
+        daemon.run_periodic_tasks();
+
+        assert_eq!(collector.metric_count(), 0);
+        assert!(!collector.has_metric("stale_daemon"));
+        assert!(!collector.has_metric("empty_daemon"));
     }
 }

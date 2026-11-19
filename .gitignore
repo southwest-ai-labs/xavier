@@ -73,6 +73,7 @@ state/*.json
 *.db-shm
 metrics.db*
 xavier_memory.db*
+code_graph.db*
 
 # Internal agent indexing caches & test results
 scratch/
