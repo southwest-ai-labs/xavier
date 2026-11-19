@@ -30,14 +30,14 @@ impl SessionIndexer {
 mod tests {
     use super::*;
     use crate::session::types::SessionEventType;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     #[test]
     fn test_session_indexer_index_event_valid() {
         let event = SessionEvent {
             session_id: "idx-sess-1".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Indexer message content".to_string()),
             metadata: None,
         };
@@ -55,7 +55,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "idx-sess-2".to_string(),
             event_type: SessionEventType::SessionStart,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Start session".to_string()),
             metadata: None,
         };

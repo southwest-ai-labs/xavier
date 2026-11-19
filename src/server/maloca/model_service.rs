@@ -4,7 +4,7 @@
 //! local Ollama endpoint discovery, and Clavis token lease caching with log masking.
 
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,14 +19,14 @@ use crate::clavis::{mask_key, register_secret};
 pub struct ClavisTokenLease {
     pub token_id: String,
     pub token_value: String,
-    pub leased_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
+    pub leased_at: Timestamp,
+    pub expires_at: Timestamp,
 }
 
 impl ClavisTokenLease {
     /// Checks if the leased token is currently expired.
     pub fn is_expired(&self) -> bool {
-        Utc::now() >= self.expires_at
+        Timestamp::now() >= self.expires_at
     }
 
     /// Returns a masked string representation of the token value for logging.
@@ -133,12 +133,12 @@ impl ModelRouterService {
         }
 
         let ttl = ttl_secs.unwrap_or(self.config.default_lease_ttl_secs);
-        let now = Utc::now();
+        let now = Timestamp::now();
         let lease = ClavisTokenLease {
             token_id: token_id.to_string(),
             token_value: token_value.to_string(),
             leased_at: now,
-            expires_at: now + Duration::seconds(ttl as i64),
+            expires_at: now + Span::new().seconds(ttl as i64),
         };
 
         info!(

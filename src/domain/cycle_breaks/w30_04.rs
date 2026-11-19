@@ -1,7 +1,6 @@
 //! Shared data definitions for health, observability, alerts, and mesh.
 //! Adapter-specific behavior stays at the original implementation sites.
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -114,12 +113,12 @@ pub struct SystemAlert {
     pub level: String,
     pub message: String,
     pub component: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 pub struct SystemAlertStore {
     pub(crate) alerts: RwLock<Vec<SystemAlert>>,
-    pub(crate) last_email_sent: RwLock<std::collections::HashMap<String, DateTime<Utc>>>,
+    pub(crate) last_email_sent: RwLock<std::collections::HashMap<String, jiff::Timestamp>>,
     pub(crate) suppression_map: Mutex<HashMap<(String, String), SuppressionRecord>>,
     pub(crate) total_suppressed_count: AtomicU64,
 }

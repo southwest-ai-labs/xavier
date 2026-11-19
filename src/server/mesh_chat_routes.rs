@@ -186,7 +186,7 @@ pub async fn v1_mesh_chat_send(Json(payload): Json<ChatSendRequest>) -> impl Int
     }
 
     let message_id = format!("msg-{}", Ulid::new());
-    let timestamp = chrono::Utc::now().timestamp();
+    let timestamp = jiff::Timestamp::now().as_second();
     let sender_node_id = payload
         .sender_node_id
         .clone()
@@ -291,7 +291,7 @@ pub async fn v1_mesh_chat_signal(Json(payload): Json<ChatSignalRequest>) -> impl
             .into_response();
     }
 
-    let timestamp = chrono::Utc::now().timestamp();
+    let timestamp = jiff::Timestamp::now().as_second();
     let target_peer_id = payload.target_peer_id.clone();
     let call_id = payload.call_id.clone();
     let signal_type = payload.signal_type.clone();

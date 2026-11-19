@@ -1224,7 +1224,7 @@ mod tests {
             "fixture-reader".into(),
             "fixture@example.invalid".into(),
             crate::security::auth::UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         let listing = super::super::session::dispatch_mcp_value(
             state.clone(),
@@ -1320,7 +1320,7 @@ mod tests {
             "skill-fixture".into(),
             "skill-fixture@example.invalid".into(),
             role,
-            chrono::Duration::minutes(5),
+            jiff::Span::new().minutes(5),
         );
         // HTTP establishes this identity before entering the JSON-RPC dispatcher.
         let output = super::super::tools_memory::with_mcp_caller(

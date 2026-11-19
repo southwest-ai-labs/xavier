@@ -581,7 +581,7 @@ pub async fn register_node(
         name: req.name,
         capabilities: req.capabilities,
         iroh_addr: None,
-        last_heartbeat: chrono::Utc::now().timestamp_millis() as u64,
+        last_heartbeat: jiff::Timestamp::now().as_millisecond() as u64,
         tree: crate::mesh::public_directory::InfoTree {
             repos: std::collections::HashMap::new(),
             memorias: crate::mesh::public_directory::MemoriaInfo {
@@ -638,7 +638,7 @@ pub async fn register_wallet_node(
         wallet_id: req.wallet_id.clone(),
         name: req.name,
         iroh_addr,
-        last_seen: chrono::Utc::now(),
+        last_seen: jiff::Timestamp::now(),
     };
     let public_key = match req.public_key_hex.as_deref() {
         None => None,
@@ -1327,7 +1327,7 @@ pub async fn create_grant(
         None => return (StatusCode::BAD_REQUEST, "invalid permission").into_response(),
     };
     let expires_at = match &req.expires_at {
-        Some(s) => match s.parse::<chrono::DateTime<chrono::Utc>>() {
+        Some(s) => match s.parse::<jiff::Timestamp>() {
             Ok(dt) => Some(dt),
             Err(_) => {
                 return (StatusCode::BAD_REQUEST, "invalid expires_at (RFC3339)").into_response()
@@ -1884,7 +1884,7 @@ mod tests {
                         wallet_id: wallet_id.to_string(),
                         name: node_id.to_string(),
                         iroh_addr: format!("addr-{node_id}"),
-                        last_seen: chrono::Utc::now(),
+                        last_seen: jiff::Timestamp::now(),
                     },
                     wallet_id,
                 )
@@ -2209,7 +2209,7 @@ mod tests {
             "test-user".to_string(),
             "test@swal.dev".to_string(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
         req
     }
@@ -2536,7 +2536,7 @@ mod tests {
                 path: "notes/receiver".into(),
                 content: "applied by the production receiver".into(),
                 metadata: serde_json::json!({}),
-                created_at: chrono::Utc::now().timestamp(),
+                created_at: jiff::Timestamp::now().as_second(),
             }],
             vectors: Vec::new(),
             snapshots: Vec::new(),
@@ -2554,7 +2554,7 @@ mod tests {
             wallet_id: wallet.to_string(),
             name: "n".into(),
             iroh_addr: String::new(),
-            last_seen: chrono::Utc::now(),
+            last_seen: jiff::Timestamp::now(),
         };
         {
             let mut reg = state.private_mesh_mut();

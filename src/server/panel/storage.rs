@@ -6,7 +6,7 @@ use crate::{
     workspace::WorkspaceContext,
 };
 use axum::{http::StatusCode, response::IntoResponse, Extension, Json};
-use chrono::Utc;
+use jiff::Timestamp;
 use rusqlite::params;
 use serde_json::json;
 
@@ -67,7 +67,7 @@ pub async fn list_bookmarks(
                     title: row.get(1)?,
                     url: row.get(2)?,
                     metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
-                    created_at: created_at_str.parse().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at_str.parse().unwrap_or_else(|_| Timestamp::now()),
                 });
             }
             Ok(bookmarks)
@@ -100,7 +100,7 @@ pub async fn save_bookmark(
                     payload.title,
                     payload.url,
                     serde_json::to_string(&payload.metadata).unwrap_or_default(),
-                    payload.created_at.to_rfc3339(),
+                    payload.created_at.to_string(),
                 ],
             )?;
             Ok(())
@@ -136,7 +136,7 @@ pub async fn list_widgets(Extension(workspace): Extension<WorkspaceContext>) -> 
                     y: row.get(4)?,
                     w: row.get(5)?,
                     h: row.get(6)?,
-                    created_at: created_at_str.parse().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at_str.parse().unwrap_or_else(|_| Timestamp::now()),
                 });
             }
             Ok(widgets)
@@ -172,7 +172,7 @@ pub async fn save_widget(
                     payload.y,
                     payload.w,
                     payload.h,
-                    payload.created_at.to_rfc3339(),
+                    payload.created_at.to_string(),
                 ],
             )?;
             Ok(())
@@ -190,7 +190,7 @@ fn default_empty_panel_graph() -> GraphData {
         id: "default".to_string(),
         name: "Workspace roadmap".to_string(),
         data: json!({ "nodes": [], "links": [] }),
-        created_at: Utc::now(),
+        created_at: Timestamp::now(),
     }
 }
 
@@ -234,7 +234,7 @@ pub async fn get_graph(Extension(workspace): Extension<WorkspaceContext>) -> imp
                     name: row.get(1)?,
                     data: serde_json::from_str(&data_str)
                         .unwrap_or_else(|_| json!({ "nodes": [], "links": [] })),
-                    created_at: created_at_str.parse().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at_str.parse().unwrap_or_else(|_| Timestamp::now()),
                 }))
             } else {
                 Ok(None)
@@ -273,7 +273,7 @@ pub async fn save_graph(
                     workspace_id,
                     payload.name,
                     serde_json::to_string(&payload.data).unwrap_or_default(),
-                    payload.created_at.to_rfc3339(),
+                    payload.created_at.to_string(),
                 ],
             )?;
             Ok(())

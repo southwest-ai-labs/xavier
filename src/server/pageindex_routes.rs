@@ -323,7 +323,7 @@ mod tests {
                 "u".into(),
                 "u@x.dev".into(),
                 role,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ))),
             None => r,
         }
@@ -364,7 +364,7 @@ mod tests {
             "u".into(),
             "u@x.dev".into(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         )));
         let (st, v) = send(a, "GET", "/documents", None).await;
         assert_eq!(st, StatusCode::INTERNAL_SERVER_ERROR, "{v}");
@@ -382,7 +382,7 @@ mod tests {
             "u".into(),
             "u@x.dev".into(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         )));
         let (st, v) = send(a, "DELETE", "/documents/guide", None).await;
         assert_eq!(st, StatusCode::INTERNAL_SERVER_ERROR, "{v}");

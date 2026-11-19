@@ -58,7 +58,7 @@ pub async fn dispatch_stdio_value(
         STDIO_LOCAL_SUBJECT.to_string(),
         "local@xavier".to_string(),
         crate::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     );
     // The local stdio identity carries no space token, so its ceiling is the
     // role clearance the HTTP transport would apply to the same claims.

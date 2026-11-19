@@ -675,7 +675,7 @@ pub async fn v1_mesh_handshake(
             if let Ok(mut peers) = crate::mesh::PeerRegistry::load() {
                 let existing = peers.get_peer(&payload.node_id).cloned();
                 let peer_info = if let Some(mut existing_peer) = existing {
-                    existing_peer.last_seen_at = Some(chrono::Utc::now().timestamp());
+                    existing_peer.last_seen_at = Some(jiff::Timestamp::now().as_second());
                     if !payload.public_key_hex.is_empty() {
                         existing_peer.public_key_hex = payload.public_key_hex.clone();
                     }
@@ -686,8 +686,8 @@ pub async fn v1_mesh_handshake(
                         alias: None,
                         endpoint_url: String::new(),
                         public_key_hex: payload.public_key_hex.clone(),
-                        added_at: chrono::Utc::now().timestamp(),
-                        last_seen_at: Some(chrono::Utc::now().timestamp()),
+                        added_at: jiff::Timestamp::now().as_second(),
+                        last_seen_at: Some(jiff::Timestamp::now().as_second()),
                         sync_enabled: true,
                         is_cloud: false,
                         iroh_addr: None,
@@ -869,7 +869,7 @@ pub async fn v1_mesh_manifest(
                     let manifest = MeshManifest {
                         node_id: identity.node_id,
                         chunks,
-                        generated_at: chrono::Utc::now().timestamp(),
+                        generated_at: jiff::Timestamp::now().as_second(),
                     };
                     Json(manifest).into_response()
                 }
@@ -2129,29 +2129,27 @@ pub async fn v1_memories_outline(
 }
 
 /// Helper to extract the last accessed time for a `MemoryDocument`.
-fn get_doc_last_accessed(
-    doc: &crate::memory::qmd_memory::MemoryDocument,
-) -> chrono::DateTime<chrono::Utc> {
+fn get_doc_last_accessed(doc: &crate::memory::qmd_memory::MemoryDocument) -> jiff::Timestamp {
     if let Some(last_accessed_val) = doc
         .metadata
         .get("last_accessed_at")
         .and_then(|v| v.as_str())
     {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(last_accessed_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = last_accessed_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
     if let Some(updated_at_val) = doc.metadata.get("updated_at").and_then(|v| v.as_str()) {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(updated_at_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = updated_at_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
     if let Some(created_at_val) = doc.metadata.get("created_at").and_then(|v| v.as_str()) {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(created_at_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = created_at_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
-    chrono::Utc::now()
+    jiff::Timestamp::now()
 }
 
 /// V1 memories prune.
@@ -2172,7 +2170,7 @@ pub async fn v1_memories_prune(
     let docs = workspace.workspace.memory.all_documents().await;
     let mut matched_docs = Vec::new();
 
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     for doc in docs {
         // 1. Filter by kind
         if let Some(ref k) = kind {
@@ -2196,7 +2194,7 @@ pub async fn v1_memories_prune(
         // 3. Filter by older_than_days
         if older_than_days > 0 {
             let last_accessed = get_doc_last_accessed(&doc);
-            let threshold = now - chrono::Duration::days(older_than_days);
+            let threshold = now - jiff::Span::new().hours(older_than_days * 24);
             if last_accessed >= threshold {
                 continue;
             }
@@ -2762,7 +2760,7 @@ fn default_namespace() -> String {
 }
 
 fn default_occurred_at() -> i64 {
-    chrono::Utc::now().timestamp_millis()
+    jiff::Timestamp::now().as_millisecond()
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -4202,7 +4200,7 @@ mod tests {
                     "kind": "fact",
                     "metadata": {
                         "kind": "fact",
-                        "last_accessed_at": (chrono::Utc::now() - chrono::Duration::days(10)).to_rfc3339()
+                        "last_accessed_at": (jiff::Timestamp::now() - jiff::Span::new().hours(10 * 24)).to_string()
                     }
                 })
                 .to_string(),

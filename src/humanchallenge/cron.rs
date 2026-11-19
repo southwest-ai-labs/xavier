@@ -180,7 +180,7 @@ impl HumanChallengeCron {
 mod tests {
     use super::*;
     use crate::session::types::SessionEventType;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     #[test]
     fn test_cron_process_events_and_mesh_scores() {
@@ -191,7 +191,7 @@ mod tests {
         let events = vec![SessionEvent {
             session_id: "s_cron_1".into(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Decidimos usar Rust para el scanner".into()),
             metadata: None,
         }];
@@ -203,7 +203,7 @@ mod tests {
         assert_eq!(candidates.len(), 1);
 
         // Answer candidate with data_commons reputation weighted reward
-        let current_month = Utc::now().format("%Y-%m").to_string();
+        let current_month = Timestamp::now().strftime("%Y-%m").to_string();
         cron.answer_and_award(&candidates[0].id, "Validado", 10, "0xwallet_test")
             .unwrap();
 

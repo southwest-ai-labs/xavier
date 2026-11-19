@@ -1,5 +1,5 @@
 use crate::codebase::conversations_db::{Message, ThreadSummary};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -26,7 +26,7 @@ pub struct Bookmark {
     pub title: String,
     pub url: String,
     pub metadata: serde_json::Value,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +39,7 @@ pub struct Widget {
     pub y: i32,
     pub w: i32,
     pub h: i32,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,5 +47,5 @@ pub struct GraphData {
     pub id: String,
     pub name: String,
     pub data: serde_json::Value,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }

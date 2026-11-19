@@ -205,7 +205,7 @@ pub fn auto_save_event(event: SessionEvent) {
         let path = format!(
             "sessions/{}/{}",
             event.session_id,
-            chrono::Utc::now().timestamp_millis()
+            jiff::Timestamp::now().as_millisecond()
         );
 
         let result = timeout(
@@ -373,7 +373,7 @@ async fn record_failed_sync(
         .await
         .map_err(|e| format!("failed to create failed-syncs dir: {}", e))?;
 
-    let timestamp = chrono::Utc::now().timestamp_millis();
+    let timestamp = jiff::Timestamp::now().as_millisecond();
     let filename = format!("failed-sync-{}-{}.json", event.session_id, timestamp);
     let filepath = dir.join(&filename);
 
@@ -416,7 +416,7 @@ fn resolve_xavier_url() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     #[test]
     fn auto_save_config_defaults() {
@@ -448,7 +448,7 @@ mod tests {
         let message_event = SessionEvent {
             session_id: "test".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("hello".to_string()),
             metadata: None,
         };
@@ -509,7 +509,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "test-failed-session".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Test failed message payload".to_string()),
             metadata: None,
         };

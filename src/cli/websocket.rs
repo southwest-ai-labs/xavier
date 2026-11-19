@@ -72,7 +72,7 @@ pub async fn session_event_handler(
 
     let content = format!(
         "[{}] {}: {}",
-        entry.timestamp.format("%Y-%m-%d %H:%M:%S"),
+        entry.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
         entry.role,
         entry_content
     );

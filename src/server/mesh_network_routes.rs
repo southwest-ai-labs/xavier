@@ -7,7 +7,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use chrono::{DateTime, Utc};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
@@ -67,8 +66,8 @@ pub struct NetworkRecord {
     pub owner_node: String,
     pub members: Vec<String>,
     pub acl: NetworkAcl,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
+    pub updated_at: jiff::Timestamp,
 }
 
 /// Request body for POST /v1/mesh/networks.
@@ -97,8 +96,8 @@ pub struct MeshNetworkResponse {
     pub is_public: bool,
     pub owner_node: String,
     pub members: Vec<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
+    pub updated_at: jiff::Timestamp,
 }
 
 impl From<&NetworkRecord> for MeshNetworkResponse {
@@ -132,7 +131,7 @@ pub struct NetworkInviteResponse {
     pub template: NetworkTemplate,
     pub token: String,
     pub qr_code: String,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: jiff::Timestamp,
 }
 
 /// Request body for POST /v1/mesh/networks/join and POST /v1/mesh/networks/{id}/join.
@@ -211,7 +210,7 @@ impl MeshNetworkStore {
             return Err(format!("Network with id '{}' already exists", id));
         }
 
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let record = NetworkRecord {
             id: id.clone(),
             name,
@@ -254,7 +253,7 @@ impl MeshNetworkStore {
             .ok_or_else(|| format!("Network '{}' not found", id))?;
         if !record.members.contains(&node_id) {
             record.members.push(node_id);
-            record.updated_at = Utc::now();
+            record.updated_at = jiff::Timestamp::now();
         }
         let record_cloned = record.clone();
         drop(lock);
@@ -351,12 +350,14 @@ pub async fn generate_invite(
             .into_response();
     };
 
-    let expires_at = Utc::now() + chrono::Duration::hours(24);
+    let expires_at = jiff::Timestamp::now()
+        .checked_add(jiff::Span::new().hours(24))
+        .unwrap_or_else(|_| jiff::Timestamp::now());
     let raw_token = format!(
         "xavier:invite:v1:{}:{}:{}:{}",
         record.id,
         record.template.as_str(),
-        expires_at.timestamp(),
+        expires_at.as_second(),
         ulid::Ulid::new().to_string().to_lowercase()
     );
 
@@ -390,7 +391,7 @@ pub fn parse_and_validate_invite_token(token: &str) -> Result<(String, i64), Str
         .parse()
         .map_err(|_| "Invalid expiration timestamp in invite token".to_string())?;
 
-    if Utc::now().timestamp() > expires_at_ts {
+    if jiff::Timestamp::now().as_second() > expires_at_ts {
         return Err("Invite token expired".to_string());
     }
 

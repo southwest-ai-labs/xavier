@@ -430,7 +430,7 @@ pub async fn stats_handler(
 ) -> impl IntoResponse {
     let year_month = query
         .year_month
-        .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m").to_string());
+        .unwrap_or_else(|| jiff::Timestamp::now().strftime("%Y-%m").to_string());
 
     let farming_summary = match state.store.get_farming_summary(&year_month) {
         Ok(s) => s,

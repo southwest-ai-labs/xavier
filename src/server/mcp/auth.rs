@@ -121,7 +121,7 @@ pub async fn mcp_auth_middleware(req: Request<Body>, next: Next) -> Response {
                 "root".to_string(),
                 "admin@swal.dev".to_string(),
                 crate::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         // Root-only tools key off this credential, never the claimed role.
         return super::server::with_root_credential(true, next.run(req)).await;

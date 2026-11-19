@@ -10,7 +10,6 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -46,7 +45,7 @@ pub struct ClinicalRecord {
     pub patient_id: Option<String>,
     pub encrypted_payload: String,
     pub family_key_id: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 /// Time-locked and/or read-once access pass token.
@@ -55,10 +54,10 @@ pub struct SharePass {
     pub pass_token: String,
     pub record_id: String,
     pub doctor_id: Option<String>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<jiff::Timestamp>,
     pub read_once: bool,
     pub used: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 // ---------- Request / Response DTOs ----------
@@ -147,7 +146,7 @@ pub async fn save_record_handler(
     }
 
     let record_id = format!("rec_{}", uuid::Uuid::new_v4().simple());
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
 
     let record = ClinicalRecord {
         id: record_id.clone(),
@@ -170,7 +169,7 @@ pub async fn save_record_handler(
             id: record_id,
             family_id: req.family_id,
             status: "saved".to_string(),
-            created_at: now.to_rfc3339(),
+            created_at: now.to_string(),
         }),
     )
         .into_response()
@@ -188,11 +187,12 @@ pub async fn create_share_pass_handler(
         return (StatusCode::NOT_FOUND, "Record not found").into_response();
     }
 
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let pass_token = format!("pass_{}", uuid::Uuid::new_v4().simple());
-    let expires_at = req
-        .consultation_ttl
-        .map(|ttl_secs| now + chrono::Duration::seconds(ttl_secs as i64));
+    let expires_at = req.consultation_ttl.map(|ttl_secs| {
+        now.checked_add(jiff::Span::new().seconds(ttl_secs as i64))
+            .unwrap_or(now)
+    });
     let read_once = req.read_once.unwrap_or(false);
 
     let pass = SharePass {
@@ -213,9 +213,9 @@ pub async fn create_share_pass_handler(
             pass_token,
             record_id: id,
             doctor_id: req.doctor_id,
-            expires_at: expires_at.map(|dt| dt.to_rfc3339()),
+            expires_at: expires_at.map(|dt| dt.to_string()),
             read_once,
-            created_at: now.to_rfc3339(),
+            created_at: now.to_string(),
         }),
     )
         .into_response()
@@ -263,7 +263,7 @@ pub async fn view_record_handler(
         _ => return (StatusCode::FORBIDDEN, "Invalid share pass token").into_response(),
     };
 
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
 
     // Check expiration if consultation_ttl was set
     if let Some(expires_at) = pass.expires_at {
@@ -292,12 +292,12 @@ pub async fn view_record_handler(
         patient_id: record.patient_id,
         encrypted_payload: record.encrypted_payload,
         family_key_id: record.family_key_id,
-        created_at: record.created_at.to_rfc3339(),
+        created_at: record.created_at.to_string(),
         pass_status: ViewPassStatus {
             pass_token: pass.pass_token.clone(),
             read_once: pass.read_once,
             used: pass.used,
-            expires_at: pass.expires_at.map(|dt| dt.to_rfc3339()),
+            expires_at: pass.expires_at.map(|dt| dt.to_string()),
         },
     };
 

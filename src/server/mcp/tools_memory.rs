@@ -1752,9 +1752,9 @@ pub async fn handle_memory_delete(
             memory.ensure_loaded().await?;
             let docs = std::sync::Arc::clone(&memory.docs).read_owned().await;
             let matched_ids = tokio::task::spawn_blocking(move || {
-                let threshold = chrono::Duration::try_days(older_than_days.max(0))
-                    .and_then(|age| chrono::Utc::now().checked_sub_signed(age))
-                    .unwrap_or(chrono::DateTime::<chrono::Utc>::MIN_UTC);
+                let threshold = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(older_than_days.max(0) * 24))
+                    .unwrap_or(jiff::Timestamp::UNIX_EPOCH);
                 docs.iter()
                     .filter(|doc| {
                         kind.as_ref().is_none_or(|k| {
@@ -1957,7 +1957,7 @@ pub async fn handle_memory_context(
                     snippet: item.snippet,
                     provenance: MCPProvenance {
                         source: "search_filtered".to_string(),
-                        retrieved_at: chrono::Utc::now().to_rfc3339(),
+                        retrieved_at: jiff::Timestamp::now().to_string(),
                         retrieval_method: "context_depth_search".to_string(),
                         embedding_model: None,
                         version: None,
@@ -2120,29 +2120,27 @@ async fn secure_mcp_external_input(
 }
 
 /// Helper to extract the last accessed time for a `MemoryDocument`.
-fn get_doc_last_accessed(
-    doc: &crate::memory::qmd_memory::MemoryDocument,
-) -> chrono::DateTime<chrono::Utc> {
+fn get_doc_last_accessed(doc: &crate::memory::qmd_memory::MemoryDocument) -> jiff::Timestamp {
     if let Some(last_accessed_val) = doc
         .metadata
         .get("last_accessed_at")
         .and_then(|v| v.as_str())
     {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(last_accessed_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = last_accessed_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
     if let Some(updated_at_val) = doc.metadata.get("updated_at").and_then(|v| v.as_str()) {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(updated_at_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = updated_at_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
     if let Some(created_at_val) = doc.metadata.get("created_at").and_then(|v| v.as_str()) {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(created_at_val) {
-            return parsed.with_timezone(&chrono::Utc);
+        if let Ok(parsed) = created_at_val.parse::<jiff::Timestamp>() {
+            return parsed;
         }
     }
-    chrono::Utc::now()
+    jiff::Timestamp::now()
 }
 
 #[cfg(test)]

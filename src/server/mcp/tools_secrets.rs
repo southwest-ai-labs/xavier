@@ -1060,7 +1060,7 @@ pub mod tests {
             "user1".to_string(),
             "user@swal.dev".to_string(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
 
         let res_user = crate::server::mcp::server::handle_tool_call(

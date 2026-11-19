@@ -97,7 +97,7 @@ mod tests {
             "u".into(),
             "u@swal.dev".into(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         )
     }
 

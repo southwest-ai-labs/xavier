@@ -32,10 +32,10 @@ pub struct WalletNode {
     /// The connection address for Iroh.
     pub iroh_addr: String,
     /// The last time this node was seen/active.
-    pub last_seen: chrono::DateTime<chrono::Utc>,
+    pub last_seen: Timestamp,
 }
 
-/// Helper trait to accept either `Option<jiff::Timestamp>` or legacy `Option<chrono::DateTime<Utc>>`.
+/// Helper trait to accept either `Option<jiff::Timestamp>` or `jiff::Timestamp`.
 pub trait IntoGrantExpiry {
     fn into_grant_expiry(self) -> Option<Timestamp>;
 }
@@ -49,23 +49,6 @@ impl IntoGrantExpiry for Option<Timestamp> {
 impl IntoGrantExpiry for Timestamp {
     fn into_grant_expiry(self) -> Option<Timestamp> {
         Some(self)
-    }
-}
-
-impl IntoGrantExpiry for Option<chrono::DateTime<chrono::Utc>> {
-    fn into_grant_expiry(self) -> Option<Timestamp> {
-        self.map(|dt| {
-            Timestamp::from_millisecond(dt.timestamp_millis()).unwrap_or_else(|_| Timestamp::now())
-        })
-    }
-}
-
-impl IntoGrantExpiry for chrono::DateTime<chrono::Utc> {
-    fn into_grant_expiry(self) -> Option<Timestamp> {
-        Some(
-            Timestamp::from_millisecond(self.timestamp_millis())
-                .unwrap_or_else(|_| Timestamp::now()),
-        )
     }
 }
 
@@ -674,7 +657,7 @@ mod tests {
             wallet_id: wallet_id.to_string(),
             name: name.to_string(),
             iroh_addr: "/ip4/127.0.0.1/tcp/1234".to_string(),
-            last_seen: chrono::Utc::now(),
+            last_seen: jiff::Timestamp::now(),
         }
     }
 
