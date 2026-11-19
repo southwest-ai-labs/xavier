@@ -3,7 +3,7 @@
 //! Kinds: rag, code, config, graphs. Each kind has an append-only log with
 //! pull-since incremental sync and gossip fan-out stub.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -38,7 +38,7 @@ pub struct ContextEntry {
     pub kind: ContextKind,
     pub payload: String,
     pub author: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub seq: u64,
 }
 
@@ -73,7 +73,7 @@ impl ContextBridge {
             kind,
             payload,
             author,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             seq,
         };
         log.push(entry.clone());
@@ -149,7 +149,7 @@ mod tests {
             kind: ContextKind::Rag,
             payload: "a".repeat(200),
             author: "n1".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             seq: 0,
         };
         assert_eq!(ContextBridge::snippet(&entry).len(), 100);

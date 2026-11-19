@@ -1208,7 +1208,7 @@ pub struct CreateLinkRequest {
     #[serde(default)]
     pub path_prefix: Option<String>,
     #[serde(default)]
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub expires_at: Option<jiff::Timestamp>,
 }
 
 /// GET /api/v1/espacio/spaces/{id}/members
@@ -2934,7 +2934,7 @@ mod route_tests {
                 "admin".to_string(),
                 "admin@example.com".to_string(),
                 crate::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         let response: Response = create_router()
             .oneshot(req)
@@ -2977,7 +2977,7 @@ mod route_tests {
                 "admin".to_string(),
                 "admin@example.com".to_string(),
                 crate::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         let response: Response = create_router()
             .oneshot(req)
@@ -3022,7 +3022,7 @@ mod route_tests {
                 "admin".to_string(),
                 "admin@example.com".to_string(),
                 crate::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         let response: Response = create_router()
             .oneshot(req)
@@ -3060,7 +3060,7 @@ mod route_tests {
                 "admin".to_string(),
                 "admin@example.com".to_string(),
                 crate::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         let response: Response = create_router()
             .oneshot(req)

@@ -50,7 +50,7 @@ pub fn can(role: SpaceRole, action: SpaceAction) -> bool {
 pub struct SpaceMembership {
     pub node_id: String,
     pub role: SpaceRole,
-    pub joined_at: chrono::DateTime<chrono::Utc>,
+    pub joined_at: jiff::Timestamp,
 }
 
 #[cfg(test)]
@@ -97,14 +97,15 @@ mod tests {
         let m = SpaceMembership {
             node_id: "node-001".to_string(),
             role: SpaceRole::Moderator,
-            joined_at: chrono::Utc::now(),
+            joined_at: jiff::Timestamp::now(),
         };
         assert_eq!(m.node_id, "node-001");
         assert_eq!(m.role, SpaceRole::Moderator);
         // joined_at should be very recent (within last minute)
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         assert!(m.joined_at <= now);
-        assert!(now - m.joined_at < chrono::Duration::minutes(1));
+        let diff = now.since(m.joined_at).unwrap();
+        assert!(diff.get_seconds() < 60);
     }
 
     #[test]
@@ -112,20 +113,13 @@ mod tests {
         let m = SpaceMembership {
             node_id: "node-002".to_string(),
             role: SpaceRole::Admin,
-            joined_at: chrono::Utc::now(),
+            joined_at: jiff::Timestamp::now(),
         };
         let json = serde_json::to_string(&m).unwrap();
         let m2: SpaceMembership = serde_json::from_str(&json).unwrap();
         assert_eq!(m.node_id, m2.node_id);
         assert_eq!(m.role, m2.role);
-        // timestamp roundtrip should be within microseconds
-        assert!(
-            (m.joined_at - m2.joined_at)
-                .num_microseconds()
-                .unwrap()
-                .abs()
-                < 1000
-        );
+        assert_eq!(m.joined_at, m2.joined_at);
     }
 
     #[test]

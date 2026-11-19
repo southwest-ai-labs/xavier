@@ -9,7 +9,6 @@
 //! this module (or its callers) writes into the grantor's memory.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, SecondsFormat, Utc};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -191,7 +190,7 @@ pub async fn create_link(
     grantee: &str,
     namespace: Option<String>,
     path_prefix: Option<String>,
-    expires_at: Option<DateTime<Utc>>,
+    expires_at: Option<jiff::Timestamp>,
 ) -> Result<SpaceLink> {
     validate_space_id(grantor)?;
     validate_space_id(grantee)?;
@@ -200,17 +199,13 @@ pub async fn create_link(
     }
     manager.get(grantor).await?;
     manager.get(grantee).await?;
-    let expires_at_ts = expires_at.map(|dt| {
-        jiff::Timestamp::from_millisecond(dt.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now())
-    });
     let link = SpaceLink {
         grant: CrossGrant {
             id: format!("lnk_{}", uuid::Uuid::new_v4().simple()),
             resource_id: link_resource(grantor),
             target_node: link_target(grantee),
             permission: Permission::Read,
-            expires_at: expires_at_ts,
+            expires_at,
             revoked: false,
             created_at: jiff::Timestamp::now(),
         },

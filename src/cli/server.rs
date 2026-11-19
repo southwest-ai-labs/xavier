@@ -2185,7 +2185,7 @@ async fn start_http_server_inner(
                         let results = xavier::espacio::retention::sweep_spaces_per_space(
                             &manager.stores(),
                             &spaces,
-                            chrono::Utc::now(),
+                            jiff::Timestamp::now(),
                             days,
                         );
                         for (id, deleted) in results {

@@ -921,7 +921,7 @@ mod tests {
                     v_id.to_string(),
                     String::new(),
                     crate::security::auth::UserRole::User,
-                    chrono::Duration::hours(1),
+                    jiff::Span::new().hours(1),
                 ))),
                 Path(req_id.clone()),
                 Json(VoteRequest {
@@ -939,7 +939,7 @@ mod tests {
                 val5_fp.clone(),
                 String::new(),
                 crate::security::auth::UserRole::User,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ))),
             Path(req_id.clone()),
             Json(VoteRequest {

@@ -17,7 +17,7 @@
 //! with the space data key and a locked space refuses every store access.
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, SecondsFormat, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -103,14 +103,13 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-fn ts(t: &DateTime<Utc>) -> String {
-    t.to_rfc3339_opts(SecondsFormat::Nanos, true)
+fn ts(t: &Timestamp) -> String {
+    t.to_string()
 }
 
-fn parse_ts(s: &str) -> Result<DateTime<Utc>> {
-    Ok(DateTime::parse_from_rfc3339(s)
-        .with_context(|| format!("bad timestamp {s:?}"))?
-        .with_timezone(&Utc))
+fn parse_ts(s: &str) -> Result<Timestamp> {
+    s.parse::<Timestamp>()
+        .with_context(|| format!("bad timestamp {s:?}"))
 }
 
 fn role_from(s: &str) -> Result<SpaceRole> {
@@ -268,7 +267,7 @@ impl SpaceStore {
         let m = SpaceMembership {
             node_id: node_id.to_string(),
             role,
-            joined_at: Utc::now(),
+            joined_at: Timestamp::now(),
         };
         self.lock().execute(
             "INSERT INTO members (node_id, role, joined_at) VALUES (?1, ?2, ?3)
@@ -482,7 +481,7 @@ impl SpaceStore {
         author: &str,
         content: &str,
     ) -> Result<ChannelMessage> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut conn = self.lock();
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let seq: i64 = tx.query_row("SELECT COALESCE(MAX(seq) + 1, 0) FROM messages", [], |r| {
@@ -528,7 +527,7 @@ impl SpaceStore {
             .collect()
     }
 
-    pub fn delete_messages_before(&self, cutoff: DateTime<Utc>) -> Result<usize> {
+    pub fn delete_messages_before(&self, cutoff: Timestamp) -> Result<usize> {
         let mut conn = self.lock();
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
 

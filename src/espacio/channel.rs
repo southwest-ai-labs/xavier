@@ -6,7 +6,7 @@
 //! follow-up iteration; this module provides the local log and merge.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -28,7 +28,7 @@ pub struct ChannelMessage {
     /// Text content (max 4KB)
     pub content: String,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// Channel manager per Space, backed by each space's `espacio.sqlite`
@@ -86,7 +86,7 @@ impl ChannelManager {
             space_id: space_id.clone(),
             author: author.clone(),
             content: content.clone(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         match self.try_post(space_id, author, content).await {
             Ok(m) => m,
@@ -179,14 +179,14 @@ mod tests {
                 space_id: "esp_a".into(),
                 author: "n2".into(),
                 content: "b".into(),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             },
             ChannelMessage {
                 seq: 5,
                 space_id: "esp_a".into(),
                 author: "n2".into(),
                 content: "c".into(),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             },
         ];
         mgr.merge("esp_a".into(), remote).await;

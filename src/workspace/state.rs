@@ -1387,7 +1387,7 @@ pub enum SpaceScopeError {
 
 struct CachedSpaceWorkspace {
     storage_path: PathBuf,
-    created_at: DateTime<Utc>,
+    created_at: jiff::Timestamp,
     /// Whether the store was built with a space key; a change rebuilds it.
     encrypted: bool,
     /// Filled once, outside the cache lock; concurrent first requests for the

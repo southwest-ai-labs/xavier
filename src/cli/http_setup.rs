@@ -2548,7 +2548,7 @@ name = "demo"
                 OWN,
                 "rev",
                 SpaceRole::Member,
-                Some(chrono::Utc::now() - chrono::Duration::seconds(5)),
+                Some(jiff::Timestamp::now() - jiff::Span::new().seconds(5)),
             )
             .unwrap();
         let bad: Vec<(&str, String)> = vec![
