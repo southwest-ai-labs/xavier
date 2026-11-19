@@ -347,10 +347,7 @@ pub fn merge_ranked_candidates(
 
 /// The single place that orders fused candidates: sort by `fused` desc,
 /// then `relevance` desc, then `doc.path` asc (deterministic); cap at
-pub fn compute_dynamic_decay_multiplier(
-    doc: &MemoryDocument,
-    now: chrono::DateTime<chrono::Utc>,
-) -> f32 {
+pub fn compute_dynamic_decay_multiplier(doc: &MemoryDocument, now: jiff::Timestamp) -> f32 {
     let timestamp_str = doc
         .metadata
         .get("last_modified")
@@ -359,11 +356,8 @@ pub fn compute_dynamic_decay_multiplier(
         .and_then(|v| v.as_str());
 
     let age_days = if let Some(ts) = timestamp_str {
-        if let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(ts) {
-            (now - parsed.with_timezone(&chrono::Utc))
-                .num_seconds()
-                .max(0) as f32
-                / 86400.0
+        if let Ok(parsed) = ts.parse::<jiff::Timestamp>() {
+            (now.duration_since(parsed).as_secs_f64().max(0.0) / 86400.0) as f32
         } else {
             30.0
         }
@@ -388,7 +382,7 @@ pub fn compute_dynamic_decay_multiplier(
 /// document whenever it is not among the first values of a HashMap
 /// iteration.
 pub fn rank_candidates(mut candidates: Vec<ScoredCandidate>, limit: usize) -> Vec<ScoredCandidate> {
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     for candidate in candidates.iter_mut() {
         let decay = compute_dynamic_decay_multiplier(&candidate.doc, now);
         candidate.fused *= decay;
@@ -486,7 +480,7 @@ pub async fn query_with_hybrid_search(
     // relevance (max 1/(RRF_K+1)) can never clear it, so flooring would
     // discard genuine direct matches whenever any vector hit survives.
     let mut fused: Vec<ScoredCandidate> = scores.into_values().collect();
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     for candidate in fused.iter_mut() {
         let decay = compute_dynamic_decay_multiplier(&candidate.doc, now);
         candidate.fused *= decay;
@@ -747,9 +741,12 @@ mod tests {
 
     #[test]
     fn test_dynamic_decay_multiplier_fresh_vs_stale() {
-        let now = chrono::Utc::now();
-        let fresh_ts = now.to_rfc3339();
-        let stale_ts = (now - chrono::Duration::days(180)).to_rfc3339();
+        let now = jiff::Timestamp::now();
+        let fresh_ts = now.to_string();
+        let stale_ts = now
+            .checked_sub(jiff::Span::new().hours(180 * 24))
+            .unwrap()
+            .to_string();
 
         let mut fresh_doc = test_doc("fresh.md", "fresh");
         fresh_doc.metadata = serde_json::json!({ "updated_at": fresh_ts });
@@ -774,9 +771,12 @@ mod tests {
 
     #[test]
     fn test_dynamic_decay_reranking_orders_fresh_ahead_of_stale() {
-        let now = chrono::Utc::now();
-        let fresh_ts = now.to_rfc3339();
-        let stale_ts = (now - chrono::Duration::days(180)).to_rfc3339();
+        let now = jiff::Timestamp::now();
+        let fresh_ts = now.to_string();
+        let stale_ts = now
+            .checked_sub(jiff::Span::new().hours(180 * 24))
+            .unwrap()
+            .to_string();
 
         let mut fresh_doc = test_doc("fresh.md", "a");
         fresh_doc.metadata = serde_json::json!({ "updated_at": fresh_ts });
@@ -808,8 +808,11 @@ mod tests {
 
     #[test]
     fn test_dynamic_decay_preserves_floor_at_0_3() {
-        let now = chrono::Utc::now();
-        let old_ts = (now - chrono::Duration::days(3650)).to_rfc3339(); // 10 years ago
+        let now = jiff::Timestamp::now();
+        let old_ts = now
+            .checked_sub(jiff::Span::new().hours(3650 * 24))
+            .unwrap()
+            .to_string(); // 10 years ago
 
         let mut old_doc = test_doc("old.md", "old");
         old_doc.metadata = serde_json::json!({ "updated_at": old_ts });
@@ -973,8 +976,12 @@ mod tests {
     fn test_merge_ranked_candidates_rrf_and_decay() {
         let mut candidate_scores: HashMap<String, ScoredCandidate> = HashMap::new();
 
-        let fresh_now = chrono::Utc::now().to_rfc3339();
-        let stale_old = (chrono::Utc::now() - chrono::Duration::days(120)).to_rfc3339();
+        let now = jiff::Timestamp::now();
+        let fresh_now = now.to_string();
+        let stale_old = now
+            .checked_sub(jiff::Span::new().hours(120 * 24))
+            .unwrap()
+            .to_string();
 
         let doc_fresh = MemoryDocument {
             id: Some("doc_fresh".to_string()),
