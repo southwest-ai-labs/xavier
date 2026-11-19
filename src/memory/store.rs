@@ -868,10 +868,7 @@ pub trait MemoryStore: crate::domain::cycle_breaks::w30_12::MemoryConsumerStore 
         clippy::unused_async,
         reason = "MemoryStore trait requirement for async backends"
     )]
-    async fn read_maintenance_meta(
-        &self,
-        _key: &str,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
+    async fn read_maintenance_meta(&self, _key: &str) -> Result<Option<jiff::Timestamp>> {
         Ok(None)
     }
 }

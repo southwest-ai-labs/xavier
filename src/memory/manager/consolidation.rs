@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::info;
 
 use crate::domain::cycle_breaks::w30_08::NightlyTgd;
@@ -92,7 +92,7 @@ impl MemoryManager {
         let mut actions = Vec::new();
         let mut bytes_freed: u64 = 0;
         let mut purged_count = 0;
-        let now = chrono::Utc::now();
+        let now = Timestamp::now();
 
         for doc in docs {
             let Some(doc_id) = &doc.id else {
@@ -104,13 +104,13 @@ impl MemoryManager {
             // 1. Check "expires_at" field
             if let Some(expires_at_val) = doc.metadata.get("expires_at") {
                 if let Some(expires_str) = expires_at_val.as_str() {
-                    if let Ok(expires_dt) = chrono::DateTime::parse_from_rfc3339(expires_str) {
+                    if let Ok(expires_dt) = expires_str.parse::<Timestamp>() {
                         if now > expires_dt {
                             expired = true;
                         }
                     }
                 } else if let Some(expires_num) = expires_at_val.as_i64() {
-                    if now.timestamp() > expires_num {
+                    if now.as_second() > expires_num {
                         expired = true;
                     }
                 }
@@ -131,12 +131,11 @@ impl MemoryManager {
                                     .get("created_at")
                                     .or_else(|| doc.metadata.get("updated_at"))
                                     .and_then(|v| v.as_str())
-                                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                                    .and_then(|s| s.parse::<Timestamp>().ok())
                             })
-                            .unwrap_or_else(chrono::Utc::now);
+                            .unwrap_or_else(Timestamp::now);
 
-                        if (now - created_at).num_seconds() > ttl_secs {
+                        if now.duration_since(created_at).as_secs_f64() > ttl_secs as f64 {
                             expired = true;
                         }
                     }
@@ -196,14 +195,14 @@ impl MemoryManager {
                     .expect("manager: created_times lock poisoned")
                     .get(existing_id)
                     .copied()
-                    .unwrap_or_else(Utc::now);
+                    .unwrap_or_else(Timestamp::now);
                 let doc_time = self
                     .created_times
                     .lock()
                     .expect("manager: created_times lock poisoned")
                     .get(doc_id)
                     .copied()
-                    .unwrap_or_else(Utc::now);
+                    .unwrap_or_else(Timestamp::now);
 
                 if doc_time < existing_time {
                     bytes_freed += doc.estimated_bytes();

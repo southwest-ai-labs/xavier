@@ -5,7 +5,7 @@
 //! pinned and critical facts.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -176,10 +176,9 @@ pub fn is_pinned_or_critical(record: &MemoryRecord) -> bool {
 }
 
 /// Calculates the age of a record in days relative to `now`.
-pub fn get_record_age_days(record: &MemoryRecord, now: DateTime<Utc>) -> f32 {
+pub fn get_record_age_days(record: &MemoryRecord, now: Timestamp) -> f32 {
     let last_accessed = get_last_accessed(record);
-    let duration = now - last_accessed;
-    duration.num_seconds() as f32 / 86400.0
+    (now.duration_since(last_accessed).as_secs_f64() / 86400.0) as f32
 }
 
 /// TGD Utility Pruner for managing autonomous memory forgetting.
@@ -244,7 +243,7 @@ impl TgdUtilityPruner {
         store: &dyn MemoryStore,
         workspace_id: &str,
     ) -> Result<TgdPruneSummary> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let records = store.list(workspace_id).await?;
         let total_processed = records.len();
 
@@ -451,7 +450,7 @@ mod tests {
         // 8. Low utility (0.1) but fresh (1 day) -> Retained
         // 9-10. Normal records
 
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         // Record 1: Critical / pinned
         store
@@ -462,7 +461,7 @@ mod tests {
                 metadata: serde_json::json!({
                     "pinned": true,
                     "utility_score": 0.05,
-                    "last_accessed_at": (now - chrono::Duration::days(30)).to_rfc3339()
+                    "last_accessed_at": now.checked_sub(jiff::Span::new().hours(30 * 24)).unwrap().to_string()
                 }),
                 ..Default::default()
             })
@@ -478,7 +477,7 @@ mod tests {
                     content: format!("Temporary low quality test log {}", i),
                     metadata: serde_json::json!({
                         "utility_score": 0.1,
-                        "last_accessed_at": (now - chrono::Duration::days(15)).to_rfc3339()
+                        "last_accessed_at": now.checked_sub(jiff::Span::new().hours(15 * 24)).unwrap().to_string()
                     }),
                     ..Default::default()
                 })
@@ -494,7 +493,7 @@ mod tests {
                 content: "High value memory".to_string(),
                 metadata: serde_json::json!({
                     "utility_score": 0.8,
-                    "last_accessed_at": (now - chrono::Duration::days(20)).to_rfc3339()
+                    "last_accessed_at": now.checked_sub(jiff::Span::new().hours(20 * 24)).unwrap().to_string()
                 }),
                 ..Default::default()
             })
@@ -509,7 +508,7 @@ mod tests {
                 content: "Fresh low utility memory".to_string(),
                 metadata: serde_json::json!({
                     "utility_score": 0.1,
-                    "last_accessed_at": (now - chrono::Duration::days(1)).to_rfc3339()
+                    "last_accessed_at": now.checked_sub(jiff::Span::new().hours(24)).unwrap().to_string()
                 }),
                 ..Default::default()
             })
@@ -525,7 +524,7 @@ mod tests {
                     content: format!("Normal memory content {}", i),
                     metadata: serde_json::json!({
                         "utility_score": 0.5,
-                        "last_accessed_at": (now - chrono::Duration::days(3)).to_rfc3339()
+                        "last_accessed_at": now.checked_sub(jiff::Span::new().hours(3 * 24)).unwrap().to_string()
                     }),
                     ..Default::default()
                 })

@@ -252,15 +252,15 @@ async fn observation_started_at_is_written_once_and_readable() {
         "observation_started_at must be written exactly once"
     );
     assert!(
-        (Utc::now() - before).num_days().abs() <= 1,
+        (jiff::Timestamp::now().duration_since(before).as_secs_f64() / 86400.0).abs() <= 1.0,
         "the seeded clock must be ~now, got {before}"
     );
-    assert!(before.timestamp() > 0);
+    assert!(before.as_second() > 0);
 }
 
 #[test]
 fn prune_is_blocked_until_the_observation_window_elapses() {
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
 
     // No clock at all: absence of evidence is not evidence of calm.
     assert_eq!(
@@ -270,7 +270,10 @@ fn prune_is_blocked_until_the_observation_window_elapses() {
 
     // Clock present but young.
     assert_eq!(
-        prune_block_reason(Some(now - chrono::Duration::days(3)), now),
+        prune_block_reason(
+            Some(now.checked_sub(jiff::Span::new().hours(3 * 24)).unwrap()),
+            now
+        ),
         PruneBlockReason::ObservationWindowOpen {
             elapsed_days: 3,
             required_days: MIN_OBSERVATION_DAYS
@@ -281,7 +284,10 @@ fn prune_is_blocked_until_the_observation_window_elapses() {
     // observation before deleting" means after 30 full days, not more.
     assert_eq!(
         prune_block_reason(
-            Some(now - chrono::Duration::days(MIN_OBSERVATION_DAYS)),
+            Some(
+                now.checked_sub(jiff::Span::new().hours(MIN_OBSERVATION_DAYS * 24))
+                    .unwrap()
+            ),
             now
         ),
         PruneBlockReason::Eligible,
@@ -291,7 +297,10 @@ fn prune_is_blocked_until_the_observation_window_elapses() {
     // One day short of it, the delete is still blocked.
     assert_eq!(
         prune_block_reason(
-            Some(now - chrono::Duration::days(MIN_OBSERVATION_DAYS - 1)),
+            Some(
+                now.checked_sub(jiff::Span::new().hours((MIN_OBSERVATION_DAYS - 1) * 24))
+                    .unwrap()
+            ),
             now
         ),
         PruneBlockReason::ObservationWindowOpen {
@@ -303,7 +312,10 @@ fn prune_is_blocked_until_the_observation_window_elapses() {
     // A clock in the future (clock skew, restore from a later host) must never
     // grant eligibility.
     assert!(matches!(
-        prune_block_reason(Some(now + chrono::Duration::days(5)), now),
+        prune_block_reason(
+            Some(now.checked_add(jiff::Span::new().hours(5 * 24)).unwrap()),
+            now
+        ),
         PruneBlockReason::ObservationWindowOpen {
             elapsed_days: 0,
             ..
@@ -316,7 +328,7 @@ fn prune_is_blocked_until_the_observation_window_elapses() {
 async fn prune_precondition_reports_the_binding_constraint() {
     RECORDER.reset();
     let (_dir, store) = instrumented_store("access_precondition").await;
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
 
     // Clock seeded at construction -> window just opened, not eligible.
     let observable = record("doc-vec", "ws-pre");
@@ -362,7 +374,7 @@ async fn get_last_accessed_resolves_from_the_access_signal_not_metadata() {
     stored.metadata = serde_json::json!({ "encrypted": "deadbeef" });
     // updated_at is deliberately old, so a metadata-only resolver would report
     // a stale age and the decay/prune math would be wrong.
-    stored.updated_at = Utc::now() - chrono::Duration::days(90);
+    stored.updated_at = chrono::Utc::now() - chrono::Duration::days(90);
     store.put(stored).await.expect("put");
 
     let loaded = store
@@ -371,10 +383,12 @@ async fn get_last_accessed_resolves_from_the_access_signal_not_metadata() {
         .expect("get")
         .expect("record");
 
+    let loaded_updated_ts = jiff::Timestamp::from_second(loaded.updated_at.timestamp()).unwrap();
+
     // Before any observation the legacy fallback applies.
     assert_eq!(
         get_last_accessed(&loaded),
-        loaded.updated_at,
+        loaded_updated_ts,
         "with no observation the resolver must fall back to updated_at"
     );
 
@@ -383,18 +397,23 @@ async fn get_last_accessed_resolves_from_the_access_signal_not_metadata() {
 
     let resolved = get_last_accessed(&loaded);
     assert!(
-        resolved > loaded.updated_at,
+        resolved > loaded_updated_ts,
         "ADVERSARY: the access signal must win over metadata/updated_at. Got \
          {resolved}; a metadata-only resolver would give {}",
         loaded.updated_at
     );
     assert!(
-        (Utc::now() - resolved).num_days().abs() <= 1,
+        (jiff::Timestamp::now()
+            .duration_since(resolved)
+            .as_secs_f64()
+            / 86400.0)
+            .abs()
+            <= 1.0,
         "resolved recency must be ~now, got {resolved}"
     );
 
     // And the same must hold for the age the TGD pruner actually computes.
-    let age_days = crate::memory::tgd::get_record_age_days(&loaded, Utc::now());
+    let age_days = crate::memory::tgd::get_record_age_days(&loaded, jiff::Timestamp::now());
     assert!(
         age_days < 1.0,
         "the pruner's age must come from the access signal, not from the \
@@ -488,7 +507,7 @@ fn flush_is_due_once_the_batch_threshold_is_reached() {
     let ids: Vec<String> = (0..DEFAULT_FLUSH_BATCH)
         .map(|i| format!("id-{i}"))
         .collect();
-    recorder.record("ws-threshold", &ids, Utc::now());
+    recorder.record("ws-threshold", &ids, jiff::Timestamp::now());
     assert_eq!(recorder.pending_count(), DEFAULT_FLUSH_BATCH);
     assert!(
         recorder.should_flush(),
@@ -505,7 +524,7 @@ fn a_restored_flush_keeps_the_recorded_accesses() {
     recorder.record(
         "ws-restore",
         &["a".to_string(), "b".to_string()],
-        Utc::now(),
+        jiff::Timestamp::now(),
     );
 
     let drained = recorder.drain_pending();
@@ -564,7 +583,7 @@ fn only_observable_records_are_prune_eligible() {
 #[test]
 fn recorder_reports_accumulated_totals_independently_of_flushes() {
     let recorder = AccessRecorder::default();
-    let now = Utc::now();
+    let now = jiff::Timestamp::now();
     let ids = vec!["a".to_string(), "b".to_string()];
 
     recorder.record("ws", &ids, now);

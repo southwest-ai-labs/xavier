@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -92,7 +92,7 @@ fn fallback_reflection(memories: &[MemoryDocument]) -> ReflectionResult {
     let cleanup_targets = identify_cleanup_targets(&themes.join(" "), memories);
     let summary = format!(
         "Reflection generated at {}. Core themes: {}. The oldest or least distinct memories can be compressed or removed after the synthesis is stored.",
-        Utc::now().to_rfc3339(),
+        Timestamp::now(),
         themes.join(", ")
     );
 

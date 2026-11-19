@@ -10,7 +10,7 @@ use super::core::MemoryManager;
 use super::types::{ManagementResult, MemoryManagementAction, MemoryPriority};
 use crate::memory::access;
 use crate::memory::store::MemoryRecord;
-use chrono::Utc;
+use jiff::Timestamp;
 
 impl MemoryManager {
     /// Evict memories based on quality threshold and priority
@@ -26,7 +26,7 @@ impl MemoryManager {
         } else {
             None
         };
-        let gate = access::prune_block_reason(observation_started_at, Utc::now());
+        let gate = access::prune_block_reason(observation_started_at, Timestamp::now());
 
         let mut actions = Vec::new();
         let mut bytes_freed: u64 = 0;
@@ -204,7 +204,10 @@ mod tests {
     use tokio::sync::RwLock as AsyncRwLock;
 
     fn seed_aged_clock(path: &std::path::Path, days: i64) {
-        let started = chrono::Utc::now() - chrono::Duration::days(days);
+        let started = Timestamp::now()
+            .checked_sub(jiff::Span::new().days(days))
+            .expect("time underflow")
+            .to_string();
         let conn = rusqlite::Connection::open(path).expect("open new db");
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS maintenance_meta (
@@ -216,11 +219,7 @@ mod tests {
         .expect("create maintenance_meta");
         conn.execute(
             "INSERT OR IGNORE INTO maintenance_meta (key, value, updated_at) VALUES (?1, ?2, ?3)",
-            rusqlite::params![
-                access::OBSERVATION_STARTED_AT_KEY,
-                started.to_rfc3339(),
-                started.to_rfc3339()
-            ],
+            rusqlite::params![access::OBSERVATION_STARTED_AT_KEY, started, started],
         )
         .expect("seed clock");
         conn.close().expect("close");

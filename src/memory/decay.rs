@@ -4,7 +4,7 @@
 //! to periodically lower importance scores or prune old, unaccessed memories.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
@@ -72,7 +72,7 @@ impl DecayManager {
         store: &dyn MemoryStore,
         workspace_id: &str,
     ) -> Result<DecayReport> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let records = store.list(workspace_id).await?;
         let mut report = DecayReport {
             total_processed: records.len(),
@@ -133,7 +133,7 @@ impl DecayManager {
 /// Step 1 matters because on the production database step 2 never matches: the
 /// only metadata key across all 16,771 rows is `{"encrypted": ...}`. Without
 /// this rewiring the decay/prune age is silently always `updated_at`.
-pub fn get_last_accessed(record: &MemoryRecord) -> DateTime<Utc> {
+pub fn get_last_accessed(record: &MemoryRecord) -> Timestamp {
     if let Some(observed) = crate::memory::access::RECORDER.stats(&record.workspace_id, &record.id)
     {
         if let Some(last) = observed.last_accessed_at {
@@ -145,40 +145,35 @@ pub fn get_last_accessed(record: &MemoryRecord) -> DateTime<Utc> {
         .get("last_accessed_at")
         .and_then(|v| v.as_str())
     {
-        if let Ok(parsed) = DateTime::parse_from_rfc3339(last_accessed_val) {
-            return parsed.with_timezone(&Utc);
+        if let Ok(parsed) = last_accessed_val.parse::<Timestamp>() {
+            return parsed;
         }
     }
     // Also check for standard lowercase format or fallback to updated_at
-    record.updated_at
+    Timestamp::from_second(record.updated_at.timestamp()).unwrap_or_else(|_| Timestamp::now())
 }
 
 /// Helper function to update/touch the last accessed time of a MemoryRecord.
-pub fn touch_memory(record: &mut MemoryRecord, now: DateTime<Utc>) {
+pub fn touch_memory(record: &mut MemoryRecord, now: Timestamp) {
     if let serde_json::Value::Object(ref mut map) = record.metadata {
         map.insert(
             "last_accessed_at".to_string(),
-            serde_json::json!(now.to_rfc3339()),
+            serde_json::json!(now.to_string()),
         );
     } else {
         let mut map = serde_json::Map::new();
         map.insert(
             "last_accessed_at".to_string(),
-            serde_json::json!(now.to_rfc3339()),
+            serde_json::json!(now.to_string()),
         );
         record.metadata = serde_json::Value::Object(map);
     }
 }
 
 /// Calculates the new score and whether the record should be pruned under Ebbinghaus decay model.
-pub fn calculate_decay(
-    record: &MemoryRecord,
-    now: DateTime<Utc>,
-    config: &DecayConfig,
-) -> (f32, bool) {
+pub fn calculate_decay(record: &MemoryRecord, now: Timestamp, config: &DecayConfig) -> (f32, bool) {
     let last_accessed = get_last_accessed(record);
-    let duration = now - last_accessed;
-    let days_since = duration.num_seconds() as f32 / 86400.0;
+    let days_since = (now.duration_since(last_accessed).as_secs_f64() / 86400.0) as f32;
 
     let priority = MemoryPriority::from_metadata(&record.metadata);
 
@@ -236,11 +231,12 @@ mod tests {
 
     #[test]
     fn test_ebbinghaus_decay_calculation() {
+        let now = Timestamp::now();
         let record = MemoryRecord {
             score: 1.0,
             metadata: serde_json::json!({
                 "memory_priority": "medium",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(45)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(45 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -251,7 +247,7 @@ mod tests {
             default_initial_score: 1.0,
         };
 
-        let (new_score, should_prune) = calculate_decay(&record, Utc::now(), &config);
+        let (new_score, should_prune) = calculate_decay(&record, now, &config);
 
         // After 45 days of inactivity, which is > 30.0 days, decay should be applied.
         // Medium priority strength is 90 days.
@@ -263,11 +259,12 @@ mod tests {
 
     #[test]
     fn test_no_decay_within_inactivity_window() {
+        let now = Timestamp::now();
         let record = MemoryRecord {
             score: 1.0,
             metadata: serde_json::json!({
                 "memory_priority": "medium",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(15)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(15 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -278,7 +275,7 @@ mod tests {
             default_initial_score: 1.0,
         };
 
-        let (new_score, should_prune) = calculate_decay(&record, Utc::now(), &config);
+        let (new_score, should_prune) = calculate_decay(&record, now, &config);
 
         // 15 days is < 30 days inactivity limit, so no decay is applied.
         assert_eq!(new_score, 1.0);
@@ -287,11 +284,12 @@ mod tests {
 
     #[test]
     fn test_critical_never_decays() {
+        let now = Timestamp::now();
         let record = MemoryRecord {
             score: 1.0,
             metadata: serde_json::json!({
                 "memory_priority": "critical",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(500)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(500 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -302,7 +300,7 @@ mod tests {
             default_initial_score: 1.0,
         };
 
-        let (new_score, should_prune) = calculate_decay(&record, Utc::now(), &config);
+        let (new_score, should_prune) = calculate_decay(&record, now, &config);
 
         // Critical priority never decays.
         assert_eq!(new_score, 1.0);
@@ -311,11 +309,12 @@ mod tests {
 
     #[test]
     fn hard_age_limit_never_prunes_when_pruning_is_disabled() {
+        let now = Timestamp::now();
         let record = MemoryRecord {
             score: 0.5,
             metadata: serde_json::json!({
                 "memory_priority": "ephemeral",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(3650)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(3650 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -325,17 +324,18 @@ mod tests {
             default_initial_score: 1.0,
         };
 
-        let (_, should_prune) = calculate_decay(&record, Utc::now(), &config);
+        let (_, should_prune) = calculate_decay(&record, now, &config);
         assert!(!should_prune);
     }
 
     #[test]
     fn test_pruning_below_threshold() {
+        let now = Timestamp::now();
         let record = MemoryRecord {
             score: 0.2,
             metadata: serde_json::json!({
                 "memory_priority": "low",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(40)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(40 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -346,7 +346,7 @@ mod tests {
             default_initial_score: 1.0,
         };
 
-        let (new_score, should_prune) = calculate_decay(&record, Utc::now(), &config);
+        let (new_score, should_prune) = calculate_decay(&record, now, &config);
 
         // Low priority strength is 30 days.
         // e^(-40 / 30) = e^(-1.333) ≈ 0.2636
@@ -365,13 +365,14 @@ mod tests {
         // 2. Medium inactive for 40 days (decays)
         // 3. Ephemeral inactive for 10 days (pruned because limit for Ephemeral is 1 day max age)
 
+        let now = Timestamp::now();
         let record1 = MemoryRecord {
             id: "m1".to_string(),
             workspace_id: workspace_id.to_string(),
             score: 1.0,
             metadata: serde_json::json!({
                 "memory_priority": "critical",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(100)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(100 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -382,7 +383,7 @@ mod tests {
             score: 0.8,
             metadata: serde_json::json!({
                 "memory_priority": "medium",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(45)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(45 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };
@@ -393,7 +394,7 @@ mod tests {
             score: 0.5,
             metadata: serde_json::json!({
                 "memory_priority": "ephemeral",
-                "last_accessed_at": (Utc::now() - chrono::Duration::days(10)).to_rfc3339()
+                "last_accessed_at": now.checked_sub(jiff::Span::new().hours(10 * 24)).unwrap().to_string()
             }),
             ..Default::default()
         };

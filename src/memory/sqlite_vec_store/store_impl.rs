@@ -1197,7 +1197,10 @@ impl MemoryStore for VecSqliteMemoryStore {
         let project_id = self.project_id.clone();
         self.conn_provider
             .with_conn(&project_id, move |conn| {
-                VecSqliteMemoryStore::ensure_access_instrumentation_conn(conn, chrono::Utc::now())
+                VecSqliteMemoryStore::ensure_access_instrumentation_conn(
+                    conn,
+                    jiff::Timestamp::now(),
+                )
             })
             .await
     }
@@ -1230,10 +1233,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             .await
     }
 
-    async fn read_maintenance_meta(
-        &self,
-        key: &str,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
+    async fn read_maintenance_meta(&self, key: &str) -> Result<Option<jiff::Timestamp>> {
         let project_id = self.project_id.clone();
         let key = key.to_string();
         self.conn_provider

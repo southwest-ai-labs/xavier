@@ -4,7 +4,7 @@
 //! using priority-specific decay factors.
 
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::info;
 
 use super::core::MemoryManager;
@@ -36,8 +36,7 @@ impl MemoryManager {
                     doc.metadata
                         .get("last_accessed_at")
                         .and_then(|v| v.as_str())
-                        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .and_then(|s| s.parse::<Timestamp>().ok())
                 });
             let created_at = self
                 .created_times
@@ -49,13 +48,15 @@ impl MemoryManager {
                     doc.metadata
                         .get("created_at")
                         .and_then(|v| v.as_str())
-                        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                        .and_then(|s| s.parse::<Timestamp>().ok())
                 });
 
-            let reference_time = last_access.or(created_at).unwrap_or_else(Utc::now);
-            let days_since =
-                ((Utc::now() - reference_time).num_seconds() as f32 / 86400.0).max(0.0);
+            let reference_time = last_access.or(created_at).unwrap_or_else(Timestamp::now);
+            let days_since = (Timestamp::now()
+                .duration_since(reference_time)
+                .as_secs_f64()
+                / 86400.0)
+                .max(0.0) as f32;
 
             let decay_base = priority.decay_base();
             let old_relevance = match relevance_map.get(doc_id) {
@@ -112,7 +113,9 @@ mod tests {
     #[tokio::test]
     async fn decay_lowers_quality_of_untouched_record() {
         let doc_id = "untouched_doc_1".to_string();
-        let past_time = Utc::now() - chrono::Duration::days(10);
+        let past_time = Timestamp::now()
+            .checked_sub(jiff::Span::new().days(10))
+            .expect("time underflow");
         let doc = MemoryDocument {
             id: Some(doc_id.clone()),
             path: "untouched.md".to_string(),
@@ -120,8 +123,8 @@ mod tests {
             metadata: serde_json::json!({
                 "kind": "fact",
                 "memory_priority": "medium",
-                "created_at": past_time.to_rfc3339(),
-                "last_accessed_at": past_time.to_rfc3339(),
+                "created_at": past_time.to_string(),
+                "last_accessed_at": past_time.to_string(),
             }),
             ..Default::default()
         };

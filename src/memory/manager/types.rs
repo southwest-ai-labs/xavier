@@ -3,7 +3,7 @@
 //! Primitive types used throughout the memory management system:
 //! priority levels, quality scores, management actions, and configuration.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -114,7 +114,7 @@ impl MemoryQuality {
         doc: &MemoryDocument,
         priority: MemoryPriority,
         access_count: usize,
-        last_access: Option<DateTime<Utc>>,
+        last_access: Option<Timestamp>,
         verified: bool,
     ) -> Self {
         // Relevance: access frequency + priority boost
@@ -139,7 +139,8 @@ impl MemoryQuality {
 
         // Freshness: based on days since last access
         let freshness_score = if let Some(last) = last_access {
-            let days_since = (Utc::now() - last).num_days() as f32;
+            let days_since =
+                (Timestamp::now().duration_since(last).as_secs_f64() / 86400.0).max(0.0) as f32;
             let max_days = priority.max_age_days() as f32;
             (1.0 - days_since / max_days).clamp(0.0, 1.0)
         } else {
@@ -187,8 +188,8 @@ pub struct ManagedMemory {
     pub priority: MemoryPriority,
     pub quality: MemoryQuality,
     pub access_count: usize,
-    pub last_access: Option<DateTime<Utc>>,
-    pub created_at: Option<DateTime<Utc>>,
+    pub last_access: Option<Timestamp>,
+    pub created_at: Option<Timestamp>,
     pub size_bytes: u64,
 }
 
