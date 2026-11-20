@@ -67,7 +67,7 @@ jobs:
           ls -lh dist/knowledge/xavier-brain2-knowledge.tar.gz
 
       - name: Upload Knowledge Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xavier-brain2-knowledge-base
           path: dist/knowledge/xavier-brain2-knowledge.tar.gz
