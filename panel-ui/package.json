@@ -21,7 +21,7 @@
   "dependencies": {
     "@swal/maloca-embed": "workspace:*",
     "@tailwindcss/vite": "^4.3.5",
-    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/api": "^2.12.5",
     "@tauri-apps/plugin-dialog": "2.8.4",
     "lucide-react": "1.73.0",
     "motion": "14.14.0",
