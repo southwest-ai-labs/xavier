@@ -698,8 +698,9 @@ mod tests {
         ));
         let store: std::sync::Arc<dyn crate::memory::store::MemoryStore> =
             std::sync::Arc::new(crate::memory::store::InMemoryMemoryStore::default());
+        let project_id = format!("fusion-e2e-{}", ulid::Ulid::new());
         let state = crate::workspace::WorkspaceState::new_minimal(
-            "fusion-e2e".to_string(),
+            project_id,
             root.path().to_path_buf(),
             memory,
             store,

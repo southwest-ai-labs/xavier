@@ -57,7 +57,7 @@ export default function MalocaView({ onClose }: Props) {
         {onClose && (
           <button
             type="button"
-            className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--foreground)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 z-50"
+            className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-[var(--foreground)] hover:text-[var(--foreground)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-50"
             onClick={onClose}
             aria-label="Cerrar Maloca"
           >
@@ -69,7 +69,7 @@ export default function MalocaView({ onClose }: Props) {
         <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-6 border-b border-[var(--border-subtle)] shrink-0">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] mb-1 flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-[#39ff14] shadow-[0_0_12px_rgba(57,255,20,0.5)] animate-pulse" />
+              <span className="w-3 h-3 rounded-full bg-[var(--accent)] shadow-[0_0_12px_color-mix(in_srgb,var(--accent)_50%,transparent)] animate-pulse" />
               Maloca Ops Hub
             </h1>
             <p className="text-sm font-mono text-[var(--foreground)]">Primary Xavier Ecosystem Workspace</p>
@@ -78,7 +78,7 @@ export default function MalocaView({ onClose }: Props) {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className="flex items-center gap-2 px-4 py-2 text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all"
+              className="flex items-center gap-2 px-4 py-2 text-xs font-mono bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded-lg transition-all"
               onClick={handleObtainWebAuthnKey}
               disabled={isWebAuthnLoading}
             >
@@ -89,8 +89,8 @@ export default function MalocaView({ onClose }: Props) {
         </header>
 
         {deviceKey && (
-          <div className="my-4 p-3 glass-panel border border-emerald-500/40 rounded-lg bg-[var(--surface)] shrink-0">
-            <span className="text-xs text-emerald-400 font-mono mb-1 block">Attestation Key (WebAuthn PRF):</span>
+          <div className="my-4 p-3 glass-panel border border-[color-mix(in_srgb,var(--accent)_40%,transparent)] rounded-lg bg-[var(--surface)] shrink-0">
+            <span className="text-xs text-[var(--accent)] font-mono mb-1 block">Attestation Key (WebAuthn PRF):</span>
             <code className="text-[11px] font-mono text-[var(--foreground)] break-all bg-[var(--surface)] p-2 rounded block">
               {deviceKey}
             </code>
@@ -109,12 +109,12 @@ export default function MalocaView({ onClose }: Props) {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all whitespace-nowrap lg:whitespace-normal text-left cursor-pointer
                     ${isActive
-                      ? 'bg-white/10 text-[var(--foreground)] shadow-[inset_3px_0_0_#39ff14]'
-                      : 'text-[var(--foreground)] hover:bg-white/5 hover:text-[var(--foreground)]'}`}
+                      ? 'bg-[var(--surface-active)] text-[var(--foreground)] border-l-2 border-[var(--accent)] font-semibold shadow-xs'
+                      : 'border-l-2 border-transparent text-[var(--foreground-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--foreground)]'}`}
                 >
-                  <Icon size={18} className={isActive ? 'text-[#39ff14]' : ''} />
+                  <Icon size={18} className={isActive ? 'text-[var(--accent)]' : 'opacity-70'} />
                   <div className="hidden sm:block">
                     <div className={`text-sm font-medium ${isActive ? 'text-[var(--foreground)]' : ''}`}>{tab.label}</div>
                     <div className="text-[10px] opacity-60 hidden lg:block mt-0.5 line-clamp-1">{tab.description}</div>

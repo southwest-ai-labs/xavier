@@ -481,11 +481,11 @@ export default function ConfigModal({
       className="relative z-20 w-full max-w-[1040px] h-[92vh] md:h-[700px] max-h-[96vh] rounded-2xl flex flex-col md:flex-row overflow-hidden shadow-2xl bg-[var(--surface)] dark:bg-[#141518]/95 border border-[var(--border-subtle)] dark:border-white/[0.08] backdrop-blur-2xl text-[var(--foreground)]"
     >
       {/* Left Sidebar (Desktop, >= 768px) */}
-      <div data-testid="desktop-settings-sidebar" className="hidden md:flex w-64 shrink-0 bg-[var(--background)] dark:bg-[#111215]/80 border-r border-[var(--border-subtle)] dark:border-white/[0.06] flex-col justify-between p-3.5 select-none">
+      <div data-testid="desktop-settings-sidebar" className="hidden md:flex w-64 shrink-0 bg-[var(--background)] border-r border-[var(--border-subtle)] flex-col justify-between p-3.5 select-none">
         <div className="space-y-4 overflow-y-auto pr-1">
           {settingSections.map((sec) => (
             <div key={sec.group}>
-              <div className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-[var(--foreground)]/50 dark:text-white/35 font-semibold">
+              <div className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-[var(--foreground-muted)] font-semibold">
                 {sec.group}
               </div>
               <div className="space-y-0.5 mt-1">
@@ -497,16 +497,16 @@ export default function ConfigModal({
                       type="button"
                       data-testid={`settings-tab-${item.id}`}
                       onClick={() => setMainTab(item.id)}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 border-l-2 cursor-pointer ${
                         isSelected
-                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border-l-2 border-emerald-500 shadow-sm"
-                          : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white/90 hover:bg-black/5 dark:hover:bg-white/[0.04]"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold border-emerald-500 shadow-xs"
+                          : "border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
                       }`}
                     >
-                      <span className={isSelected ? "text-emerald-500" : "opacity-70"}>
+                      <span className={isSelected ? "text-emerald-500 dark:text-emerald-400" : "opacity-70"}>
                         {item.icon}
                       </span>
-                      <span>{item.label}</span>
+                      <span className="truncate">{item.label}</span>
                     </button>
                   );
                 })}
@@ -605,7 +605,7 @@ export default function ConfigModal({
         </div>
 
         {/* Mobile Top Category Bar (Visible on tablets & smartphones, hidden on desktop) */}
-        <div data-testid="mobile-settings-nav" className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-[var(--background)] dark:bg-[#111215]/95 border-b border-[var(--border-subtle)] dark:border-white/[0.06] overflow-x-auto no-scrollbar shrink-0">
+        <div data-testid="mobile-settings-nav" className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-[var(--background)] border-b border-[var(--border-subtle)] overflow-x-auto no-scrollbar scroll-smooth shrink-0">
           {[
             { id: "config" as MainTab, label: "General" },
             { id: "appearance" as MainTab, label: "Appearance" },
@@ -629,10 +629,10 @@ export default function ConfigModal({
                 type="button"
                 data-testid={`mobile-settings-tab-${item.id}`}
                 onClick={() => setMainTab(item.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-150 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium whitespace-nowrap transition-all duration-150 shrink-0 cursor-pointer ${
                   isSelected
-                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 font-semibold shadow-sm"
-                    : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/40 font-semibold shadow-xs"
+                    : "border border-transparent text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
                 }`}
               >
                 {item.label}
@@ -671,11 +671,11 @@ export default function ConfigModal({
               className="w-full h-full relative flex flex-col"
             >
               {/* Sub-tab list switcher inside graph section (Accessible WAI-ARIA) */}
-              <div className="flex items-center justify-between px-8 py-3 bg-[var(--surface)] dark:bg-[#0a0a0a]/80 border-b border-[var(--border-subtle)] dark:border-white/5 shrink-0 z-40">
+              <div className="flex items-center justify-between px-8 py-3 bg-[var(--surface)] border-b border-[var(--border-subtle)] shrink-0 z-40">
                 <div
                   role="tablist"
                   aria-label="Knowledge layers"
-                  className="flex bg-white/5 p-1 rounded-xl gap-1 border border-white/5"
+                  className="flex bg-[var(--surface-card)] p-1 rounded-xl gap-1 border border-[var(--border-subtle)] shadow-xs"
                 >
                   <button
                     role="tab"
@@ -690,10 +690,10 @@ export default function ConfigModal({
                         setSubLayer("memory");
                       }
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]/50 ${
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer ${
                       subLayer === "roadmap"
-                        ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.3)] font-bold"
-                        : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold shadow-xs"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
                     }`}
                   >
                     Roadmap
@@ -714,10 +714,10 @@ export default function ConfigModal({
                         setSubLayer("code");
                       }
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]/50 ${
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer ${
                       subLayer === "memory"
-                        ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.3)] font-bold"
-                        : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold shadow-xs"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
                     }`}
                   >
                     Memory KG
@@ -735,10 +735,10 @@ export default function ConfigModal({
                         setSubLayer("memory");
                       }
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]/50 ${
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer ${
                       subLayer === "code"
-                        ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.3)] font-bold"
-                        : "text-[var(--foreground)]/60 dark:text-white/60 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold shadow-xs"
+                        : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] border border-transparent"
                     }`}
                   >
                     Code
@@ -1063,16 +1063,17 @@ function TabButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 pb-1 relative transition-colors duration-300 text-sm font-medium tracking-wide
-        ${active ? "text-[#39ff14]" : "text-white/40 hover:text-white/80"}`}
+      className={`flex items-center gap-2 pb-1 relative transition-colors duration-200 text-xs sm:text-sm font-medium tracking-wide cursor-pointer
+        ${active ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-[var(--foreground-muted)] hover:text-[var(--foreground)]"}`}
     >
       {icon}
       {label}
       {active && (
         <motion.div
           layoutId="activeTopTab"
-          className="absolute -bottom-[17px] left-0 right-0 h-[2px] bg-[#39ff14] shadow-[0_0_10px_#39ff14]"
+          className="absolute -bottom-[17px] left-0 right-0 h-[2px] bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
         />
       )}
     </button>
@@ -1278,7 +1279,7 @@ function ConfigView({
       className="flex flex-col h-full w-full"
     >
       {/* Horizontal Sub-Tabs Navigation */}
-      <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 border-b border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] overflow-x-auto no-scrollbar shrink-0">
+      <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 border-b border-[var(--border-subtle)] bg-[var(--surface)] overflow-x-auto no-scrollbar shrink-0">
         {tabs.map((tab) => {
           const isSelected = activeTab === tab.id;
           return (
@@ -1286,10 +1287,10 @@ function ConfigView({
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-150 ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-150 cursor-pointer ${
                 isSelected
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm"
-                  : "text-[var(--foreground)]/60 dark:text-white/50 hover:text-[var(--foreground)] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-semibold shadow-xs"
+                  : "text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
               }`}
             >
               {tab.icon}

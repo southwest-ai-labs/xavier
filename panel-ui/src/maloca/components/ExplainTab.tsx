@@ -71,7 +71,7 @@ export function renderableOpenUi(markup: string): OpenUiNode[] | null {
 }
 
 const INPUT_CLASS =
-  "w-full px-3 py-2 text-xs font-mono bg-[var(--surface)] border border-[var(--border-subtle)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500";
+  "w-full px-3 py-2 text-xs font-mono bg-[var(--surface)] border border-[var(--border-subtle)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
 
 function PlainTextFallback({ text }: { text: string }) {
   return (
@@ -104,7 +104,7 @@ function ExplainResult({ result }: { result: ExplainResponse }) {
           <h4 className="text-xs font-mono uppercase text-[var(--foreground)] mb-2">Cited references</h4>
           <ul aria-label="Cited references" className="space-y-1">
             {citedRefs.map((ref) => (
-              <li key={ref} className="text-xs font-mono text-emerald-300 break-all">
+              <li key={ref} className="text-xs font-mono text-[var(--accent)] break-all">
                 {ref}
               </li>
             ))}
@@ -173,7 +173,7 @@ export function ExplainTab() {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
-          <FileCode size={18} className="text-emerald-400" />
+          <FileCode size={18} className="text-[var(--accent)]" />
           Explain code
         </h3>
         <p className="text-xs text-[var(--foreground)] mt-1">
@@ -237,7 +237,7 @@ export function ExplainTab() {
           <button
             type="submit"
             disabled={!body || loading}
-            className="px-4 py-2 text-xs font-mono bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-mono bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--accent)_20%,transparent)] text-[var(--accent)] border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? "Explaining..." : "Explain"}
           </button>

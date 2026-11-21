@@ -11,7 +11,7 @@ pub use watcher::CodeGraphWatcher;
 
 use crate::db::CodeGraphDB;
 use crate::error::{GraphError, Result};
-use crate::parser::parse_source;
+use crate::parser::parse_source_with_root;
 use crate::plugin_host::PluginHost;
 use crate::types::{CodeEdge, EdgeType, IndexStats, Language, Symbol, SymbolEmbedder, SymbolKind};
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -623,6 +623,13 @@ impl Indexer {
                 .ok()
                 .map(|p| p.to_string_lossy().into_owned())
         };
+        if let Some(ref r_root) = resolved_root {
+            for symbol in &mut new_symbols {
+                if symbol.project_root.is_none() {
+                    symbol.project_root = Some(r_root.clone());
+                }
+            }
+        }
         let stats = tokio::task::spawn_blocking(move || {
             db.insert_symbols_with_root(&new_symbols, resolved_root.as_deref())?;
             db.insert_edges(&edges)?;
@@ -802,7 +809,9 @@ async fn parse_file(
     // receives the fallback-chain-aware manager. When no host is supplied we
     // fall back to the built-in native parsers.
     let manager = plugin_host.map(|host| host.manager());
-    let symbols = parse_source(&source, &lang, &relative_path, manager).await?;
+    let root_str = root.to_string_lossy();
+    let symbols =
+        parse_source_with_root(&source, &lang, &relative_path, manager, Some(&root_str)).await?;
     if !symbols.is_empty() {
         debug!("Extracted {} symbols from {}", symbols.len(), relative_path);
     }
@@ -1432,8 +1441,8 @@ mod tests {
         // registration, so this is the pure-native output for the current
         // tree; re-measure if parsers or fixture sources change)
         assert_eq!(stats.total_files, 37, "file count mismatch");
-        assert_eq!(stats.total_symbols, 2799, "symbol count mismatch");
-        assert_eq!(edges_count, 16196, "edge count mismatch");
+        assert_eq!(stats.total_symbols, 2846, "symbol count mismatch");
+        assert_eq!(edges_count, 16844, "edge count mismatch");
     }
 
     #[tokio::test]

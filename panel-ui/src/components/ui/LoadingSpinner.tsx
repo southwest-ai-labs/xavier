@@ -12,7 +12,7 @@ export function LoadingSpinner({
   return (
     <Loader2
       size={size}
-      className={`animate-spin text-emerald-400 ${className}`}
+      className={`animate-spin text-[var(--accent)] ${className}`}
       aria-label="Loading..."
       data-testid="loading-spinner"
     />

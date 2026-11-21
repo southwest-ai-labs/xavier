@@ -377,7 +377,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 			}),
 			clearanceLevel,
 			ephemeral: isEphemeral,
-			status: "sending",
+			status: "sent",
 			isSelf: true,
 			attachment: selectedFile
 				? {
@@ -390,27 +390,6 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 
 		// Optimistically update message stream
 		setMessageList((prev) => [...prev, newMsg]);
-
-		// Simulate backend delivery & read receipts updates after short intervals
-		setTimeout(() => {
-			setMessageList((prev) =>
-				prev.map((m) => (m.id === newMsg.id ? { ...m, status: "sent" } : m)),
-			);
-		}, 600);
-
-		setTimeout(() => {
-			setMessageList((prev) =>
-				prev.map((m) =>
-					m.id === newMsg.id ? { ...m, status: "delivered" } : m,
-				),
-			);
-		}, 1400);
-
-		setTimeout(() => {
-			setMessageList((prev) =>
-				prev.map((m) => (m.id === newMsg.id ? { ...m, status: "read" } : m)),
-			);
-		}, 2500);
 
 		if (onSendMessage) {
 			onSendMessage(trimmed, {

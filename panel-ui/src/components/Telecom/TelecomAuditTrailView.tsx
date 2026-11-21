@@ -58,6 +58,7 @@ export interface TelecomAuditTrailViewProps {
 	onClose?: () => void;
 	initialEvents?: AuditEvent[];
 	autoRefresh?: boolean;
+	onRefresh?: () => Promise<void> | void;
 }
 
 const MOCK_AUDIT_EVENTS: AuditEvent[] = [
@@ -309,6 +310,7 @@ export const TelecomAuditTrailView: React.FC<TelecomAuditTrailViewProps> = ({
 	onClose,
 	initialEvents = MOCK_AUDIT_EVENTS,
 	autoRefresh: initialAutoRefresh = false,
+	onRefresh,
 }) => {
 	const [events, setEvents] = useState<AuditEvent[]>(initialEvents);
 	const [searchQuery, setSearchQuery] = useState("");
@@ -319,12 +321,16 @@ export const TelecomAuditTrailView: React.FC<TelecomAuditTrailViewProps> = ({
 	const [isAutoRefresh, setIsAutoRefresh] = useState(initialAutoRefresh);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 
-	const handleRefresh = useCallback(() => {
+	const handleRefresh = useCallback(async () => {
 		setIsRefreshing(true);
-		setTimeout(() => {
+		try {
+			if (onRefresh) {
+				await onRefresh();
+			}
+		} finally {
 			setIsRefreshing(false);
-		}, 600);
-	}, []);
+		}
+	}, [onRefresh]);
 
 	const filteredEvents = useMemo(() => {
 		return events.filter((evt) => {

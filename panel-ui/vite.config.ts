@@ -26,11 +26,17 @@ const appVersion =
 function proxyRoutesFor(target: string) {
   return {
     "/health": { target, changeOrigin: true },
+    "/metrics": { target, changeOrigin: true },
     "/maloca": { target, changeOrigin: true },
     "/panel/api": { target, changeOrigin: true },
     "/v1": { target, changeOrigin: true },
     "/auth": { target, changeOrigin: true },
     "/api": { target, changeOrigin: true },
+    "/agents": { target, changeOrigin: true },
+    "/secrets": { target, changeOrigin: true },
+    "/plugins": { target, changeOrigin: true },
+    "/code": { target, changeOrigin: true },
+    "/memory": { target, changeOrigin: true },
     "/notifications": { target, changeOrigin: true },
   };
 }

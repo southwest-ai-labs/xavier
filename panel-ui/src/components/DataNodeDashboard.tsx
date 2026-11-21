@@ -113,12 +113,10 @@ export function DataNodeDashboard({
 			if (onSyncTrigger) {
 				await onSyncTrigger();
 			} else {
-				await new Promise((resolve) => setTimeout(resolve, 1000));
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
 			setMetrics((prev) => ({
 				...prev,
-				totalSyncedRecords:
-					prev.totalSyncedRecords + Math.floor(Math.random() * 50) + 1,
 				lastSyncTimestamp: "Just now",
 			}));
 		} finally {
@@ -129,7 +127,7 @@ export function DataNodeDashboard({
 	const handleRefreshStatus = async () => {
 		setIsRefreshing(true);
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 50));
 			setLastRefreshed("Just now");
 		} finally {
 			setIsRefreshing(false);

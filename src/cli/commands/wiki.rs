@@ -35,7 +35,13 @@ async fn run_compile(target_path: Option<PathBuf>, _force: bool) -> Result<()> {
     );
 
     // Open CodeGraphDB
-    let code_db_path = root.join(".xavier").join("code_graph.db");
+    let code_db_path = if root.join(".xavier/code_graph.db").exists() {
+        root.join(".xavier/code_graph.db")
+    } else if root.join("data/code_graph.db").exists() {
+        root.join("data/code_graph.db")
+    } else {
+        crate::codebase::codegraph_paths::code_graph_db_path_for(&root)
+    };
     let (symbols, edges, stats, hubs) = if code_db_path.exists() {
         let db = code_graph::db::CodeGraphDB::new(&code_db_path)?;
         let syms = db.get_all_symbols().unwrap_or_default();
@@ -103,7 +109,13 @@ async fn run_lint(target_path: Option<PathBuf>, json_output: bool) -> Result<()>
         root.clone()
     };
 
-    let code_db_path = root.join(".xavier").join("code_graph.db");
+    let code_db_path = if root.join(".xavier/code_graph.db").exists() {
+        root.join(".xavier/code_graph.db")
+    } else if root.join("data/code_graph.db").exists() {
+        root.join("data/code_graph.db")
+    } else {
+        crate::codebase::codegraph_paths::code_graph_db_path_for(&root)
+    };
     let code_db = if code_db_path.exists() {
         code_graph::db::CodeGraphDB::new(&code_db_path).ok()
     } else {

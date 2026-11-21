@@ -71,7 +71,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
               sortBy: e.target.value as any,
             })
           }
-          className="w-full bg-black/40 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] font-mono text-xs focus:outline-none focus:border-emerald-500/50 cursor-pointer"
+          className="w-full bg-[var(--surface-card)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] font-mono text-xs focus:outline-none focus:border-emerald-500/50 cursor-pointer"
         >
           <option value="term_frequency">
             🔥 Más Veces Nombrada (Frecuencia de término)
@@ -104,7 +104,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
             onFilterChange({ ...filters, workspaceId: e.target.value })
           }
           placeholder="ej: default, swal/xavier..."
-          className="w-full bg-black/40 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
+          className="w-full bg-[var(--surface-card)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
         />
       </div>
 
@@ -121,7 +121,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
             onFilterChange({ ...filters, project: e.target.value })
           }
           placeholder="ej: xavier, shelf, core..."
-          className="w-full bg-black/40 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
+          className="w-full bg-[var(--surface-card)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
         />
       </div>
 
@@ -138,7 +138,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
             onFilterChange({ ...filters, userId: e.target.value })
           }
           placeholder="ej: @belal, jules, hermes..."
-          className="w-full bg-black/40 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
+          className="w-full bg-[var(--surface-card)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] placeholder-[var(--foreground)]/40 font-mono text-xs focus:outline-none focus:border-emerald-500/50"
         />
       </div>
 
@@ -149,7 +149,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
             <Sliders className="w-3.5 h-3.5 text-emerald-400" />
             <span>Similitud Mínima</span>
           </span>
-          <span className="text-[#39ff14] font-bold">{filters.minSimilarity}%</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-bold">{filters.minSimilarity}%</span>
         </div>
         <input
           type="range"
@@ -163,7 +163,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
               minSimilarity: Number.parseInt(e.target.value, 10),
             })
           }
-          className="w-full accent-[#39ff14] cursor-pointer"
+          className="w-full accent-emerald-500 cursor-pointer"
         />
       </div>
 
@@ -175,10 +175,10 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
             <button
               key={m}
               onClick={() => onFilterChange({ ...filters, modality: m })}
-              className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono capitalize transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono capitalize transition-all cursor-pointer ${
                 filters.modality === m
-                  ? "bg-emerald-500/15 border-emerald-500/50 text-[#39ff14] font-bold shadow-[0_0_8px_rgba(57,255,20,0.15)]"
-                  : "bg-white/[0.03] border-[var(--border-subtle)] text-[var(--foreground)]/60 hover:text-[var(--foreground)] hover:bg-white/5"
+                  ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs"
+                  : "bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
               }`}
             >
               {m === "all" ? "Todos" : m}
@@ -202,7 +202,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => toggleKind(k.id)}
-                  className="rounded border-[var(--border-subtle)] bg-black/40 text-emerald-500 focus:ring-0"
+                  className="rounded border-[var(--border-subtle)] bg-[var(--surface-card)] text-emerald-500 focus:ring-0"
                 />
                 <span>{k.label}</span>
               </label>
@@ -222,7 +222,7 @@ export const PureRagFilterSidebar: React.FC<PureRagFilterSidebarProps> = ({
           onChange={(e) =>
             onFilterChange({ ...filters, timeHorizon: e.target.value })
           }
-          className="w-full bg-black/40 px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] font-mono text-xs focus:outline-none focus:border-emerald-500/50 cursor-pointer"
+          className="w-full bg-[var(--surface-card)] px-3 py-1.5 rounded-lg border border-[var(--border-subtle)] text-[var(--foreground)] font-mono text-xs focus:outline-none focus:border-emerald-500/50 cursor-pointer"
         >
           <option value="all">Todo el historial</option>
           <option value="24h">Últimas 24 horas</option>

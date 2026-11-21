@@ -7,6 +7,7 @@ use tree_sitter::{Node, Parser, Tree};
 
 pub struct RustParser {
     parser: Parser,
+    pub project_root: Option<String>,
 }
 
 impl RustParser {
@@ -16,10 +17,36 @@ impl RustParser {
         parser
             .set_language(&lang)
             .map_err(|e| GraphError::TreeSitter(format!("failed to set Rust language: {}", e)))?;
-        Ok(Self { parser })
+        Ok(Self {
+            parser,
+            project_root: None,
+        })
+    }
+
+    pub fn with_project_root(mut self, project_root: Option<&str>) -> Self {
+        self.project_root = project_root.map(|s| s.to_string());
+        self
+    }
+
+    pub fn set_project_root(&mut self, project_root: Option<&str>) {
+        self.project_root = project_root.map(|s| s.to_string());
     }
 
     pub fn parse(&mut self, source: &str, file_path: &str) -> Result<Vec<Symbol>> {
+        let root = self.project_root.clone();
+        self.parse_with_root(source, file_path, root.as_deref())
+    }
+
+    pub fn parse_with_root(
+        &mut self,
+        source: &str,
+        file_path: &str,
+        project_root: Option<&str>,
+    ) -> Result<Vec<Symbol>> {
+        let prev_root = self.project_root.clone();
+        if project_root.is_some() {
+            self.project_root = project_root.map(|s| s.to_string());
+        }
         let source_bytes = source.as_bytes();
         let tree = self
             .parser
@@ -28,6 +55,7 @@ impl RustParser {
 
         let mut symbols = Vec::new();
         self.extract_symbols(&tree, source, file_path, &mut symbols);
+        self.project_root = prev_root;
         Ok(symbols)
     }
 
@@ -198,7 +226,7 @@ impl RustParser {
                         let start = name_node.start_position();
                         let end = name_node.end_position();
                         symbols.push(Symbol {
-                            project_root: None,
+                            project_root: self.project_root.clone(),
                             id: None,
                             stable_id: None,
                             name,
@@ -303,7 +331,7 @@ impl RustParser {
                                             let start = node.start_position();
                                             let end = node.end_position();
                                             symbols.push(Symbol {
-                                                project_root: None,
+                                                project_root: self.project_root.clone(),
                                                 id: None,
                                                 stable_id: None,
                                                 name: route_path.to_string(),
@@ -362,7 +390,7 @@ impl RustParser {
                                         let start = child.start_position();
                                         let end = node.end_position();
                                         symbols.push(Symbol {
-                                            project_root: None,
+                                            project_root: self.project_root.clone(),
                                             id: None,
                                             stable_id: None,
                                             name: path.to_string(),
@@ -471,7 +499,7 @@ impl RustParser {
             .then(|| cyclomatic_complexity(node, source));
 
         symbols.push(Symbol {
-            project_root: None,
+            project_root: self.project_root.clone(),
             id: None,
             stable_id: None,
             name: name_node

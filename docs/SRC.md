@@ -488,7 +488,6 @@ xavier/
 ├── scripts/
 │   ├── README.md
 │   ├── _check_dbs.py
-│   ├── _find_check_auth.py
 │   ├── agent-sync-cron.sh
 │   ├── agent-sync.ps1
 │   ├── api-test.ps1
@@ -535,7 +534,6 @@ xavier/
 │   ├── debug_alerts.ps1
 │   ├── deploy-self-healing.ps1
 │   ├── dismiss_alerts.ps1
-│   ├── dismiss_alerts2.ps1
 │   ├── eval/
 │   │   ├── reports/
 │   │   └── xavier_brain_eval.py
@@ -545,7 +543,6 @@ xavier/
 │   ├── feedback_usage_report.cjs
 │   ├── feedback_usage_report.ps1
 │   ├── final_benchmark.ps1
-│   ├── fix_closing.py
 │   ├── generate-devlog-post.sh
 │   ├── generate-diff-db.js
 │   ├── generate-starlight-docs.js
@@ -608,7 +605,6 @@ xavier/
 │   ├── run_extract.py
 │   ├── run_gemini.ps1
 │   ├── run_termux_docker_smoke.ps1
-│   ├── ryzen-cppc-fix.py
 │   ├── save_cycle.ps1
 │   ├── send-alert.ps1
 │   ├── setup-cortex-enterprise.sh

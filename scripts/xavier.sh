@@ -2,7 +2,7 @@
 set -eu
 
 BACKEND="${XAVIER_BACKEND:-vec}"
-PORT="${XAVIER_PORT:-8003}"
+PORT="${XAVIER_PORT:-8006}"
 VERSION="${XAVIER_VERSION:-unknown}"
 
 if [ -z "${XAVIER_TOKEN:-}" ]; then

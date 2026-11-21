@@ -3,4 +3,3 @@ export { default as ProvidersPage } from "./Providers";
 export { default as SecurityPage } from "./Security";
 export { default as LeasesPage } from "./LeasesPage";
 export { default as LeaseHistoryPage } from "./LeaseHistoryPage";
-export { default as OverviewPage } from "../Overview";
