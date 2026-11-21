@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from "motion/react";
 import { Brain, MessageSquare, Zap } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getApiUrl } from "./api/client";
 import { useAuthStore } from "./auth/AuthProvider";
@@ -9,6 +9,7 @@ import { MasterKeyPage } from "./auth/MasterKeyPage";
 import { RecoveryPage } from "./auth/RecoveryPage";
 import { RegisterPage } from "./auth/RegisterPage";
 import { TwoFactorSetup } from "./auth/TwoFactorSetup";
+import { Brain2VramDashboard } from "./components/Brain2/Brain2VramDashboard";
 import ChatHistory from "./components/ChatHistory";
 import ConfigModal, { type MainTab } from "./components/ConfigModal";
 import DraggableWidget from "./components/DraggableWidget";
@@ -26,7 +27,6 @@ import GroupRoomView from "./components/Telecom/GroupRoomView";
 import TelecomAuditTrailView from "./components/Telecom/TelecomAuditTrailView";
 import TelecomHubView from "./components/Telecom/TelecomHubView";
 import TopStatusBar from "./components/TopStatusBar";
-import { Brain2VramDashboard } from "./components/Brain2/Brain2VramDashboard";
 import ErrorToast from "./components/ui/ErrorToast";
 import WalletView from "./components/WalletView";
 import { XavierLandingView } from "./components/XavierLandingView";
@@ -106,23 +106,36 @@ function AppContent() {
 	const graphMetaRef = useRef(graphMeta);
 	const graphSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const [activeTopTab, setActiveTopTab] = useState<"chat" | "purerag" | "brain2">(() => {
+	const [activeTopTab, setActiveTopTab] = useState<
+		"chat" | "purerag" | "brain2"
+	>(() => {
 		if (typeof window !== "undefined") {
-			const params = new URLSearchParams(window.location.search || window.location.hash.split("?")[1] || "");
+			const params = new URLSearchParams(
+				window.location.search || window.location.hash.split("?")[1] || "",
+			);
 			const tabParam = params.get("tab");
-			if (tabParam === "brain2" || tabParam === "purerag" || tabParam === "chat") return tabParam;
+			if (
+				tabParam === "brain2" ||
+				tabParam === "purerag" ||
+				tabParam === "chat"
+			)
+				return tabParam;
 			const saved = localStorage.getItem("xavier_active_top_tab");
-			if (saved === "chat" || saved === "purerag" || saved === "brain2") return saved;
+			if (saved === "chat" || saved === "purerag" || saved === "brain2")
+				return saved;
 		}
 		return "chat";
 	});
 
-	const handleSelectTopTab = useCallback((tab: "chat" | "purerag" | "brain2") => {
-		setActiveTopTab(tab);
-		if (typeof window !== "undefined") {
-			localStorage.setItem("xavier_active_top_tab", tab);
-		}
-	}, []);
+	const handleSelectTopTab = useCallback(
+		(tab: "chat" | "purerag" | "brain2") => {
+			setActiveTopTab(tab);
+			if (typeof window !== "undefined") {
+				localStorage.setItem("xavier_active_top_tab", tab);
+			}
+		},
+		[],
+	);
 	const [hasConfig, setHasConfig] = useState(true);
 
 	const [isConfigOpen, setIsConfigOpen] = useState(false);

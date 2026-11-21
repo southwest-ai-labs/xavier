@@ -258,6 +258,8 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 						name: "Operator",
 						email: "operator@xavier.local",
 						role: "admin",
+						created_at: Date.now(),
+						updated_at: Date.now(),
 					},
 					token: tok,
 					accessToken: tok,

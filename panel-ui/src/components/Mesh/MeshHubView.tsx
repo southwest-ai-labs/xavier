@@ -261,11 +261,11 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
                 data.map((p) => ({
                   id: p.id,
                   title: p.title,
-                  proposer: p.proposer,
-                  votesFor: p.votes_for,
-                  votesAgainst: p.votes_against,
+                  proposer: (p as any).proposer || p.category || "mesh-node",
+                  votesFor: p.for_votes ?? (p as any).votes_for ?? 0,
+                  votesAgainst: p.against_votes ?? (p as any).votes_against ?? 0,
                   status: (p.status as any) || "active",
-                  expiresAt: p.expires_at,
+                  expiresAt: (p as any).expires_at ?? 0,
                 })),
               );
             } else {

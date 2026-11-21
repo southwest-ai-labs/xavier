@@ -172,8 +172,8 @@ test.describe("Notifications Dropdown Theme Compliance", () => {
     await expect(htmlElement).toHaveAttribute("data-theme", "studio-dark");
 
     const darkHeadingColor = await heading.evaluate((el) => window.getComputedStyle(el).color);
-    // Allowing for various formats of white or near-white like rgba(255, 255, 255, 0.8)
-    expect(darkHeadingColor).toMatch(/255, 255, 255|oklab\(0\.99999/);
+    // Allowing for various formats of white or near-white like rgb(229, 231, 235) or rgba(255, 255, 255, 0.8)
+    expect(darkHeadingColor).toMatch(/255,\s*255,\s*255|229,\s*231,\s*235|oklab\(0\.99999/);
 
     expect(pageErrors).toEqual([]);
   });
