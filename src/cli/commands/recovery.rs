@@ -729,7 +729,7 @@ where
     .map_err(|_| anyhow::anyhow!("Drive callback timed out"))??;
     // Transport and provider errors can contain secrets; discard their details.
     let credentials = client
-        .complete(device, &query, chrono::Utc::now().timestamp())
+        .complete(device, &query, jiff::Timestamp::now().as_second())
         .await
         .map_err(|_| anyhow::anyhow!("Drive authorization failed"))?;
     tokio::task::spawn_blocking(move || persist(credentials))

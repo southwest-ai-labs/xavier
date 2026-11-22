@@ -2,7 +2,7 @@
 //!
 //! Represents compiled codebase knowledge, architectural concepts, and chronological logs.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 /// Custom error types for living wiki schema serialization and parsing.
@@ -57,7 +57,7 @@ pub struct WikiEntity {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub wikilinks: Vec<String>,
     /// Last updated timestamp in UTC.
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -75,7 +75,7 @@ struct WikiEntityFrontmatter {
     pub called_by: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub wikilinks: Vec<String>,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
 }
@@ -100,7 +100,7 @@ impl WikiEntity {
             calls: Vec::new(),
             called_by: Vec::new(),
             wikilinks: Vec::new(),
-            updated_at: Utc::now(),
+            updated_at: Timestamp::now(),
         }
     }
 
@@ -170,7 +170,7 @@ pub struct WikiConcept {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
     /// Last updated timestamp in UTC.
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -182,7 +182,7 @@ struct WikiConceptFrontmatter {
     pub related_entities: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
 }
@@ -202,7 +202,7 @@ impl WikiConcept {
             content: content.into(),
             related_entities: Vec::new(),
             tags: Vec::new(),
-            updated_at: Utc::now(),
+            updated_at: Timestamp::now(),
         }
     }
 
@@ -246,7 +246,7 @@ impl WikiConcept {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WikiLogEntry {
     /// Event occurrence timestamp in UTC.
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     /// Author user or AI agent identifier responsible for the change.
     pub author_or_agent: String,
     /// Classification of event: "ingest" | "compile" | "edit" | "prune" | etc.
@@ -261,7 +261,7 @@ pub struct WikiLogEntry {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct WikiLogEntryFrontmatter {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub author_or_agent: String,
     pub event_type: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -278,7 +278,7 @@ impl WikiLogEntry {
         summary: impl Into<String>,
     ) -> Self {
         Self {
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             author_or_agent: author_or_agent.into(),
             event_type: event_type.into(),
             summary: summary.into(),
@@ -374,10 +374,9 @@ fn render_frontmatter<T: Serialize>(frontmatter: &T, body: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
-    fn fixed_time() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 11, 17, 16, 0, 0).unwrap()
+    fn fixed_time() -> Timestamp {
+        "2026-11-17T16:00:00Z".parse::<Timestamp>().unwrap()
     }
 
     #[test]

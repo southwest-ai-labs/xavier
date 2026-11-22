@@ -6,7 +6,7 @@
 // Sandbox HOME/XDG/XAVIER_* dirs before main: tests must never touch the real ~/.xavier.
 xavier::isolate_test_process!();
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tempfile::tempdir;
 use xavier::memory::sqlite_vec_store::{VecSqliteMemoryStore, VecSqliteStoreConfig};
 use xavier::memory::store::{HybridSearchMode, MemoryRecord, MemoryStore};
@@ -314,7 +314,7 @@ async fn fsearch_port_metrics_report() {
     .await
     .unwrap();
 
-    let now = Utc::now();
+    let now = Timestamp::now();
     for (i, (path, content)) in CORPUS.iter().enumerate() {
         let k = i as f32;
         store

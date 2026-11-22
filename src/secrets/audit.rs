@@ -5,7 +5,7 @@
 use super::lending::AuditLogger;
 use crate::codebase::connection_manager::ConnectionManager;
 use crate::ports::outbound::schema_init::SchemaInitializer;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::params;
 
 /// Schema for the lease persistence table -- metadata only, no secret value column.
@@ -23,16 +23,14 @@ pub(crate) struct LeaseRow {
     pub token: String,
     pub secret_name: String,
     pub agent_id: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
 }
 
-fn parse_rfc3339(raw: &str) -> rusqlite::Result<DateTime<Utc>> {
-    chrono::DateTime::parse_from_rfc3339(raw)
-        .map(|dt| dt.with_timezone(&Utc))
-        .map_err(|e| {
-            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
-        })
+fn parse_rfc3339(raw: &str) -> rusqlite::Result<Timestamp> {
+    raw.parse::<Timestamp>().map_err(|e| {
+        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+    })
 }
 
 /// Persists a newly granted lease. Never receives or stores the secret value.
@@ -41,15 +39,15 @@ pub(crate) async fn insert_lease(
     token: &str,
     secret_name: &str,
     agent_id: &str,
-    created_at: DateTime<Utc>,
-    expires_at: DateTime<Utc>,
+    created_at: Timestamp,
+    expires_at: Timestamp,
 ) -> anyhow::Result<()> {
     let project_id = project_id.to_string();
     let token = token.to_string();
     let secret_name = secret_name.to_string();
     let agent_id = agent_id.to_string();
-    let created_at = created_at.to_rfc3339();
-    let expires_at = expires_at.to_rfc3339();
+    let created_at = created_at.to_string();
+    let expires_at = expires_at.to_string();
     ConnectionManager::global()
         .with_conn(&project_id, move |conn| {
             conn.execute(CREATE_LEASES_TABLE_SQL, ())?;
@@ -69,7 +67,7 @@ pub(crate) async fn insert_lease(
 pub(crate) async fn mark_lease_revoked(project_id: &str, token: &str) -> anyhow::Result<()> {
     let project_id = project_id.to_string();
     let token = token.to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Timestamp::now().to_string();
     ConnectionManager::global()
         .with_conn(&project_id, move |conn| {
             conn.execute(CREATE_LEASES_TABLE_SQL, ())?;
@@ -86,11 +84,11 @@ pub(crate) async fn mark_lease_revoked(project_id: &str, token: &str) -> anyhow:
 pub(crate) async fn update_lease_expiry(
     project_id: &str,
     token: &str,
-    expires_at: DateTime<Utc>,
+    expires_at: Timestamp,
 ) -> anyhow::Result<()> {
     let project_id = project_id.to_string();
     let token = token.to_string();
-    let expires_at = expires_at.to_rfc3339();
+    let expires_at = expires_at.to_string();
     ConnectionManager::global()
         .with_conn(&project_id, move |conn| {
             conn.execute(CREATE_LEASES_TABLE_SQL, ())?;
@@ -205,7 +203,7 @@ impl AuditLogger for QmdAuditLogger {
         let agent_id = agent_id.to_string();
         let secret_id = secret_id.to_string();
         let session_token = session_token.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         tokio::spawn(async move {
             let _ = ConnectionManager::global().with_conn(&project_id, move |conn| {
                 conn.execute(
@@ -223,7 +221,7 @@ impl AuditLogger for QmdAuditLogger {
         let agent_id = agent_id.to_string();
         let session_token = session_token.to_string();
         let reason = reason.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         tokio::spawn(async move {
             let _ = ConnectionManager::global().with_conn(&project_id, move |conn| {
                 conn.execute(
@@ -241,7 +239,7 @@ impl AuditLogger for QmdAuditLogger {
         let agent_id = agent_id.to_string();
         let session_token = lease_token.to_string();
         let reason = endpoint.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         tokio::spawn(async move {
             let _ = ConnectionManager::global().with_conn(&project_id, move |conn| {
                 conn.execute(
@@ -345,8 +343,8 @@ mod tests {
     #[tokio::test]
     async fn test_insert_and_revoke_lease_round_trip() {
         let (project_id, _dir) = isolated_project("roundtrip");
-        let now = Utc::now();
-        let expires = now + chrono::Duration::seconds(60);
+        let now = Timestamp::now();
+        let expires = now.checked_add(jiff::Span::new().seconds(60)).unwrap();
 
         insert_lease(&project_id, "tok-1", "svc", "agent-1", now, expires)
             .await

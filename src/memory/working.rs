@@ -9,7 +9,7 @@
 
 use crate::espacio::keys::{looks_encrypted, KeyHandle, DEFAULT_SPACE_ID};
 use crate::memory::sqlite_vec_store::at_rest;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 
@@ -21,9 +21,9 @@ pub struct MemoryItem {
     /// The actual memory content
     pub content: String,
     /// When this item was created
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// When this item was last accessed
-    pub last_accessed: DateTime<Utc>,
+    pub last_accessed: Timestamp,
     /// Access count for LRU fallback decisions
     pub access_count: u32,
     /// Optional metadata
@@ -33,7 +33,7 @@ pub struct MemoryItem {
 impl MemoryItem {
     /// Create a new memory item with current timestamp
     pub fn new(id: impl Into<String>, content: impl Into<String>) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: id.into(),
             content: content.into(),
@@ -52,7 +52,7 @@ impl MemoryItem {
 
     /// Update access timestamp and increment access count
     pub fn record_access(&mut self) {
-        self.last_accessed = Utc::now();
+        self.last_accessed = Timestamp::now();
         self.access_count += 1;
     }
 }
@@ -276,7 +276,7 @@ impl WorkingMemory {
     fn evict_oldest(&mut self) -> Option<MemoryItem> {
         // First pass: find oldest item with low access count (FIFO candidates)
         let mut fifo_candidate: Option<String> = None;
-        let mut oldest_fifo_time: DateTime<Utc> = Utc::now();
+        let mut oldest_fifo_time: Timestamp = Timestamp::now();
 
         for id in &self.items_queue {
             if let Some(item) = self.items.get(id) {
@@ -296,7 +296,7 @@ impl WorkingMemory {
 
         // Fallback: evict least recently accessed item (LRU)
         let mut lru_candidate: Option<String> = None;
-        let mut oldest_access: DateTime<Utc> = Utc::now();
+        let mut oldest_access: Timestamp = Timestamp::now();
 
         for id in &self.items_queue {
             if let Some(item) = self.items.get(id) {

@@ -1,6 +1,6 @@
 //! Shared conversation types, pure helpers, and connection tuning for ADR-033 Wave 0.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -17,7 +17,7 @@ pub struct Message {
     pub openui_lang: Option<String>,
     pub xui_json: Option<String>,
     pub metadata: Option<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub tokens: Option<i64>,
 }
 

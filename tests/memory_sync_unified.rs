@@ -77,7 +77,7 @@ async fn spawn_legacy_mock_peer() -> String {
 }
 
 fn record(id: &str, path: &str, content: &str) -> MemoryRecord {
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     MemoryRecord {
         id: id.to_string(),
         workspace_id: "default".to_string(),
@@ -242,7 +242,7 @@ async fn legacy_manifest_push_pull() {
         chunk_hash: entries[0]["chunk_hash"].as_str().unwrap().to_string(),
         namespace: entries[0]["namespace"].as_str().unwrap().to_string(),
         revision: entries[0]["revision"].as_u64().unwrap_or(0),
-        updated_at: chrono::Utc::now(),
+        updated_at: jiff::Timestamp::now(),
         size_bytes: 0,
         record_path: None,
     }];

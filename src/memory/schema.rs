@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, NaiveDate, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -239,7 +239,7 @@ pub fn normalize_metadata(
     metadata["clearance"] = json!(resolved.clearance.as_str());
     metadata["namespace"] = serde_json::to_value(&resolved.namespace)?;
     metadata["provenance"] = serde_json::to_value(&resolved.provenance)?;
-    metadata["updated_at"] = json!(chrono::Utc::now().to_rfc3339());
+    metadata["updated_at"] = json!(Timestamp::now().to_string());
     Ok(metadata)
 }
 
@@ -743,15 +743,16 @@ fn sanitize_timestamp(value: Option<&str>) -> Option<String> {
     if value.is_empty() {
         return None;
     }
-    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
-        return Some(parsed.with_timezone(&Utc).to_rfc3339());
+    if let Ok(parsed) = value.parse::<Timestamp>() {
+        return Some(parsed.to_string());
     }
-    if let Ok(parsed) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        let naive = parsed.and_hms_opt(0, 0, 0)?;
-        return Some(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc).to_rfc3339());
+    if let Ok(_parsed) = value.parse::<jiff::civil::Date>() {
+        if let Ok(ts) = format!("{value}T00:00:00Z").parse::<Timestamp>() {
+            return Some(ts.to_string());
+        }
     }
     // Could not parse — auto-generate current timestamp as fallback
-    Some(Utc::now().to_rfc3339())
+    Some(Timestamp::now().to_string())
 }
 
 fn validate_timestamps(provenance: &MemoryProvenance) -> Result<()> {
@@ -775,15 +776,14 @@ pub fn sanitize_provenance_timestamps(provenance: &mut MemoryProvenance) {
     }
 }
 
-fn parse_time(value: &str) -> Result<DateTime<Utc>> {
-    if let Ok(parsed) = DateTime::parse_from_rfc3339(value) {
-        return Ok(parsed.with_timezone(&Utc));
+fn parse_time(value: &str) -> Result<Timestamp> {
+    if let Ok(parsed) = value.parse::<Timestamp>() {
+        return Ok(parsed);
     }
-    if let Ok(parsed) = NaiveDate::parse_from_str(value, "%Y-%m-%d") {
-        let naive = parsed
-            .and_hms_opt(0, 0, 0)
-            .ok_or_else(|| anyhow!("invalid date value: {value}"))?;
-        return Ok(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc));
+    if let Ok(_parsed) = value.parse::<jiff::civil::Date>() {
+        if let Ok(ts) = format!("{value}T00:00:00Z").parse::<Timestamp>() {
+            return Ok(ts);
+        }
     }
     Err(anyhow!("invalid timestamp value: {value}"))
 }
@@ -923,7 +923,7 @@ mod tests {
         let recorded_at = metadata["provenance"]["recorded_at"]
             .as_str()
             .expect("test assertion");
-        assert!(DateTime::parse_from_rfc3339(recorded_at).is_ok());
+        assert!(recorded_at.parse::<Timestamp>().is_ok());
         assert_ne!(recorded_at, "not-a-date");
     }
 

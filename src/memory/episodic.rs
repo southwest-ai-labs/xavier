@@ -10,7 +10,7 @@
 #[cfg(test)]
 use crate::domain::cycle_breaks::w30_10::Message;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ pub struct KeyEvent {
     /// Brief description of the event
     pub description: String,
     /// When the event occurred
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     /// Importance score (0-1)
     pub importance: f32,
     /// Optional event type
@@ -35,9 +35,9 @@ pub struct SessionSummary {
     /// Unique session identifier
     pub session_id: String,
     /// When the session started
-    pub start_time: DateTime<Utc>,
+    pub start_time: Timestamp,
     /// When the session ended
-    pub end_time: Option<DateTime<Utc>>,
+    pub end_time: Option<Timestamp>,
     /// LLM-generated summary of the session
     pub summary: Option<String>,
     /// Key events extracted from the session
@@ -57,7 +57,7 @@ impl SessionSummary {
     pub fn new(session_id: impl Into<String>) -> Self {
         Self {
             session_id: session_id.into(),
-            start_time: Utc::now(),
+            start_time: Timestamp::now(),
             end_time: None,
             summary: None,
             key_events: Vec::new(),
@@ -70,7 +70,7 @@ impl SessionSummary {
 
     /// Mark session as ended
     pub fn end(&mut self) {
-        self.end_time = Some(Utc::now());
+        self.end_time = Some(Timestamp::now());
     }
 
     /// Add a key event
@@ -140,14 +140,14 @@ impl Default for EpisodicMemoryConfig {
 /// # Example
 /// ```rust
 /// use xavier::memory::episodic::{EpisodicMemory, SessionSummary, KeyEvent};
-/// use chrono::Utc;
+/// use jiff::Timestamp;
 ///
 /// let mut em = EpisodicMemory::new();
 /// let mut session = SessionSummary::new("session-1");
 /// session.add_event(KeyEvent {
 ///     id: "event-1".into(),
 ///     description: "User asked about pricing".into(),
-///     timestamp: Utc::now(),
+///     timestamp: Timestamp::now(),
 ///     importance: 0.8,
 ///     event_type: Some("question".into()),
 /// });
@@ -454,7 +454,7 @@ mod tests {
         let event = KeyEvent {
             id: "e1".into(),
             description: "Important moment".into(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             importance: 0.8,
             event_type: Some("milestone".into()),
         };
@@ -552,7 +552,7 @@ mod tests {
         let event = KeyEvent {
             id: "e1".into(),
             description: "Test event".into(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             importance: 0.3,
             event_type: None,
         };
@@ -572,7 +572,7 @@ mod tests {
         let high_importance_event = KeyEvent {
             id: "e2".into(),
             description: "Important event".into(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             importance: 0.8,
             event_type: None,
         };
@@ -650,7 +650,7 @@ mod tests {
         session1.add_event(KeyEvent {
             id: "e1".into(),
             description: "Event 1".into(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             importance: 0.8,
             event_type: None,
         });
@@ -713,7 +713,7 @@ mod tests {
             KeyEvent {
                 id: "e1".into(),
                 description: "Test".into(),
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 importance: 0.5,
                 event_type: None,
             },
@@ -736,7 +736,7 @@ mod tests {
                 openui_lang: None,
                 xui_json: None,
                 metadata: None,
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
                 tokens: None,
             },
             Message {
@@ -748,7 +748,7 @@ mod tests {
                 openui_lang: None,
                 xui_json: None,
                 metadata: None,
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
                 tokens: None,
             },
             Message {
@@ -760,7 +760,7 @@ mod tests {
                 openui_lang: None,
                 xui_json: None,
                 metadata: None,
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
                 tokens: None,
             },
         ];

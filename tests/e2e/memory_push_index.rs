@@ -9,7 +9,7 @@ use xavier::memory::sync::{ChunkDiff, DiffAction, PeerMemorySync};
 use xavier::security::clearance::ClearanceLevel;
 
 fn record(workspace_id: &str, path: &str, content: &str) -> MemoryRecord {
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     MemoryRecord {
         id: format!("{workspace_id}:{path}"),
         workspace_id: workspace_id.to_string(),
@@ -141,7 +141,10 @@ async fn updated_record_replaces_its_index_entry() {
         "episodic/tech/fusion",
         "Clean nuclear fusion (B version)",
     );
-    newer.updated_at = first.updated_at + chrono::Duration::seconds(1);
+    newer.updated_at = first
+        .updated_at
+        .checked_add(jiff::Span::new().seconds(1))
+        .unwrap();
     receive(&*store, &qmd, &[data_diff(DiffAction::Update, &newer)]).await;
 
     let hits = search_docs(&qmd, "nuclear").await;

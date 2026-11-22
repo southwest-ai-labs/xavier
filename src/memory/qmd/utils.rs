@@ -2,7 +2,8 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{Datelike, NaiveDate};
+use jiff::civil::Date;
+use jiff::Span;
 use regex::Regex;
 use serde_json::Value;
 
@@ -420,7 +421,9 @@ pub fn resolve_temporal_value(content: &str, session_time: Option<&str>) -> Opti
     let lowered = content.to_lowercase();
 
     if lowered.contains("yesterday") {
-        return Some(format_date(session_date - chrono::Duration::days(1)));
+        return Some(format_date(
+            session_date.checked_sub(Span::new().days(1)).ok()?,
+        ));
     }
     if lowered.contains("last year") {
         return Some((session_date.year() - 1).to_string());
@@ -428,19 +431,19 @@ pub fn resolve_temporal_value(content: &str, session_time: Option<&str>) -> Opti
     if lowered.contains("last saturday") {
         return Some(format!(
             "The sunday before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
     if lowered.contains("last friday") {
         return Some(format!(
             "The friday before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
     if lowered.contains("last week") {
         return Some(format!(
             "The week before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
     if lowered.contains("next month") {
@@ -449,14 +452,14 @@ pub fn resolve_temporal_value(content: &str, session_time: Option<&str>) -> Opti
         } else {
             (session_date.year(), session_date.month() + 1)
         };
-        let date = NaiveDate::from_ymd_opt(year, month, 1)?;
-        return Some(date.format("%B %Y").to_string());
+        let date = Date::new(year, month, 1).ok()?;
+        return Some(date.strftime("%B %Y").to_string());
     }
     if lowered.contains("last sunday") || lowered.contains("sunday before") {
-        let weekday = session_date.weekday().num_days_from_sunday() as i64;
+        let weekday = session_date.weekday().to_sunday_zero_offset() as i64;
         let days_back = if weekday == 0 { 7 } else { weekday };
         return Some(format_date(
-            session_date - chrono::Duration::days(days_back),
+            session_date.checked_sub(Span::new().days(days_back)).ok()?,
         ));
     }
 
@@ -488,7 +491,7 @@ pub fn extract_explicit_date_value(text: &str) -> Option<String> {
 }
 
 /// Parse session date.
-pub fn parse_session_date(session_time: &str) -> Option<NaiveDate> {
+pub fn parse_session_date(session_time: &str) -> Option<Date> {
     let date_text = session_time
         .split(" on ")
         .last()
@@ -496,7 +499,7 @@ pub fn parse_session_date(session_time: &str) -> Option<NaiveDate> {
         .trim();
     let normalized = date_text.replace("  ", " ");
     for format in ["%d %B, %Y", "%d %B %Y", "%B %d, %Y"] {
-        if let Ok(date) = NaiveDate::parse_from_str(&normalized, format) {
+        if let Ok(date) = Date::strptime(format, &normalized) {
             return Some(date);
         }
     }
@@ -504,8 +507,8 @@ pub fn parse_session_date(session_time: &str) -> Option<NaiveDate> {
 }
 
 /// Format date.
-pub fn format_date(date: NaiveDate) -> String {
-    date.format("%-d %B %Y").to_string()
+pub fn format_date(date: Date) -> String {
+    date.strftime("%-d %B %Y").to_string()
 }
 
 /// Clean extracted date.

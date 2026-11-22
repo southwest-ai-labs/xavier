@@ -390,7 +390,7 @@ impl ProxyUseCase {
         for provider in providers {
             match self.rate_manager.get_status(provider).await {
                 Ok(status) => {
-                    let now = chrono::Utc::now();
+                    let now = jiff::Timestamp::now();
                     if status.rate_limited_until.is_none_or(|until| until < now) {
                         if provider == "local"
                             || provider == "ollama"
@@ -635,7 +635,7 @@ impl ProxyUseCase {
                     return Ok(ChatCompletion {
                         id: format!("chatcmpl-{}", ulid::Ulid::new()),
                         object: "chat.completion".to_string(),
-                        created: chrono::Utc::now().timestamp(),
+                        created: jiff::Timestamp::now().as_second(),
                         model: requested_model,
                         choices: vec![ChatChoice {
                             index: 0,
@@ -952,7 +952,7 @@ mod tests {
             status.rate_limited_until.is_some(),
             "Expected rate_limited_until to be set after 3 failures"
         );
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         assert!(
             status.rate_limited_until.unwrap() > now,
             "Expected rate_limited_until to be in the future"

@@ -43,7 +43,7 @@ use aes_gcm::aead::{Aead, KeyInit, Payload};
 use aes_gcm::{Aes256Gcm, Nonce};
 use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Utc};
+use jiff::Timestamp;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -450,9 +450,8 @@ pub fn backup_copy(record: &MemoryRecord) -> MemoryRecord {
     r
 }
 
-fn week_key(ts: &DateTime<Utc>) -> String {
-    let w = ts.iso_week();
-    format!("{}-W{:02}", w.year(), w.week())
+fn week_key(ts: &Timestamp) -> String {
+    ts.strftime("%G-W%V").to_string()
 }
 
 fn gzip(data: &[u8]) -> Result<Vec<u8>> {
@@ -1281,7 +1280,9 @@ mod tests {
     }
 
     fn record(ws: &str, id: &str, content: &str, days_ago: i64) -> MemoryRecord {
-        let ts = Utc::now() - chrono::Duration::days(days_ago);
+        let ts = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(days_ago * 24))
+            .unwrap();
         MemoryRecord {
             id: id.into(),
             workspace_id: ws.into(),

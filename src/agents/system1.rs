@@ -611,11 +611,11 @@ mod tests {
 mod budget_tests {
     use super::*;
     use crate::memory::qmd_memory::QmdMemory;
-    use chrono::Utc;
+    use jiff::Timestamp;
     use tokio::sync::RwLock;
 
     fn mock_doc(id: &str, content: &str) -> crate::memory::store::MemoryRecord {
-        let now = Utc::now();
+        let now = Timestamp::now();
         crate::memory::store::MemoryRecord {
             id: id.to_string(),
             workspace_id: "test".to_string(),

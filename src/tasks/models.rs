@@ -3,7 +3,7 @@
 
 use std::convert::Infallible;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -12,7 +12,7 @@ pub use crate::domain::cycle_breaks::w30_14::{Priority, Task, TaskStatus};
 impl Task {
     /// Create a new task
     pub fn new(title: &str, project: &str, created_by: &str) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: Ulid::new().to_string(),
             title: title.to_string(),
@@ -34,12 +34,12 @@ impl Task {
     /// Update status and handle completion
     pub fn set_status(&mut self, status: TaskStatus) {
         self.status = status;
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
 
         if (status == TaskStatus::Done || status == TaskStatus::Failed)
             && self.completed_at.is_none()
         {
-            self.completed_at = Some(Utc::now());
+            self.completed_at = Some(Timestamp::now());
         } else if status != TaskStatus::Done && status != TaskStatus::Failed {
             self.completed_at = None;
         }

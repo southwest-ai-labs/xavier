@@ -140,7 +140,7 @@ impl AnchorTransport for MockAnchorTransport {
             chain_id,
             tx_hash: format!("mock:{synthetic}"),
             dry_run: true,
-            anchored_at: chrono::Utc::now().to_rfc3339(),
+            anchored_at: jiff::Timestamp::now().to_string(),
             contract: contract.map(|s| s.to_string()),
             calldata_hex: calldata,
         })
@@ -278,7 +278,7 @@ impl AnchorTransport for EnvAnchorTransport {
             chain_id: chain,
             tx_hash,
             dry_run: false,
-            anchored_at: chrono::Utc::now().to_rfc3339(),
+            anchored_at: jiff::Timestamp::now().to_string(),
             contract: Some(contract.to_string()),
             calldata_hex: Some(prepared.data_hex),
         })

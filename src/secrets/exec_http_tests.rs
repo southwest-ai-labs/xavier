@@ -310,7 +310,7 @@ async fn gated_status(
             "tester".to_string(),
             "tester@example.com".to_string(),
             role,
-            chrono::TimeDelta::seconds(60),
+            std::time::Duration::from_secs(60),
         ));
     }
     let request = builder.body(Body::from(body.to_string())).expect("request");
@@ -412,7 +412,7 @@ async fn admin_request(
             "tester".to_string(),
             "tester@example.com".to_string(),
             UserRole::Admin,
-            chrono::TimeDelta::seconds(60),
+            std::time::Duration::from_secs(60),
         ))
         .body(Body::from(body.to_string()))
         .expect("request");

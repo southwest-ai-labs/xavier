@@ -69,7 +69,7 @@ impl SnapshotManager {
 
         let snapshot = CodeSnapshot {
             repo: repo.to_string(),
-            snapshot_date: chrono::Utc::now().to_rfc3339(),
+            snapshot_date: jiff::Timestamp::now().to_string(),
             hash,
             symbols_total: stats.total_symbols,
             files_total: stats.total_files,

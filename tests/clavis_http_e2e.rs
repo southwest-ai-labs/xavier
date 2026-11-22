@@ -35,7 +35,7 @@ fn build_clavis_request(
             "test_admin".to_string(),
             "admin@swal.dev".to_string(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
     }
     req

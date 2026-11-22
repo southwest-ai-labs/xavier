@@ -103,7 +103,7 @@ pub async fn agent_push_context_handler(
         obj.insert("agent_id".to_string(), serde_json::json!(agent_id));
         obj.insert(
             "pushed_at".to_string(),
-            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+            serde_json::json!(jiff::Timestamp::now().to_string()),
         );
     }
 
@@ -114,8 +114,8 @@ pub async fn agent_push_context_handler(
         content: context,
         metadata,
         embedding: vec![],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         parent_id: None,
@@ -335,8 +335,8 @@ pub async fn agent_index_handler(
                         "size": file.size,
                     }),
                     embedding: vec![],
-                    created_at: chrono::Utc::now(),
-                    updated_at: chrono::Utc::now(),
+                    created_at: jiff::Timestamp::now(),
+                    updated_at: jiff::Timestamp::now(),
                     revision: 1,
                     primary: true,
                     score: 0.0,

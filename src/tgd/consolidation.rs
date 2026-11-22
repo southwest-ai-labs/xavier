@@ -93,7 +93,7 @@ impl TgdConsolidationScheduler {
                 cron_expr
             );
 
-            let schedule: cron::Schedule = match cron::Schedule::from_str(&cron_expr) {
+            let schedule: croner::Cron = match cron_expr.parse() {
                 Ok(s) => s,
                 Err(e) => {
                     error!("❌ Invalid cron expression: {}", e);
@@ -246,7 +246,7 @@ impl TgdConsolidationScheduler {
 ///   * `min_interval` separates two cycles, so a schedule that lands on the
 ///     current instant cannot turn this into a spin loop.
 async fn run_cycle_loop<F, Fut>(
-    schedule: cron::Schedule,
+    schedule: croner::Cron,
     cancellation_token: CancellationToken,
     progress: Arc<RwLock<ProgressReport>>,
     cycle_timeout: Duration,
@@ -256,14 +256,13 @@ async fn run_cycle_loop<F, Fut>(
     F: Fn() -> Fut,
     Fut: Future<Output = anyhow::Result<()>>,
 {
-    while let Some(next) = schedule.upcoming(chrono::Utc).next() {
-        let now = chrono::Utc::now();
-        if next > now {
-            let sleep_duration = next
-                .signed_duration_since(now)
-                .to_std()
-                .unwrap_or(Duration::from_secs(0));
-            info!("📅 Next TGD consolidation scheduled for: {}", next);
+    while let Ok(next) = schedule.find_next_occurrence(&jiff::Zoned::now(), false) {
+        let next_ts = next.timestamp();
+        let now = jiff::Timestamp::now();
+        if next_ts > now {
+            let sleep_millis = (next_ts.as_millisecond() - now.as_millisecond()).max(0) as u64;
+            let sleep_duration = Duration::from_millis(sleep_millis);
+            info!("📅 Next TGD consolidation scheduled for: {}", next_ts);
 
             tokio::select! {
                 _ = tokio::time::sleep(sleep_duration) => {},
@@ -483,8 +482,8 @@ mod tests {
     const TEST_BUDGET: Duration = Duration::from_secs(20);
 
     /// The worst case a cron expression can express: a tick every second.
-    fn every_second() -> cron::Schedule {
-        cron::Schedule::from_str("* * * * * *").expect("valid cron expression")
+    fn every_second() -> croner::Cron {
+        "* * * * * *".parse().expect("valid cron expression")
     }
 
     /// Poll `ready` until it holds or [`TEST_BUDGET`] expires.

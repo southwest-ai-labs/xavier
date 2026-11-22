@@ -4,7 +4,7 @@
 //! Execution, Assumption, Clarification), storage models, and farming status
 //! following Privacy P4 guidelines (local payload, anonymous mesh score).
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -89,8 +89,8 @@ pub struct HumanChallengeEvent {
     pub raw_content: String,
     pub confidence_score: f32,
     pub status: ChallengeStatus,
-    pub created_at: DateTime<Utc>,
-    pub answered_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub answered_at: Option<Timestamp>,
     pub response: Option<String>,
     pub points_awarded: u32,
     /// Privacy P4 guarantee: true means full content remains local to this node
@@ -114,7 +114,7 @@ impl HumanChallengeEvent {
             raw_content: raw_content.into(),
             confidence_score,
             status: ChallengeStatus::Candidate,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             answered_at: None,
             response: None,
             points_awarded: 0,
@@ -136,7 +136,7 @@ pub struct FarmingSummary {
 impl Default for FarmingSummary {
     fn default() -> Self {
         Self {
-            year_month: Utc::now().format("%Y-%m").to_string(),
+            year_month: Timestamp::now().strftime("%Y-%m").to_string(),
             total_points: 0,
             target_points: 10,
             answered_count: 0,
@@ -151,7 +151,7 @@ pub struct AnonymousMeshScore {
     pub challenge_id_hash: String,
     pub challenge_type: ChallengeType,
     pub status: ChallengeStatus,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub points: u32,
 }
 
@@ -203,7 +203,7 @@ pub struct CurationVote {
     pub domain_tags: Vec<String>,
     /// Explicit consent to use this item for model training
     pub training_eligible: bool,
-    pub voted_at: DateTime<Utc>,
+    pub voted_at: Timestamp,
     /// Introspection technique that produced this vote (None for human curation votes).
     /// Votes with a technique stay out of the training gate until a human verifies them.
     #[serde(default)]
@@ -227,7 +227,7 @@ impl CurationVote {
             fact_verified,
             domain_tags,
             training_eligible,
-            voted_at: Utc::now(),
+            voted_at: Timestamp::now(),
             technique: None,
         }
     }
@@ -355,7 +355,7 @@ pub enum TurnRole {
 pub struct IntrospectionTurn {
     pub role: TurnRole,
     pub content: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// A complete introspection session — persisted locally, never leaves the node.
@@ -371,8 +371,8 @@ pub struct IntrospectionSession {
     /// Key insights extracted from the session by the LLM guide
     pub insights: Vec<String>,
     pub status: IntrospectionStatus,
-    pub started_at: DateTime<Utc>,
-    pub completed_at: Option<DateTime<Utc>>,
+    pub started_at: Timestamp,
+    pub completed_at: Option<Timestamp>,
     /// Explicit user consent to use this session's insights for model training.
     /// Defaults to false; set when the session is completed.
     #[serde(default)]
@@ -389,7 +389,7 @@ impl IntrospectionSession {
             depth_score: 0.0,
             insights: Vec::new(),
             status: IntrospectionStatus::Active,
-            started_at: Utc::now(),
+            started_at: Timestamp::now(),
             completed_at: None,
             training_consent: false,
         }

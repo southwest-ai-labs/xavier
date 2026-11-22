@@ -3,7 +3,7 @@
 //! Tracks peer heartbeat timestamps, categorizes node reachability (Online, Idle, Offline),
 //! and broadcasts status transition events to subscribers over Tokio broadcast channels.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ impl std::fmt::Display for PeerPresenceStatus {
 pub struct PeerPresenceEntry {
     pub node_id: String,
     pub status: PeerPresenceStatus,
-    pub last_seen: DateTime<Utc>,
+    pub last_seen: Timestamp,
     pub metadata: HashMap<String, String>,
 }
 
@@ -43,7 +43,7 @@ pub struct PresenceChangeEvent {
     pub node_id: String,
     pub old_status: PeerPresenceStatus,
     pub new_status: PeerPresenceStatus,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// Presence manager tracking peer heartbeats and issuing lifecycle events.
@@ -74,7 +74,7 @@ impl PresenceManager {
         metadata: Option<HashMap<String, String>>,
     ) {
         let node_id = node_id.into();
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut peers = self.peers.write().await;
 
         let entry = peers
@@ -107,10 +107,10 @@ impl PresenceManager {
     pub async fn get_peer_status(&self, node_id: &str) -> PeerPresenceStatus {
         let peers = self.peers.read().await;
         if let Some(entry) = peers.get(node_id) {
-            let elapsed = match (Utc::now() - entry.last_seen).to_std() {
-                Ok(d) => d,
-                Err(_) => Duration::from_secs(0),
-            };
+            let elapsed_millis = (Timestamp::now().as_millisecond()
+                - entry.last_seen.as_millisecond())
+            .max(0) as u64;
+            let elapsed = Duration::from_millis(elapsed_millis);
             if elapsed >= self.offline_threshold {
                 PeerPresenceStatus::Offline
             } else if elapsed >= self.idle_threshold {
@@ -125,15 +125,14 @@ impl PresenceManager {
 
     /// Recompute presence statuses for all peers and emit transitions.
     pub async fn sweep_and_evaluate_timeouts(&self) -> Vec<PresenceChangeEvent> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut changes = Vec::new();
         let mut peers = self.peers.write().await;
 
         for (node_id, entry) in peers.iter_mut() {
-            let elapsed = match (now - entry.last_seen).to_std() {
-                Ok(d) => d,
-                Err(_) => Duration::from_secs(0),
-            };
+            let elapsed_millis =
+                (now.as_millisecond() - entry.last_seen.as_millisecond()).max(0) as u64;
+            let elapsed = Duration::from_millis(elapsed_millis);
 
             let computed_status = if elapsed >= self.offline_threshold {
                 PeerPresenceStatus::Offline

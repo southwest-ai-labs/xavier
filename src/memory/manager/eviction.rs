@@ -205,7 +205,7 @@ mod tests {
 
     fn seed_aged_clock(path: &std::path::Path, days: i64) {
         let started = Timestamp::now()
-            .checked_sub(jiff::Span::new().days(days))
+            .checked_sub(jiff::Span::new().hours(days * 24))
             .expect("time underflow")
             .to_string();
         let conn = rusqlite::Connection::open(path).expect("open new db");

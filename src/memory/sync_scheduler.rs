@@ -4,7 +4,7 @@
 //! and remote cloud memory store using `CloudMemorySync`.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::task::JoinHandle;
@@ -57,7 +57,7 @@ impl Default for SyncSchedulerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SyncStatus {
     /// Timestamp of the last attempted sync cycle.
-    pub last_sync_time: Option<DateTime<Utc>>,
+    pub last_sync_time: Option<Timestamp>,
     /// Whether the last sync cycle completed successfully without errors.
     pub last_sync_success: bool,
     /// Error message from the last failed sync cycle, if any.
@@ -200,7 +200,7 @@ impl SyncScheduler {
 
         let mut status = self.status.write().await;
         status.total_sync_runs += 1;
-        status.last_sync_time = Some(Utc::now());
+        status.last_sync_time = Some(Timestamp::now());
 
         match reports_result {
             Ok(reports) => {
@@ -429,7 +429,7 @@ mod tests {
     }
 
     fn make_test_record(id: &str, workspace_id: &str, content: &str) -> MemoryRecord {
-        let now = Utc::now();
+        let now = Timestamp::now();
         MemoryRecord {
             id: id.to_string(),
             workspace_id: workspace_id.to_string(),

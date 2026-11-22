@@ -4,7 +4,7 @@
 //! limits, token bucket throttling, and back-pressure for API calls.
 
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -22,8 +22,8 @@ pub struct QuotaStatus {
     pub used_monthly: usize,
     pub weekly_quota: usize,
     pub cache_hits: usize,
-    pub rate_limited_until: Option<DateTime<Utc>>,
-    pub last_update: DateTime<Utc>,
+    pub rate_limited_until: Option<Timestamp>,
+    pub last_update: Timestamp,
 }
 
 pub struct RateLimitManager {
@@ -59,7 +59,7 @@ impl RateLimitManager {
     /// Checks if a provider is currently rate limited.
     pub async fn check(&self, provider: &str) -> bool {
         if let Ok(status) = self.get_status(provider).await {
-            let now = Utc::now();
+            let now = Timestamp::now();
             return status.rate_limited_until.is_some_and(|until| until > now);
         }
         false
@@ -77,8 +77,8 @@ impl RateLimitManager {
 
     /// Checks if a generic identifier has exceeded its requests-per-minute (RPM) limit.
     pub async fn check_rpm_limit(&self, identifier: &str, limit: usize) -> Result<bool> {
-        let now = Utc::now();
-        let minute_ago = now - Duration::minutes(1);
+        let now = Timestamp::now();
+        let minute_ago = now - Span::new().minutes(1);
         let identifier = identifier.to_string();
 
         ConnectionManager::global()
@@ -89,7 +89,7 @@ impl RateLimitManager {
                  WHERE provider = ?1 AND timestamp > ?2",
                         params![
                             identifier,
-                            minute_ago.format("%Y-%m-%d %H:%M:%f").to_string()
+                            minute_ago.strftime("%Y-%m-%d %H:%M:%S%.f").to_string()
                         ],
                         |row| row.get(0),
                     )
@@ -147,12 +147,12 @@ impl RateLimitManager {
 
             if status == 429 {
                 // Default cooldown of 5 minutes if not specified
-                let until = Utc::now() + Duration::minutes(5);
+                let until = Timestamp::now() + Span::new().minutes(5);
                 conn.execute(
                     "INSERT INTO provider_quotas (provider, rate_limited_until)
                      VALUES (?1, ?2)
                      ON CONFLICT(provider) DO UPDATE SET rate_limited_until = ?2",
-                    params![provider, until.to_rfc3339()],
+                    params![provider, until.to_string()],
                 )?;
             }
 
@@ -162,11 +162,11 @@ impl RateLimitManager {
 
     /// Get status.
     pub async fn get_status(&self, provider: &str) -> Result<QuotaStatus> {
-        let now = Utc::now();
-        let hour_ago = now - Duration::hours(1);
-        let day_ago = now - Duration::days(1);
-        let week_ago = now - Duration::days(7);
-        let month_ago = now - Duration::days(30);
+        let now = Timestamp::now();
+        let hour_ago = now - Span::new().hours(1);
+        let day_ago = now - Span::new().hours(24);
+        let week_ago = now - Span::new().hours(7 * 24);
+        let month_ago = now - Span::new().hours(30 * 24);
         let provider = provider.to_string();
 
         ConnectionManager::global().with_conn(&self.project_id, move |conn| {
@@ -180,10 +180,10 @@ impl RateLimitManager {
                  FROM rate_limit_usage
                  WHERE provider = ?5",
                 params![
-                    hour_ago.format("%Y-%m-%d %H:%M:%f").to_string(),
-                    day_ago.format("%Y-%m-%d %H:%M:%f").to_string(),
-                    week_ago.format("%Y-%m-%d %H:%M:%f").to_string(),
-                    month_ago.format("%Y-%m-%d %H:%M:%f").to_string(),
+                    hour_ago.strftime("%Y-%m-%d %H:%M:%S%.f").to_string(),
+                    day_ago.strftime("%Y-%m-%d %H:%M:%S%.f").to_string(),
+                    week_ago.strftime("%Y-%m-%d %H:%M:%S%.f").to_string(),
+                    month_ago.strftime("%Y-%m-%d %H:%M:%S%.f").to_string(),
                     provider,
                 ],
                 |row| Ok((
@@ -200,11 +200,7 @@ impl RateLimitManager {
                 params![provider],
                 |row| {
                     let until_str: Option<String> = row.get(0).ok();
-                    let until = until_str.and_then(|s| {
-                        DateTime::parse_from_rfc3339(&s)
-                            .map(|dt| dt.with_timezone(&Utc))
-                            .ok()
-                    });
+                    let until = until_str.and_then(|s| s.parse::<Timestamp>().ok());
                     let quota = row.get::<_, i64>(1).unwrap_or(1000000) as usize;
                     Ok((until, quota))
                 }
@@ -226,8 +222,8 @@ impl RateLimitManager {
 
     /// Get daily summary.
     pub async fn get_daily_summary(&self, provider: &str) -> Result<serde_json::Value> {
-        let now = Utc::now();
-        let day_ago = now - Duration::days(1);
+        let now = Timestamp::now();
+        let day_ago = now - Span::new().hours(24);
         let provider_id = provider.to_string();
 
         let requests = ConnectionManager::global()
@@ -238,18 +234,14 @@ impl RateLimitManager {
                  ORDER BY timestamp ASC",
                 )?;
 
-                let mut rows = stmt.query(params![provider_id, day_ago.to_rfc3339()])?;
+                let mut rows = stmt.query(params![provider_id, day_ago.to_string()])?;
                 let mut internal_requests = Vec::new();
 
                 while let Some(row) = rows.next()? {
                     let ts_str: String = row.get(0)?;
-                    let ts = DateTime::parse_from_rfc3339(&ts_str)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .or_else(|_| {
-                            chrono::NaiveDateTime::parse_from_str(&ts_str, "%Y-%m-%d %H:%M:%f")
-                                .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
-                        })
-                        .unwrap_or_else(|_| Utc::now());
+                    let ts = ts_str
+                        .parse::<Timestamp>()
+                        .unwrap_or_else(|_| Timestamp::now());
 
                     let tokens: i64 = row.get(1)?;
                     let status: i64 = row.get(2)?;
@@ -294,7 +286,7 @@ impl RateLimitManager {
 
     /// Report 429.
     pub async fn report_429(&self, provider: &str, cooldown_minutes: i64) -> Result<()> {
-        let until = Utc::now() + Duration::minutes(cooldown_minutes);
+        let until = Timestamp::now() + Span::new().minutes(cooldown_minutes);
         let provider = provider.to_string();
         ConnectionManager::global()
             .with_conn(&self.project_id, move |conn| {
@@ -302,7 +294,7 @@ impl RateLimitManager {
                     "INSERT INTO provider_quotas (provider, rate_limited_until)
                  VALUES (?1, ?2)
                  ON CONFLICT(provider) DO UPDATE SET rate_limited_until = ?2",
-                    params![provider, until.to_rfc3339()],
+                    params![provider, until.to_string()],
                 )?;
                 Ok(())
             })
@@ -334,7 +326,7 @@ impl RateLimitManager {
                 "INSERT INTO provider_quotas (provider, manual_limit_percentage, last_manual_update)
                  VALUES (?1, ?2, ?3)
                  ON CONFLICT(provider) DO UPDATE SET manual_limit_percentage = ?2, last_manual_update = ?3",
-                params![provider, percentage as f64, Utc::now().to_rfc3339()],
+                params![provider, percentage as f64, Timestamp::now().to_string()],
             )?;
             Ok(())
         }).await
@@ -345,8 +337,8 @@ impl RateLimitManager {
         let provider_name = quota.provider.as_str().to_string();
         let api_tier =
             serde_json::to_string(&quota.api_tier).unwrap_or_else(|_| "Unknown".to_string());
-        let resets_at = quota.resets_at.map(|dt| dt.to_rfc3339());
-        let last_checked = quota.last_checked.to_rfc3339();
+        let resets_at = quota.resets_at.map(|dt| dt.to_string());
+        let last_checked = quota.last_checked.to_string();
 
         // Warning logic for 80%+ usage
         if let Some(limit) = quota.requests_limit {
@@ -418,20 +410,15 @@ impl RateLimitManager {
                     let tier_str: String = row.get(1).unwrap_or_else(|_| "\"Unknown\"".to_string());
                     let resets_at_str: Option<String> = row.get(6).ok();
                     let last_checked_str: String =
-                        row.get(7).unwrap_or_else(|_| Utc::now().to_rfc3339());
+                        row.get(7).unwrap_or_else(|_| Timestamp::now().to_string());
 
                     let provider = ProviderKind::from_str(&provider_str);
                     let api_tier: ApiTier =
                         serde_json::from_str(&tier_str).unwrap_or(ApiTier::Unknown);
-                    let resets_at = resets_at_str.and_then(|s| {
-                        DateTime::parse_from_rfc3339(&s)
-                            .ok()
-                            .map(|dt| dt.with_timezone(&Utc))
-                    });
-                    let last_checked = DateTime::parse_from_rfc3339(&last_checked_str)
-                        .ok()
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(Utc::now);
+                    let resets_at = resets_at_str.and_then(|s| s.parse::<Timestamp>().ok());
+                    let last_checked = last_checked_str
+                        .parse::<Timestamp>()
+                        .unwrap_or_else(|_| Timestamp::now());
 
                     quotas.push(ProviderQuota {
                         provider,

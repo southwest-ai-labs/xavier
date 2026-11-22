@@ -13,7 +13,6 @@ use crate::ports::outbound::ThreatDetectionPort;
 use crate::security::threat_store::SecurityThreatStore;
 use crate::security::{self, Anticipator};
 use async_trait::async_trait;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -77,7 +76,7 @@ impl SecurityScanPort for SecurityService {
             scanned_target: target.to_string(),
             threats,
             scan_duration_ms,
-            completed_at: Utc::now(),
+            completed_at: jiff::Timestamp::now(),
         };
 
         Ok(scan_result)
@@ -243,7 +242,7 @@ fn detection_to_threats(detection: &security::ProcessResult, _target: &str) -> V
         } else {
             "Consider enabling auto-sanitization for this input type.".to_string()
         }),
-        discovered_at: Utc::now(),
+        discovered_at: jiff::Timestamp::now(),
     }]
 }
 

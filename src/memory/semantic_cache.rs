@@ -18,8 +18,8 @@ pub struct CachedResponse {
     pub query_embedding: Vec<f32>,
     pub response: String,
     pub confidence: f32, // Used to track how good this cached answer was
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub timestamp: jiff::Timestamp,
+    pub expires_at: Option<jiff::Timestamp>,
 }
 
 pub trait QueryEmbedder: Send + Sync {
@@ -100,7 +100,7 @@ impl SemanticCache {
         }
 
         let mut entries = self.entries.write().await;
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
 
         // Expire old entries
         entries.retain(|e| e.expires_at.is_none() || e.expires_at.unwrap() > now);
@@ -140,10 +140,11 @@ impl SemanticCache {
             return Ok(());
         }
 
-        let now = chrono::Utc::now();
-        let expires_at = self
-            .ttl_secs
-            .map(|s| now + chrono::Duration::seconds(s as i64));
+        let now = jiff::Timestamp::now();
+        let expires_at = self.ttl_secs.map(|s| {
+            now.checked_add(jiff::Span::new().seconds(s as i64))
+                .unwrap()
+        });
 
         let mut entries = self.entries.write().await;
         entries.push(CachedResponse {

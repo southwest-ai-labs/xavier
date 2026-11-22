@@ -247,18 +247,18 @@ crossterm = { version = "0.29", optional = true }
 autometrics = { version = "3.0", features = ["prometheus-exporter"] }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
-jiff = { version = "1.0", features = ["serde"] }
-cron = "0.15"
+jiff = { version = "0.2", features = ["serde"] }
+croner = { version = "4.0", default-features = false, features = ["jiff"] }
 # State management
 rayon = "1.10"
 parking_lot = "0.12"
-rusqlite = { version = "0.32.0", features = ["bundled", "load_extension", "chrono", "functions", "backup"] }
+rusqlite = { version = "0.32.0", features = ["bundled", "load_extension", "functions", "backup"] }
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 totp-rs = { version = "6.0", features = ["gen_secret", "otpauth"] }
 qrcode = "0.14"
 rsa = "0.9"
-sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls", "chrono", "json", "uuid"] }
+sqlx = { version = "0.8", default-features = false, features = ["postgres", "runtime-tokio-rustls", "time", "json", "uuid"] }
+time = { version = "0.3", default-features = false }
 
 # File traversal
 walkdir = "2"

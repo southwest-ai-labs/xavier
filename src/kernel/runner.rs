@@ -1,7 +1,7 @@
 //! Kernel command execution proxy, RTK token reduction, and failure trace indexing.
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -81,7 +81,7 @@ pub async fn index_command_failure(
     exit_code: i32,
     failure_snippet: &str,
 ) -> Result<MemoryRecord> {
-    let timestamp = Utc::now().timestamp();
+    let timestamp = Timestamp::now().as_second();
     let mut hasher = Sha256::new();
     hasher.update(cmd_line.as_bytes());
     hasher.update(failure_snippet.as_bytes());
@@ -102,8 +102,8 @@ pub async fn index_command_failure(
         path,
         content: failure_snippet.to_string(),
         metadata,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        created_at: Timestamp::now(),
+        updated_at: Timestamp::now(),
         primary: true,
         ..Default::default()
     };

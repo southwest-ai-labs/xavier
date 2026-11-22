@@ -12,8 +12,8 @@
 use axum::extract::Query;
 use axum::response::IntoResponse;
 use axum::{Extension, Json};
-use chrono::{DateTime, Utc};
 use git2::{Repository, Sort};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -94,7 +94,9 @@ pub async fn commits_graph(
             .unwrap_or_else(|_| ".".to_string())
     });
 
-    let since = Utc::now() - chrono::Duration::days(q.since_days as i64);
+    let since = Timestamp::now()
+        .checked_sub(jiff::Span::new().hours(q.since_days as i64 * 24))
+        .unwrap();
 
     let repo = match Repository::open(&repo_root) {
         Ok(r) => r,
@@ -127,7 +129,7 @@ pub async fn commits_graph(
         let Ok(commit) = repo.find_commit(oid) else {
             continue;
         };
-        let commit_time = DateTime::<Utc>::from_timestamp(commit.time().seconds(), 0);
+        let commit_time = Timestamp::from_second(commit.time().seconds()).ok();
         let Some(commit_time) = commit_time else {
             continue;
         };
@@ -148,7 +150,7 @@ pub async fn commits_graph(
             .unwrap_or_default()
             .to_string();
         let author = commit.author().name().unwrap_or("unknown").to_string();
-        let ts = commit_time.to_rfc3339();
+        let ts = commit_time.to_string();
 
         let mut files_changed = 0usize;
         let mut insertions = 0usize;

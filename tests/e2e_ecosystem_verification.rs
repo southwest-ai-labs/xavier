@@ -4,7 +4,7 @@
 //! and Mesh P2P offline buffering & consent filters.
 
 use axum::{extract::Json, routing::get, Router};
-use chrono::Utc;
+use jiff::Timestamp;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -203,7 +203,7 @@ async fn test_full_ecosystem_flow() {
         SessionEvent {
             session_id: "e2e_ecosystem_sess_1".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some(
                 "Sin embargo, esta propuesta contradice la decisión tomada en la reunión anterior."
                     .to_string(),
@@ -213,7 +213,7 @@ async fn test_full_ecosystem_flow() {
         SessionEvent {
             session_id: "e2e_ecosystem_sess_1".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some(
                 "Acordamos implementar el almacenamiento local utilizando SQLite.".to_string(),
             ),

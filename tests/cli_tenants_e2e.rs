@@ -9,7 +9,7 @@ pub struct TenantResponse {
     pub id: TenantId,
     pub name: String,
     pub plan: Plan,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 xavier::isolate_test_process!();
@@ -24,17 +24,13 @@ async fn mock_server() -> SocketAddr {
                         id: uuid::Uuid::nil(),
                         name: "tenant-a".to_string(),
                         plan: Plan::Free,
-                        created_at: chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-                            .unwrap()
-                            .with_timezone(&chrono::Utc),
+                        created_at: "2024-01-01T00:00:00Z".parse::<jiff::Timestamp>().unwrap(),
                     },
                     TenantResponse {
                         id: uuid::Uuid::new_v4(),
                         name: "tenant-b".to_string(),
                         plan: Plan::Pro,
-                        created_at: chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
-                            .unwrap()
-                            .with_timezone(&chrono::Utc),
+                        created_at: "2024-01-01T00:00:00Z".parse::<jiff::Timestamp>().unwrap(),
                     },
                 ];
                 Json(tenants)
@@ -49,11 +45,7 @@ async fn mock_server() -> SocketAddr {
                             id: uuid::Uuid::nil(),
                             name: "tenant-a".to_string(),
                             plan: Plan::Free,
-                            created_at: chrono::DateTime::parse_from_rfc3339(
-                                "2024-01-01T00:00:00Z",
-                            )
-                            .unwrap()
-                            .with_timezone(&chrono::Utc),
+                            created_at: "2024-01-01T00:00:00Z".parse::<jiff::Timestamp>().unwrap(),
                         };
                         Ok(Json(tenant))
                     } else {

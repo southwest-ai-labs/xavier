@@ -10,7 +10,7 @@
 //!   DELETE /maloca/consent/{node_id} — revoke consent for a node
 
 use anyhow::{bail, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -62,7 +62,7 @@ impl DataNodeConsent {
         Self {
             node_id: node_id.into(),
             consented,
-            timestamp: Utc::now().to_rfc3339(),
+            timestamp: Timestamp::now().to_string(),
             scope,
         }
     }
@@ -148,7 +148,7 @@ impl ConsentRegistry {
             .get_mut(node_id)
             .ok_or_else(|| anyhow::anyhow!("consent record not found for node {}", node_id))?;
         record.consented = false;
-        record.timestamp = Utc::now().to_rfc3339();
+        record.timestamp = Timestamp::now().to_string();
         let out = record.clone();
         self.persist(&state);
         Ok(out)

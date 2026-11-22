@@ -193,7 +193,7 @@ pub async fn headless_chat(
             let completion = xavier::domain::proxy::ChatCompletion {
                 id: format!("chatcmpl-mem-{}", ulid::Ulid::new()),
                 object: "chat.completion".to_string(),
-                created: chrono::Utc::now().timestamp(),
+                created: jiff::Timestamp::now().as_second(),
                 model: "memory-fallback".to_string(),
                 choices: vec![xavier::domain::proxy::ChatChoice {
                     index: 0,
@@ -351,7 +351,7 @@ pub async fn headless_switch_provider(Json(req): Json<SwitchRequest>) -> impl In
         "previous": "anthropic",
         "new": req.provider,
         "strategy": req.strategy.unwrap_or_else(|| "manual".to_string()),
-        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "timestamp": jiff::Timestamp::now().to_string(),
     }))
 }
 
@@ -476,7 +476,7 @@ pub async fn headless_memory_add(Json(req): Json<MemoryAddRequest>) -> impl Into
         "id": ulid::Ulid::new().to_string(),
         "title": req.title.unwrap_or_else(|| "Untitled".to_string()),
         "status": "indexed",
-        "created_at": chrono::Utc::now().to_rfc3339(),
+        "created_at": jiff::Timestamp::now().to_string(),
     }))
 }
 

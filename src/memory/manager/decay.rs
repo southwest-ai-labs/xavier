@@ -114,7 +114,7 @@ mod tests {
     async fn decay_lowers_quality_of_untouched_record() {
         let doc_id = "untouched_doc_1".to_string();
         let past_time = Timestamp::now()
-            .checked_sub(jiff::Span::new().days(10))
+            .checked_sub(jiff::Span::new().hours(10 * 24))
             .expect("time underflow");
         let doc = MemoryDocument {
             id: Some(doc_id.clone()),

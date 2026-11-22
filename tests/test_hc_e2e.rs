@@ -4,7 +4,7 @@
 //! Session generation → SessionScanner (5 Challenge Types) → HumanChallengeStore persistence
 //! → Response submission with embedding cosine similarity evaluation → X2 Farming summary update.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use tempfile::TempDir;
 use xavier::humanchallenge::{
     ChallengeStatus, ChallengeType, HumanChallengeCron, HumanChallengeCronConfig,
@@ -21,7 +21,7 @@ fn generate_synthetic_session_events(session_id: &str) -> Vec<SessionEvent> {
         SessionEvent {
             session_id: session_id.to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Sin embargo, esta afirmación contradice el requisito previamente expresado.".to_string()),
             metadata: None,
         },
@@ -29,7 +29,7 @@ fn generate_synthetic_session_events(session_id: &str) -> Vec<SessionEvent> {
         SessionEvent {
             session_id: session_id.to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Acordamos que la arquitectura elegida utilizará SQLite para el almacenamiento local.".to_string()),
             metadata: None,
         },
@@ -37,7 +37,7 @@ fn generate_synthetic_session_events(session_id: &str) -> Vec<SessionEvent> {
         SessionEvent {
             session_id: session_id.to_string(),
             event_type: SessionEventType::ToolCall,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("sudo systemctl restart xavier-service".to_string()),
             metadata: None,
         },
@@ -45,7 +45,7 @@ fn generate_synthetic_session_events(session_id: &str) -> Vec<SessionEvent> {
         SessionEvent {
             session_id: session_id.to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Asumiendo que la red P2P se encuentra accesible sin latencia.".to_string()),
             metadata: None,
         },
@@ -53,7 +53,7 @@ fn generate_synthetic_session_events(session_id: &str) -> Vec<SessionEvent> {
         SessionEvent {
             session_id: session_id.to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Por favor aclara los parámetros de configuración del rate limiter.".to_string()),
             metadata: None,
         },
@@ -205,7 +205,7 @@ async fn test_hc_e2e_full_cognitive_alignment_loop() {
     );
     assert!(updated_event.points_awarded >= base_points);
 
-    let current_month = Utc::now().format("%Y-%m").to_string();
+    let current_month = Timestamp::now().strftime("%Y-%m").to_string();
     let summary = cron
         .get_farming_summary(&current_month)
         .expect("get farming summary");

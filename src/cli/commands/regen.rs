@@ -207,7 +207,7 @@ async fn run_tune(dataset: Option<PathBuf>, json: bool) -> Result<()> {
     // history` can review it. Failures are non-fatal: a missing/unwritable
     // .xavier dir should not abort a successful tune.
     let entry = HistoryEntry {
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: jiff::Timestamp::now().to_string(),
         baseline: baseline_metrics.clone(),
         proposal: proposal.clone(),
     };

@@ -17,7 +17,7 @@ fn principal(id: &str) -> Claims {
         id.into(),
         String::new(),
         UserRole::User,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )
 }
 

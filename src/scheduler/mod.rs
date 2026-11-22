@@ -24,7 +24,9 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use croner::errors::CronError;
+use croner::Cron;
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::sync::Mutex;
@@ -46,30 +48,30 @@ pub struct CronSchedule {
 
 impl CronSchedule {
     /// Parse.
-    pub fn parse(expression: &str) -> std::result::Result<Self, cron::error::Error> {
+    pub fn parse(expression: &str) -> std::result::Result<Self, CronError> {
         <Self as FromStr>::from_str(expression)
     }
 
     /// Is valid.
     pub fn is_valid(&self) -> bool {
-        cron::Schedule::from_str(&self.expression).is_ok()
+        self.expression.parse::<Cron>().is_ok()
     }
 
     /// Next run.
-    pub fn next_run(&self) -> Option<chrono::DateTime<Utc>> {
-        cron::Schedule::from_str(&self.expression)
-            .ok()?
-            .upcoming(Utc)
-            .next()
+    pub fn next_run(&self) -> Option<Timestamp> {
+        let cron = self.expression.parse::<Cron>().ok()?;
+        cron.find_next_occurrence(&jiff::Zoned::now(), false)
+            .ok()
+            .map(|z| z.timestamp())
     }
 }
 
 impl FromStr for CronSchedule {
-    type Err = cron::error::Error;
+    type Err = CronError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let normalized = normalize_cron_expression(s);
-        cron::Schedule::from_str(&normalized)?;
+        normalized.parse::<Cron>()?;
         Ok(Self {
             expression: normalized,
         })
@@ -258,7 +260,7 @@ impl JobScheduler {
     pub async fn detect_missed_jobs(&mut self) -> Result<usize> {
         let missed = job::detect_missed_jobs(
             &mut self.jobs,
-            Utc::now(),
+            Timestamp::now(),
             self.config.recovery.missed_window,
         );
         self.persist().await?;
@@ -312,7 +314,6 @@ async fn persist_state(path: &Path, jobs: &[ScheduledJob]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::scheduler::job::ScheduledJobStatus;
-    use chrono::Duration;
 
     async fn temp_scheduler_path() -> PathBuf {
         let root = std::env::temp_dir()
@@ -332,7 +333,7 @@ mod tests {
 
         scheduler
             .add_job(
-                ScheduledJob::from_schedule("job-a", "index", "0/30 * * * * * *")
+                ScheduledJob::from_schedule("job-a", "index", "*/30 * * * * * *")
                     .expect("test assertion"),
             )
             .await
@@ -357,7 +358,7 @@ mod tests {
         let mut scheduler = JobScheduler::new(SchedulerConfig {
             storage_path,
             recovery: RecoveryConfig {
-                missed_window: Duration::minutes(5),
+                missed_window: Span::new().minutes(5),
                 max_per_restart: 2,
                 stagger_ms: 0,
             },
@@ -367,9 +368,11 @@ mod tests {
             .add_job(ScheduledJob {
                 id: "job-a".to_string(),
                 name: "job-a".to_string(),
-                schedule: "0/15 * * * * * *".to_string(),
+                schedule: "*/15 * * * * * *".to_string(),
                 last_run: None,
-                next_run: Utc::now() - Duration::minutes(10),
+                next_run: Timestamp::now()
+                    .checked_sub(Span::new().minutes(10))
+                    .unwrap(),
                 status: ScheduledJobStatus::Pending,
             })
             .await

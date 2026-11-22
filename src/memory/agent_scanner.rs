@@ -35,9 +35,10 @@ pub struct AgentScanner {
 /// session stamps the same `updated_at` and does not create a new record.
 /// An unreadable mtime is an extraction error, never a synthetic scan timestamp.
 fn source_mtime_rfc3339(path: &Path) -> std::io::Result<String> {
-    std::fs::metadata(path)
-        .and_then(|m| m.modified())
-        .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
+    let mtime = std::fs::metadata(path)?.modified()?;
+    jiff::Timestamp::try_from(mtime)
+        .map(|ts| ts.to_string())
+        .map_err(std::io::Error::other)
 }
 
 impl Default for AgentScanner {
@@ -208,10 +209,10 @@ impl AgentScanner {
     /// Extracción genérica de JSON (e.g. Copilot chat history)
     async fn extract_from_json(&self, path: &Path) -> Result<Option<AgentSession>> {
         let content = fs::read_to_string(path).await?;
-        let updated_at = fs::metadata(path)
-            .await?
-            .modified()
-            .map(|time| chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339())?;
+        let mtime = fs::metadata(path).await?.modified()?;
+        let updated_at = jiff::Timestamp::try_from(mtime)
+            .map(|ts| ts.to_string())
+            .map_err(|e| anyhow::anyhow!("Invalid timestamp: {}", e))?;
 
         // Naive heuristic for JSON that looks like chat history
         if content.contains("\"role\"")

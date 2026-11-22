@@ -26,7 +26,7 @@ async fn test_unauthorized_cross_wallet_sync_rejection() {
         wallet_id: wallet_1.clone(),
         name: "Node A".to_string(),
         iroh_addr: "".to_string(),
-        last_seen: chrono::Utc::now(),
+        last_seen: Timestamp::now(),
     };
     reg.register_wallet_node_with_key(node_a, &wallet_1, &node_a_id.public_key)
         .unwrap();
@@ -38,7 +38,7 @@ async fn test_unauthorized_cross_wallet_sync_rejection() {
         wallet_id: wallet_2.clone(),
         name: "Node C".to_string(),
         iroh_addr: "".to_string(),
-        last_seen: chrono::Utc::now(),
+        last_seen: Timestamp::now(),
     };
     reg.register_wallet_node_with_key(node_c, &wallet_2, &node_c_id.public_key)
         .unwrap();

@@ -89,9 +89,7 @@ impl ErrorAnalyzer {
 
         ErrorDiagnosis {
             pattern: pattern.clone(),
-            analyzed_at: chrono::Utc::now()
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
+            analyzed_at: jiff::Timestamp::now().to_string(),
             root_cause,
             source_location: source_location.map(|p| p.to_string_lossy().to_string()),
             suggested_fix,

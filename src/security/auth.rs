@@ -29,9 +29,9 @@ impl IntoSpan for jiff::Span {
     }
 }
 
-impl IntoSpan for chrono::Duration {
+impl IntoSpan for std::time::Duration {
     fn into_span(self) -> jiff::Span {
-        jiff::Span::new().seconds(self.num_seconds())
+        jiff::Span::new().seconds(self.as_secs() as i64)
     }
 }
 

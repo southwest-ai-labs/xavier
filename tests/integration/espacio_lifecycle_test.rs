@@ -6,7 +6,7 @@
 //! - InviteManager create, canonical payload structure, signature attachment, validation, revocation, and expiry.
 //! - Role-based permissions checks (can) end-to-end.
 
-use chrono::{Duration as ChronoDuration, Utc};
+use jiff::{Span, Timestamp};
 use tempfile::tempdir;
 
 use xavier::espacio::{
@@ -70,7 +70,7 @@ async fn test_channel_manager_full_lifecycle_and_merge() {
             space_id: space_id.into(),
             author: "xv1_bob".into(),
             content: "Hi Alice".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         },
         // Remote seq 3
         ChannelMessage {
@@ -78,7 +78,7 @@ async fn test_channel_manager_full_lifecycle_and_merge() {
             space_id: space_id.into(),
             author: "xv1_dave".into(),
             content: "Merged remote message 3".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         },
         // Remote seq 4
         ChannelMessage {
@@ -86,7 +86,7 @@ async fn test_channel_manager_full_lifecycle_and_merge() {
             space_id: space_id.into(),
             author: "xv1_eve".into(),
             content: "Merged remote message 4".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         },
     ];
 
@@ -305,7 +305,7 @@ async fn test_invite_expiry_and_space_listing() {
     let space_b = "esp_space_listing_b";
 
     // Create expired invite using create_with_expiry
-    let past_expiry = Utc::now() - ChronoDuration::hours(2);
+    let past_expiry = Timestamp::now().checked_sub(Span::new().hours(2)).unwrap();
     let expired_inv = invite_mgr
         .create_with_expiry(
             space_a.into(),
@@ -360,25 +360,25 @@ async fn test_membership_permissions_end_to_end() {
     let admin_member = SpaceMembership {
         node_id: "node_admin".into(),
         role: SpaceRole::Admin,
-        joined_at: Utc::now(),
+        joined_at: Timestamp::now(),
     };
 
     let mod_member = SpaceMembership {
         node_id: "node_mod".into(),
         role: SpaceRole::Moderator,
-        joined_at: Utc::now(),
+        joined_at: Timestamp::now(),
     };
 
     let regular_member = SpaceMembership {
         node_id: "node_member".into(),
         role: SpaceRole::Member,
-        joined_at: Utc::now(),
+        joined_at: Timestamp::now(),
     };
 
     let reader_member = SpaceMembership {
         node_id: "node_reader".into(),
         role: SpaceRole::Reader,
-        joined_at: Utc::now(),
+        joined_at: Timestamp::now(),
     };
 
     // 1. Admin checks (can perform all actions)

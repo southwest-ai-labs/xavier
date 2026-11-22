@@ -11,7 +11,7 @@
 
 use super::jobs::{JobRepository, JobStatus, TrainingJob};
 use anyhow::Result;
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -140,7 +140,7 @@ struct Candidate {
     job: TrainingJob,
     dir: PathBuf,
     size: u64,
-    at: DateTime<Utc>,
+    at: Timestamp,
     protected: bool,
 }
 
@@ -149,7 +149,7 @@ pub fn prune(
     repo: &JobRepository,
     jobs_root: &Path,
     policy: &RetentionPolicy,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<PruneReport> {
     let mut report = PruneReport::default();
     if !policy.is_enabled() {
@@ -180,9 +180,7 @@ pub fn prune(
                 .as_ref()
                 .map(|r| is_referenced(&job, &dir, r))
                 .unwrap_or(true);
-        let at = DateTime::parse_from_rfc3339(&job.updated_at)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or(now);
+        let at = job.updated_at.parse::<Timestamp>().unwrap_or(now);
         if protected {
             report.protected_jobs += 1;
         }
@@ -209,7 +207,9 @@ pub fn prune(
 
     // Phase 1: age.
     let mut remaining: Vec<Candidate> = Vec::new();
-    let cutoff = now - Duration::days(policy.retention_days.min(36_500) as i64);
+    let cutoff = now
+        .checked_sub(Span::new().hours(policy.retention_days.min(36_500) as i64 * 24))
+        .unwrap();
     for c in cands {
         if policy.retention_days > 0 && !c.protected && c.at < cutoff {
             remove(&c, &mut total, &mut report);
@@ -301,7 +301,10 @@ mod tests {
     }
 
     fn age(e: &Env, id: &str, days: i64) {
-        let ts = (Utc::now() - Duration::days(days)).to_rfc3339();
+        let ts = Timestamp::now()
+            .checked_sub(Span::new().hours(days * 24))
+            .unwrap()
+            .to_string();
         e.repo.set_updated_at_for_test(id, &ts);
     }
 
@@ -327,7 +330,7 @@ mod tests {
         for j in [&old_failed, &old_ok, &old_running] {
             age(&e, &j.id, 45);
         }
-        let r = prune(&e.repo, &e.root, &policy(30, 0, vec![]), Utc::now()).unwrap();
+        let r = prune(&e.repo, &e.root, &policy(30, 0, vec![]), Timestamp::now()).unwrap();
         assert_eq!(r.pruned_jobs.len(), 2);
         assert!(!payload_exists(&e, &old_failed.id));
         assert!(!payload_exists(&e, &old_ok.id));
@@ -354,7 +357,7 @@ mod tests {
         age(&e, &other.id, 90);
         let refs = vec![PathBuf::from(referenced.artifact_path.clone().unwrap())];
         // Both age and a tiny budget would remove it.
-        let r = prune(&e.repo, &e.root, &policy(30, 1, refs), Utc::now()).unwrap();
+        let r = prune(&e.repo, &e.root, &policy(30, 1, refs), Timestamp::now()).unwrap();
         assert!(
             payload_exists(&e, &referenced.id),
             "referenced artifact deleted"
@@ -382,7 +385,7 @@ mod tests {
             budget_bytes: 0,
             referenced: Arc::new(|| Err(anyhow::anyhow!("registry locked"))),
         };
-        prune(&e.repo, &e.root, &p, Utc::now()).unwrap();
+        prune(&e.repo, &e.root, &p, Timestamp::now()).unwrap();
         assert!(payload_exists(&e, &ok.id));
         assert!(!payload_exists(&e, &failed.id));
     }
@@ -401,7 +404,7 @@ mod tests {
         let refs = vec![PathBuf::from(pinned.artifact_path.clone().unwrap())];
         // 400 bytes total, budget 250: must drop two jobs: cancelled first, then oldest
         // unprotected succeeded. The pinned (oldest) one is skipped.
-        let r = prune(&e.repo, &e.root, &policy(0, 250, refs), Utc::now()).unwrap();
+        let r = prune(&e.repo, &e.root, &policy(0, 250, refs), Timestamp::now()).unwrap();
         assert_eq!(
             r.pruned_jobs,
             vec![newer_failed.id.clone(), old_ok.id.clone()]
@@ -415,7 +418,13 @@ mod tests {
         let e = env();
         let j = job(&e, JobStatus::Failed, 10);
         age(&e, &j.id, 400);
-        let r = prune(&e.repo, &e.root, &RetentionPolicy::disabled(), Utc::now()).unwrap();
+        let r = prune(
+            &e.repo,
+            &e.root,
+            &RetentionPolicy::disabled(),
+            Timestamp::now(),
+        )
+        .unwrap();
         assert!(r.pruned_jobs.is_empty());
         assert!(payload_exists(&e, &j.id));
     }

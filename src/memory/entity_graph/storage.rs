@@ -6,7 +6,7 @@
 
 use super::extraction::*;
 use super::types::*;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -17,7 +17,7 @@ pub(super) struct RelationUpsert<'a> {
     pub weight: f32,
     pub co_occurrence_score: f32,
     pub memory_id: Option<&'a str>,
-    pub now: DateTime<Utc>,
+    pub now: Timestamp,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -47,10 +47,8 @@ impl GraphData {
         entity: ExtractedEntity,
         memory_id: &str,
         metadata: Option<&serde_json::Value>,
-        now: DateTime<Utc>,
+        now: Timestamp,
     ) -> String {
-        let now = jiff::Timestamp::from_millisecond(now.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now());
         let normalized_name = normalize_name(&entity.name);
         let lookup_key = entity_lookup_key(&normalized_name, entity.entity_type);
         let entity_id = self
@@ -232,10 +230,10 @@ impl GraphData {
     }
 
     /// Apply decay.
-    pub(super) fn apply_decay(&mut self, factor: f32, now: DateTime<Utc>) {
+    pub(super) fn apply_decay(&mut self, factor: f32, now: Timestamp) {
         let factor = factor.clamp(0.0, 1.0);
         for relation in self.relations.values_mut() {
-            let hours_since = (now - relation.updated_at).num_hours() as f32;
+            let hours_since = (now.as_second() - relation.updated_at.as_second()) as f32 / 3600.0;
             if hours_since > 0.0 {
                 let decay = (1.0 - factor).powf(hours_since);
                 relation.weight *= decay;
@@ -243,15 +241,12 @@ impl GraphData {
                 relation.updated_at = now;
             }
         }
-        let now_ts = jiff::Timestamp::from_millisecond(now.timestamp_millis())
-            .unwrap_or_else(|_| jiff::Timestamp::now());
         for entity in self.entities.values_mut() {
-            let hours_since =
-                (now_ts.duration_since(entity.last_seen).as_secs_f64() / 3600.0) as f32;
+            let hours_since = (now.as_second() - entity.last_seen.as_second()) as f32 / 3600.0;
             if hours_since > 0.0 {
                 let decay = (1.0 - factor).powf(hours_since);
                 entity.trust_score *= decay;
-                entity.last_seen = now_ts;
+                entity.last_seen = now;
             }
         }
     }

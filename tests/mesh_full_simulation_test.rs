@@ -242,8 +242,8 @@ async fn test_multi_node_mesh_convergence_3_nodes() {
         alias: Some("Hub Node".to_string()),
         endpoint_url: url_hub.clone(),
         public_key_hex: xavier::crypto::hex_encode(&id_hub.public_key),
-        added_at: chrono::Utc::now().timestamp(),
-        last_seen_at: Some(chrono::Utc::now().timestamp()),
+        added_at: jiff::Timestamp::now().as_second(),
+        last_seen_at: Some(jiff::Timestamp::now().as_second()),
         sync_enabled: true,
         is_cloud: false,
         iroh_addr: None,
@@ -368,7 +368,7 @@ fn test_private_mesh_wallet_isolation_and_session_encryption() {
         wallet_id: wallet_id_a.clone(),
         name: "Alpha Workstation".to_string(),
         iroh_addr: "iroh://alpha-1.local".to_string(),
-        last_seen: chrono::Utc::now(),
+        last_seen: jiff::Timestamp::now(),
     };
 
     let node_2 = WalletNode {
@@ -376,7 +376,7 @@ fn test_private_mesh_wallet_isolation_and_session_encryption() {
         wallet_id: wallet_id_a.clone(),
         name: "Alpha Mobile".to_string(),
         iroh_addr: "iroh://alpha-2.local".to_string(),
-        last_seen: chrono::Utc::now(),
+        last_seen: jiff::Timestamp::now(),
     };
 
     assert!(is_same_wallet(&node_1.wallet_id, &node_2.wallet_id));

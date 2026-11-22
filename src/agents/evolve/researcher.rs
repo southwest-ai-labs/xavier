@@ -63,11 +63,11 @@ Output format (JSON):
   "type": "optimization | hyperparameter | architecture | simplification",
   "files": ["src/list/of/files.rs"],
   "patch": "A diff or specific code change instruction in SEARCH/REPLACE format:
-<<<<<<< SEARCH
-[existing code]
-=======
-[new code]
->>>>>>> REPLACE",
+  <<<<<<< SEARCH
+  [existing code]
+  =======
+  [new code]
+  >>>>>>> REPLACE",
   "complexity_cost": 10
 }}
 "#,
@@ -134,12 +134,12 @@ Output format (JSON):
                 "add retrieval cache layer".to_string(),
                 vec!["src/memory/mod.rs".to_string()],
                 r#"
-<<<<<<< SEARCH
-pub mod results;
-=======
-pub mod results;
-pub mod cache;
->>>>>>> REPLACE
+  <<<<<<< SEARCH
+  pub mod results;
+  =======
+  pub mod results;
+  pub mod cache;
+  >>>>>>> REPLACE
 "#
                 .to_string(),
                 15,
@@ -153,23 +153,23 @@ pub mod cache;
                 "use more efficient hash for deduplication".to_string(),
                 vec!["src/memory/embedder.rs".to_string()],
                 r#"
-<<<<<<< SEARCH
-use sha2::{Digest, Sha256};
+  <<<<<<< SEARCH
+  use sha2::{Digest, Sha256};
 
-/// Hash embedding.
-pub fn hash_embedding(embedding: &[f32]) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(embedding.as_bytes());
-    crate::crypto::hex_encode(&hasher.finalize())
-}
-=======
-use xxhash_rust::xxhash64;
+  /// Hash embedding.
+  pub fn hash_embedding(embedding: &[f32]) -> String {
+      let mut hasher = Sha256::new();
+      hasher.update(embedding.as_bytes());
+      crate::crypto::hex_encode(&hasher.finalize())
+  }
+  =======
+  use xxhash_rust::xxhash64;
 
-/// Hash embedding.
-pub fn hash_embedding(embedding: &[f32]) -> u64 {
-    xxhash64(embedding.as_bytes(), 0)
-}
->>>>>>> REPLACE
+  /// Hash embedding.
+  pub fn hash_embedding(embedding: &[f32]) -> u64 {
+      xxhash64(embedding.as_bytes(), 0)
+  }
+  >>>>>>> REPLACE
 "#
                 .to_string(),
                 3,
@@ -177,7 +177,7 @@ pub fn hash_embedding(embedding: &[f32]) -> u64 {
         ];
 
         let idx =
-            (chrono::Utc::now().timestamp() % hypotheses.len() as i64).unsigned_abs() as usize;
+            (jiff::Timestamp::now().as_second() % hypotheses.len() as i64).unsigned_abs() as usize;
         let hypothesis = hypotheses[idx].clone();
 
         info!(

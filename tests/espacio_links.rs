@@ -389,13 +389,19 @@ async fn revoked_and_expired_links_are_excluded() {
     assert_eq!(list["links"][0]["revoked"], true, "{list}");
 
     // An expired link grants nothing.
-    let past = (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
+    let past = jiff::Timestamp::now()
+        .checked_sub(jiff::Span::new().hours(1))
+        .unwrap()
+        .to_string();
     grant(&f, serde_json::json!({"expires_at": past})).await;
     let r = search_linked(&f, &f.admin_a, "betaonly wombat").await;
     assert!(!results_text(&r).contains("betaonly"), "{r}");
 
     // A future expiry still works.
-    let future = (chrono::Utc::now() + chrono::Duration::hours(1)).to_rfc3339();
+    let future = jiff::Timestamp::now()
+        .checked_add(jiff::Span::new().hours(1))
+        .unwrap()
+        .to_string();
     grant(&f, serde_json::json!({"expires_at": future})).await;
     let r = search_linked(&f, &f.admin_a, "betaonly wombat").await;
     assert!(results_text(&r).contains("betaonly"), "{r}");

@@ -180,11 +180,10 @@ impl FileIndexer {
                                 if let Ok(metadata) = fs::metadata(&entry_path).await {
                                     let current_mtime = metadata
                                         .modified()
-                                        .map(|t| {
-                                            let datetime: chrono::DateTime<chrono::Utc> = t.into();
-                                            datetime.to_rfc3339()
-                                        })
-                                        .unwrap_or_else(|_| "unknown".to_string());
+                                        .ok()
+                                        .and_then(|t| jiff::Timestamp::try_from(t).ok())
+                                        .map(|ts| ts.to_string())
+                                        .unwrap_or_else(|| "unknown".to_string());
                                     let current_size = metadata.len() as usize;
 
                                     if current_mtime != "unknown"
@@ -269,11 +268,10 @@ impl FileIndexer {
         let metadata = fs::metadata(path).await?;
         let last_modified = metadata
             .modified()
-            .map(|t| {
-                let datetime: chrono::DateTime<chrono::Utc> = t.into();
-                datetime.to_rfc3339()
-            })
-            .unwrap_or_else(|_| "unknown".to_string());
+            .ok()
+            .and_then(|t| jiff::Timestamp::try_from(t).ok())
+            .map(|ts| ts.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
 
         // Generate chunks
         let chunks = self.generate_chunks(&content);

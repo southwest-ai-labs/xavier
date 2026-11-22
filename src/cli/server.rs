@@ -1856,7 +1856,7 @@ async fn start_http_server_inner(
                     .is_ok()
                 {
                     if let Some(entry) = registry.get_peer_mut(&peer.node_id) {
-                        entry.last_seen_at = Some(chrono::Utc::now().timestamp());
+                        entry.last_seen_at = Some(jiff::Timestamp::now().as_second());
                     }
                     refreshed += 1;
                 }
@@ -2867,8 +2867,8 @@ async fn start_http_server_inner(
                             "size": file.size,
                         }),
                         embedding: vec![],
-                        created_at: chrono::Utc::now(),
-                        updated_at: chrono::Utc::now(),
+                        created_at: jiff::Timestamp::now(),
+                        updated_at: jiff::Timestamp::now(),
                         revision: 1,
                         primary: true,
                         score: 0.0,

@@ -119,8 +119,9 @@ mod memory_manager_tests {
         // before construction, which preserves it with INSERT OR IGNORE.
         let dir = tempfile::tempdir().expect("tempdir");
         let path = dir.path().join("eviction_disuse.sqlite3");
-        let started =
-            chrono::Utc::now() - chrono::Duration::days(access::MIN_OBSERVATION_DAYS + 10);
+        let started = jiff::Timestamp::now()
+            .checked_sub(jiff::Span::new().hours((access::MIN_OBSERVATION_DAYS + 10) * 24))
+            .unwrap();
         let conn = rusqlite::Connection::open(&path).expect("open new db");
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS maintenance_meta (
@@ -134,8 +135,8 @@ mod memory_manager_tests {
             "INSERT OR IGNORE INTO maintenance_meta (key, value, updated_at) VALUES (?1, ?2, ?3)",
             rusqlite::params![
                 access::OBSERVATION_STARTED_AT_KEY,
-                started.to_rfc3339(),
-                started.to_rfc3339()
+                started.to_string(),
+                started.to_string()
             ],
         )
         .expect("seed clock");

@@ -344,7 +344,7 @@ async fn restore_snapshot(
             .map(|c| json!({
                 "id": c.id,
                 "name": c.name,
-                "created_at": c.created_at.to_rfc3339(),
+                "created_at": c.created_at.to_string(),
             }))
             .collect::<Vec<_>>(),
         "token_usage": {
@@ -765,7 +765,7 @@ pub async fn handle_context_tool(
                     .map(|c| json!({
                         "id": c.id,
                         "name": c.name,
-                        "created_at": c.created_at.to_rfc3339(),
+                        "created_at": c.created_at.to_string(),
                     }))
                     .collect::<Vec<_>>(),
                 "token_usage": {
@@ -848,7 +848,7 @@ pub async fn handle_context_tool(
                     c.id,
                     c.name.as_deref().unwrap_or(""),
                     c.session_id.as_deref().unwrap_or(""),
-                    c.created_at.to_rfc3339()
+                    c.created_at
                 ));
             }
             for (i, doc) in results.iter().enumerate() {
@@ -1815,6 +1815,7 @@ mod tests {
     #[serial_test::serial]
     async fn context_session_semantics_handler_level() {
         crate::isolate_test_process!();
+        crate::codebase::connection_manager::ConnectionManager::global().shutdown();
         let (state, workspace, _work) = workspace_with_documents(Vec::new()).await;
         let call = |name: &'static str, args: Value| {
             let (s, w) = (state.clone(), workspace.clone());

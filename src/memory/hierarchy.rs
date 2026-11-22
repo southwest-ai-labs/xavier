@@ -91,7 +91,7 @@ impl MemoryTree {
 mod tests {
     use super::*;
     use crate::memory::store::MemoryRecord;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     fn mock_record(path: &str) -> MemoryRecord {
         MemoryRecord {
@@ -101,8 +101,8 @@ mod tests {
             content: "test".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
             revision: 1,
             primary: true,
             parent_id: None,

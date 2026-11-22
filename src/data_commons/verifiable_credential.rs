@@ -187,8 +187,7 @@ impl DatasetCredentialGenerator {
         let verifying_key = signing_key.verifying_key();
         let issuer_did = Self::public_key_to_did(&verifying_key);
         let credential_id = format!("urn:uuid:{}", uuid::Uuid::new_v4());
-        let created_timestamp =
-            chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        let created_timestamp = jiff::Timestamp::now().to_string();
 
         let subject_id = format!("urn:swal:dataset:{}", params.dataset_id);
 

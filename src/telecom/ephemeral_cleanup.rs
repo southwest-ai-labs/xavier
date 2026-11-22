@@ -3,7 +3,7 @@
 //! Spawns an asynchronous periodic worker that cleans expired OTR messages
 //! from SQLite using `DELETE FROM telecom_messages WHERE is_ephemeral = 1 AND sent_at < ?`.
 
-use chrono::{Duration as ChronoDuration, Utc};
+use jiff::{Span, Timestamp};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::watch;
@@ -50,9 +50,11 @@ impl EphemeralCleanupWorker {
     /// Purge expired ephemeral messages directly on the store.
     /// Returns the count of deleted messages.
     pub fn purge_expired(store: &TelecomStore, ttl: Duration) -> Result<usize, TelecomStoreError> {
-        let cutoff =
-            Utc::now() - ChronoDuration::from_std(ttl).unwrap_or_else(|_| ChronoDuration::hours(1));
-        let cutoff_str = cutoff.to_rfc3339();
+        let span = Span::new().seconds(ttl.as_secs() as i64);
+        let cutoff = Timestamp::now()
+            .checked_sub(span)
+            .unwrap_or_else(|_| Timestamp::now());
+        let cutoff_str = cutoff.to_string();
 
         let conn = store.connection();
         let conn_guard = conn.lock().unwrap();
@@ -144,7 +146,7 @@ mod tests {
             name: "Ephemeral Test".to_string(),
             clearance: "Secret".to_string(),
             is_group: false,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         store.persist_room(&room).unwrap();
 
@@ -156,7 +158,7 @@ mod tests {
             encrypted_payload: b"keep me".to_vec(),
             sequence: 1,
             is_ephemeral: false,
-            sent_at: Utc::now() - ChronoDuration::hours(2),
+            sent_at: Timestamp::now() - Span::new().hours(2),
         };
         store.persist_message(&permanent_msg).unwrap();
 
@@ -168,7 +170,7 @@ mod tests {
             encrypted_payload: b"delete me".to_vec(),
             sequence: 2,
             is_ephemeral: true,
-            sent_at: Utc::now() - ChronoDuration::hours(2),
+            sent_at: Timestamp::now() - Span::new().hours(2),
         };
         store.persist_message(&expired_msg).unwrap();
 
@@ -180,7 +182,7 @@ mod tests {
             encrypted_payload: b"keep me too".to_vec(),
             sequence: 3,
             is_ephemeral: true,
-            sent_at: Utc::now(),
+            sent_at: Timestamp::now(),
         };
         store.persist_message(&fresh_msg).unwrap();
 

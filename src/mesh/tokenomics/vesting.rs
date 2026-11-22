@@ -49,8 +49,8 @@ impl VestingEngine {
     /// Calculates the full calendar months passed between start and now,
     /// correctly accounting for day-of-month anniversaries and differing month lengths.
     pub fn calculate_months_passed(start: Timestamp, now: Timestamp) -> u32 {
-        let start_z = start.to_zoned_datetime(jiff::tz::TimeZone::UTC);
-        let now_z = now.to_zoned_datetime(jiff::tz::TimeZone::UTC);
+        let start_z = start.to_zoned(jiff::tz::TimeZone::UTC);
+        let now_z = now.to_zoned(jiff::tz::TimeZone::UTC);
 
         let raw_months = (now_z.year() as i32 - start_z.year() as i32) * 12
             + (now_z.month() as i32 - start_z.month() as i32);
@@ -75,7 +75,7 @@ mod tests {
     fn ts(y: i16, m: i8, d: i8, h: i8, min: i8, s: i8) -> Timestamp {
         jiff::civil::date(y, m, d)
             .at(h, min, s, 0)
-            .to_zoned_datetime(jiff::tz::TimeZone::UTC)
+            .to_zoned(jiff::tz::TimeZone::UTC)
             .unwrap()
             .timestamp()
     }

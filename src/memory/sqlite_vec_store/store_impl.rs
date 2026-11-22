@@ -731,7 +731,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             }
 
             // Load session tokens (filter expired)
-            let now = chrono::Utc::now();
+            let now = jiff::Timestamp::now();
             let session_tokens = {
                 let mut stmt = conn.prepare("SELECT id, workspace_id, token, created_at, expires_at FROM session_tokens WHERE workspace_id = ?")?;
                 let mut rows = stmt.query([&workspace_id_c])?;
@@ -742,16 +742,18 @@ impl MemoryStore for VecSqliteMemoryStore {
                     if crypto.is_some() {
                         continue;
                     }
-                    let expires_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                            .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_else(|_| chrono::Utc::now());
+                    let expires_at = row
+                        .get::<_, String>(4)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now());
 
                     if expires_at > now {
                         tokens.push(SessionTokenRecord {
                             token: row.get(2)?,
-                            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                                .map(|dt| dt.with_timezone(&chrono::Utc))
-                                .unwrap_or_else(|_| chrono::Utc::now()),
+                            created_at: row
+                                .get::<_, String>(3)?
+                                .parse::<jiff::Timestamp>()
+                                .unwrap_or_else(|_| jiff::Timestamp::now()),
                             expires_at,
                         });
                     }
@@ -875,8 +877,8 @@ impl MemoryStore for VecSqliteMemoryStore {
         } else {
             token.token
         };
-        let created_at = token.created_at.to_rfc3339();
-        let expires_at = token.expires_at.to_rfc3339();
+        let created_at = token.created_at.to_string();
+        let expires_at = token.expires_at.to_string();
 
         self.conn_provider.with_conn(&self.project_id, move |conn| {
             conn.execute(
@@ -901,7 +903,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             .with_conn(&self.project_id, move |conn| {
                 let token_key =
                     crate::memory::store::stable_key("session_token_row", &[&workspace_id, &token]);
-                let now = chrono::Utc::now().to_rfc3339();
+                let now = jiff::Timestamp::now().to_string();
 
                 let count: i32 = conn.query_row(
                     "SELECT COUNT(*) FROM session_tokens WHERE id = ? AND expires_at > ?",
@@ -941,7 +943,7 @@ impl MemoryStore for VecSqliteMemoryStore {
                     task_id,
                     name,
                     data_json,
-                    chrono::Utc::now().to_rfc3339(),
+                    jiff::Timestamp::now().to_string(),
                 ],
             )?;
             Ok(())
@@ -1114,7 +1116,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             None => data.to_string(),
         };
         let workspace_id = workspace_id.to_string();
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
         self.conn_provider
             .with_conn(&self.project_id, move |conn| {
                 conn.execute(
@@ -1629,7 +1631,7 @@ impl VecSqliteMemoryStore {
 
                         record.id = existing_record.id.clone();
                         record.created_at = existing_record.created_at;
-                        record.updated_at = chrono::Utc::now();
+                        record.updated_at = jiff::Timestamp::now();
                         record.revision = existing_revision_num + 1;
                         record.revisions = existing_revisions;
                     } else {
@@ -1729,8 +1731,8 @@ impl VecSqliteMemoryStore {
                 record.encrypted_dek,
                 record.content_iv,
                 record.metadata_iv,
-                record.created_at.to_rfc3339(),
-                record.updated_at.to_rfc3339(),
+                record.created_at.to_string(),
+                record.updated_at.to_string(),
                 record.revision,
                 record.primary as i32,
                 record.parent_id,

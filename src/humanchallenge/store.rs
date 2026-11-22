@@ -2,7 +2,7 @@
 //!
 //! Handles SQLite persistence for HumanChallenge events on the local node.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection, Result as SqliteResult};
 use std::path::Path;
 use std::str::FromStr;
@@ -233,8 +233,8 @@ impl HumanChallengeStore {
 
     /// Save or ignore a HumanChallenge event
     pub fn save_event(&self, event: &HumanChallengeEvent) -> SqliteResult<()> {
-        let created_ts = event.created_at.timestamp();
-        let answered_ts = event.answered_at.map(|t| t.timestamp());
+        let created_ts = event.created_at.as_second();
+        let answered_ts = event.answered_at.map(|t| t.as_second());
         let local_only = if event.privacy_p4_local_only { 1 } else { 0 };
 
         let conn = self.conn.lock().unwrap();
@@ -334,7 +334,7 @@ impl HumanChallengeStore {
 
     /// Record human response and award points
     pub fn answer_challenge(&self, id: &str, response: &str, points: u32) -> SqliteResult<bool> {
-        let answered_ts = Utc::now().timestamp();
+        let answered_ts = Timestamp::now().as_second();
         let conn = self.conn.lock().unwrap();
         let rows_updated = conn.execute(
             "UPDATE human_challenge_events
@@ -386,7 +386,7 @@ impl HumanChallengeStore {
     /// Save a curation vote for a challenge event.
     pub fn save_curation_vote(&self, vote: &CurationVote) -> SqliteResult<()> {
         use crate::humanchallenge::types::CurationVote;
-        let voted_ts = vote.voted_at.timestamp();
+        let voted_ts = vote.voted_at.as_second();
         let domain_tags_json =
             serde_json::to_string(&vote.domain_tags).unwrap_or_else(|_| "[]".to_string());
         let fact_v = if vote.fact_verified { 1 } else { 0 };
@@ -427,7 +427,7 @@ impl HumanChallengeStore {
             fact_verified: row.get::<_, i32>(4)? != 0,
             domain_tags: serde_json::from_str(&domain_tags_json).unwrap_or_default(),
             training_eligible: row.get::<_, i32>(6)? != 0,
-            voted_at: DateTime::from_timestamp(voted_ts, 0).unwrap_or_else(Utc::now),
+            voted_at: Timestamp::from_second(voted_ts).unwrap_or_else(|_| Timestamp::now()),
             technique: row.get(8)?,
         })
     }
@@ -545,8 +545,8 @@ impl HumanChallengeStore {
         let turns_json = serde_json::to_string(&session.turns).unwrap_or_else(|_| "[]".to_string());
         let insights_json =
             serde_json::to_string(&session.insights).unwrap_or_else(|_| "[]".to_string());
-        let started_ts = session.started_at.timestamp();
-        let completed_ts = session.completed_at.map(|t| t.timestamp());
+        let started_ts = session.started_at.as_second();
+        let completed_ts = session.completed_at.map(|t| t.as_second());
 
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -607,8 +607,8 @@ impl HumanChallengeStore {
                 depth_score: row.get(4)?,
                 insights: serde_json::from_str(&insights_json).unwrap_or_default(),
                 status: IntrospectionStatus::from_str(&row.get::<_, String>(6)?).unwrap(),
-                started_at: DateTime::from_timestamp(started_ts, 0).unwrap_or_else(Utc::now),
-                completed_at: completed_ts.and_then(|ts| DateTime::from_timestamp(ts, 0)),
+                started_at: Timestamp::from_second(started_ts).unwrap_or_else(|_| Timestamp::now()),
+                completed_at: completed_ts.and_then(|ts| Timestamp::from_second(ts).ok()),
                 training_consent: row.get::<_, i32>(9)? != 0,
             }))
         } else {
@@ -630,7 +630,7 @@ impl HumanChallengeStore {
         privacy_level: &str,
     ) -> SqliteResult<String> {
         let log_id = format!("tgl_{}", ulid::Ulid::new());
-        let triggered_ts = Utc::now().timestamp();
+        let triggered_ts = Timestamp::now().as_second();
         let challenge_ids_json =
             serde_json::to_string(challenge_ids).unwrap_or_else(|_| "[]".to_string());
         let domain_tags_json =
@@ -678,8 +678,8 @@ impl HumanChallengeStore {
         };
 
         let status = ChallengeStatus::from_str(&status_str).unwrap_or(ChallengeStatus::Candidate);
-        let created_at = DateTime::from_timestamp(created_ts, 0).unwrap_or_else(Utc::now);
-        let answered_at = answered_ts.and_then(|ts| DateTime::from_timestamp(ts, 0));
+        let created_at = Timestamp::from_second(created_ts).unwrap_or_else(|_| Timestamp::now());
+        let answered_at = answered_ts.and_then(|ts| Timestamp::from_second(ts).ok());
 
         Ok(HumanChallengeEvent {
             id,
@@ -741,7 +741,7 @@ mod tests {
         );
         store.save_event(&event).unwrap();
 
-        let current_month = Utc::now().format("%Y-%m").to_string();
+        let current_month = Timestamp::now().strftime("%Y-%m").to_string();
         let month_events = store.list_events_by_month(&current_month, 10).unwrap();
         assert_eq!(month_events.len(), 1);
         assert_eq!(month_events[0].id, event.id);

@@ -2,7 +2,8 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{Datelike, Duration, NaiveDate};
+use jiff::civil::Date;
+use jiff::Span;
 use regex::Regex;
 use std::sync::OnceLock;
 
@@ -147,14 +148,14 @@ pub(crate) fn date_granularity_rank(text: &str) -> usize {
 }
 
 /// Parse session date.
-pub(crate) fn parse_session_date(session_time: &str) -> Option<NaiveDate> {
+pub(crate) fn parse_session_date(session_time: &str) -> Option<Date> {
     let date_text = session_time
         .rsplit_once(" on ")
         .map(|(_, date_text)| date_text.trim())
         .unwrap_or_else(|| session_time.trim());
 
     for format in ["%e %B, %Y", "%d %B, %Y", "%B %d, %Y", "%d %B %Y"] {
-        if let Ok(date) = NaiveDate::parse_from_str(date_text, format) {
+        if let Ok(date) = Date::strptime(format, date_text) {
             return Some(date);
         }
     }
@@ -163,8 +164,8 @@ pub(crate) fn parse_session_date(session_time: &str) -> Option<NaiveDate> {
 }
 
 /// Format date.
-pub(crate) fn format_date(date: NaiveDate) -> String {
-    date.format("%-d %B %Y").to_string()
+pub(crate) fn format_date(date: Date) -> String {
+    date.strftime("%-d %B %Y").to_string()
 }
 
 /// Extract relative date answer.
@@ -173,7 +174,9 @@ pub(crate) fn extract_relative_date_answer(text: &str, session_time: &str) -> Op
     let session_date = parse_session_date(session_time)?;
 
     if lowered.contains("yesterday") {
-        return Some(format_date(session_date - Duration::days(1)));
+        return Some(format_date(
+            session_date.checked_sub(Span::new().days(1)).ok()?,
+        ));
     }
 
     if lowered.contains("last year") {
@@ -183,33 +186,33 @@ pub(crate) fn extract_relative_date_answer(text: &str, session_time: &str) -> Op
     if lowered.contains("last week") {
         return Some(format!(
             "The week before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
 
     if lowered.contains("last friday") {
         return Some(format!(
             "The friday before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
 
     if lowered.contains("last saturday") {
         return Some(format!(
             "The saturday before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
 
     if lowered.contains("last sunday") || lowered.contains("sunday before") {
         return Some(format!(
             "The sunday before {}",
-            session_date.format("%-d %B %Y")
+            session_date.strftime("%-d %B %Y")
         ));
     }
 
     if lowered.contains("this month") {
-        return Some(session_date.format("%B, %Y").to_string());
+        return Some(session_date.strftime("%B, %Y").to_string());
     }
 
     if lowered.contains("next month") {
@@ -218,8 +221,8 @@ pub(crate) fn extract_relative_date_answer(text: &str, session_time: &str) -> Op
         } else {
             (session_date.year(), session_date.month() + 1)
         };
-        let date = NaiveDate::from_ymd_opt(year, month, 1)?;
-        return Some(date.format("%B %Y").to_string());
+        let date = Date::new(year, month, 1).ok()?;
+        return Some(date.strftime("%B %Y").to_string());
     }
 
     None

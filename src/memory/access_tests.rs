@@ -374,7 +374,9 @@ async fn get_last_accessed_resolves_from_the_access_signal_not_metadata() {
     stored.metadata = serde_json::json!({ "encrypted": "deadbeef" });
     // updated_at is deliberately old, so a metadata-only resolver would report
     // a stale age and the decay/prune math would be wrong.
-    stored.updated_at = chrono::Utc::now() - chrono::Duration::days(90);
+    stored.updated_at = jiff::Timestamp::now()
+        .checked_sub(jiff::Span::new().hours(90 * 24))
+        .expect("timestamp subtraction");
     store.put(stored).await.expect("put");
 
     let loaded = store
@@ -383,7 +385,7 @@ async fn get_last_accessed_resolves_from_the_access_signal_not_metadata() {
         .expect("get")
         .expect("record");
 
-    let loaded_updated_ts = jiff::Timestamp::from_second(loaded.updated_at.timestamp()).unwrap();
+    let loaded_updated_ts = loaded.updated_at;
 
     // Before any observation the legacy fallback applies.
     assert_eq!(

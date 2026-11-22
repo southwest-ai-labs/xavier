@@ -143,7 +143,7 @@ impl VaultSyncTask {
     }
 
     fn record_last_sync(&self) -> Result<()> {
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
         std::fs::write(&self.state_file_path, now).context("failed to write state file")?;
         Ok(())
     }

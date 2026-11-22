@@ -360,7 +360,7 @@ fn print_summary(results: &[EmbeddingBenchResult]) {
         "╚══════════════════════════════════════════════════════════════════════════════════╝"
     );
     println!();
-    println!("📌 Date: {}", chrono::Local::now().format("%Y-%m-%d %H:%M"));
+    println!("📌 Date: {}", jiff::Zoned::now().strftime("%Y-%m-%d %H:%M"));
     println!(
         "📌 Tests: 5 high-sim + 5 low-sim pairs = {total} total",
         total = if results.first().map(|r| r.total).unwrap_or(0) > 0 {

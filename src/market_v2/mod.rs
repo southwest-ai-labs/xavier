@@ -331,8 +331,8 @@ async fn get_listing_handler(
         Ok(Some(listing)) => {
             // valid_from is the listing's creation time, so the credential is
             // stable across reads apart from its id.
-            let issued_at = chrono::DateTime::from_timestamp_millis(listing.created_at_ms)
-                .map(|at| at.to_rfc3339())
+            let issued_at = jiff::Timestamp::from_millisecond(listing.created_at_ms)
+                .map(|at| at.to_string())
                 .unwrap_or_default();
             let provenance = credential::issue(&listing, &issuer, &issued_at);
             Json(ListingWithProvenance {

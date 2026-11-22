@@ -82,9 +82,7 @@ impl LogDetector {
             .await?;
 
         let mut result = DetectionResult {
-            timestamp: chrono::Utc::now()
-                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                .to_string(),
+            timestamp: jiff::Timestamp::now().to_string(),
             patterns_found: patterns,
             burst_alerts: Vec::new(),
             new_error_alerts: Vec::new(),

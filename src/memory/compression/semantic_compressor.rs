@@ -4,7 +4,7 @@
 //! summary memory cards, reducing SQLite memory footprint while preserving
 //! critical entity identifiers.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -22,7 +22,7 @@ pub struct DialogueTurn {
     /// Optional vector embedding representation of the turn content
     pub embedding: Option<Vec<f32>>,
     /// Timestamp when the turn occurred
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     /// Explicitly recognized or annotated entities in this turn
     pub entities: Vec<String>,
     /// Index position of turn in the session
@@ -44,7 +44,7 @@ impl DialogueTurn {
             role: role.into(),
             content: content.into(),
             embedding: None,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             entities: Vec::new(),
             turn_index,
         }
@@ -63,7 +63,7 @@ impl DialogueTurn {
     }
 
     /// Builder method to set timestamp
-    pub fn with_timestamp(mut self, timestamp: DateTime<Utc>) -> Self {
+    pub fn with_timestamp(mut self, timestamp: Timestamp) -> Self {
         self.timestamp = timestamp;
         self
     }
@@ -89,7 +89,7 @@ pub struct SemanticSummaryCard {
     /// Compression ratio achieved (0.0 to 1.0 scale, e.g., 0.75 = 75% size reduction)
     pub compression_ratio: f32,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// Raw input character count
     pub raw_char_count: usize,
     /// Compressed output character count
@@ -396,7 +396,7 @@ impl SemanticCompressor {
             source_turn_ids: turn_ids,
             key_entities,
             compression_ratio,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             raw_char_count,
             compressed_char_count,
             metadata,
@@ -467,7 +467,7 @@ impl SemanticCompressor {
             source_turn_ids,
             key_entities,
             compression_ratio,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             raw_char_count,
             compressed_char_count,
             metadata,
@@ -484,8 +484,8 @@ impl SemanticCompressor {
             .iter()
             .map(|t| t.timestamp)
             .max()
-            .unwrap_or_else(Utc::now);
-        let elapsed_hours = (Utc::now() - latest_timestamp).num_hours();
+            .unwrap_or_else(Timestamp::now);
+        let elapsed_hours = (Timestamp::now().as_second() - latest_timestamp.as_second()) / 3600;
 
         elapsed_hours >= self.config.aged_session_hours as i64
     }

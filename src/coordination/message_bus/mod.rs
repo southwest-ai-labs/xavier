@@ -35,7 +35,7 @@ pub use dlq::*;
 pub use errors::*;
 pub use metrics::*;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ulid::Ulid;
@@ -102,7 +102,7 @@ pub struct AgentMessage {
     pub priority: MessagePriority,
 
     /// Timestamp
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 
     /// Correlation ID for request/response
     pub correlation_id: Option<String>,
@@ -131,7 +131,7 @@ impl AgentMessage {
             msg_type,
             content,
             priority: MessagePriority::default(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             correlation_id: None,
             reply_to: None,
             metadata: HashMap::new(),
@@ -206,7 +206,7 @@ pub struct Subscription {
 #[derive(Debug)]
 pub struct Response {
     pub message: AgentMessage,
-    pub received_at: DateTime<Utc>,
+    pub received_at: Timestamp,
 }
 
 /// Heartbeat configuration
@@ -233,8 +233,8 @@ pub struct AgentInfo {
     pub id: String,
     pub name: String,
     pub capabilities: Vec<String>,
-    pub registered_at: DateTime<Utc>,
-    pub last_heartbeat: DateTime<Utc>,
+    pub registered_at: Timestamp,
+    pub last_heartbeat: Timestamp,
     pub status: AgentStatus,
 }
 

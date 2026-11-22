@@ -125,7 +125,7 @@ impl MemoryQueryPort for QmdMemoryAdapter {
                     if let Some(meta_obj) = updated_doc.metadata.as_object_mut() {
                         meta_obj.insert(
                             "updated_at".to_string(),
-                            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+                            serde_json::json!(jiff::Timestamp::now().to_string()),
                         );
                         meta_obj.remove("_dedup_mode");
                     }

@@ -39,7 +39,12 @@ mod tests {
 
         secrets_engine.renew(&token, 3600).await.unwrap();
         let updated = secrets_engine.get_lease(&token).await.unwrap();
-        assert!(updated.expires_at > chrono::Utc::now() + chrono::Duration::minutes(59));
+        assert!(
+            updated.expires_at
+                > jiff::Timestamp::now()
+                    .checked_add(jiff::Span::new().minutes(59))
+                    .unwrap()
+        );
 
         secrets_engine.backoff(&token, 30).await.unwrap();
         let backed_off = secrets_engine.get_lease(&token).await.unwrap();

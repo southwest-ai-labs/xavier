@@ -4,7 +4,7 @@
 //! entities, relationships, property types, and serialization formats
 //! used throughout the knowledge graph layer.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 pub use xavier_core_logic::{EntityRecord, EntityType};
@@ -29,8 +29,8 @@ pub struct EntityRelationRecord {
     pub provenance: Vec<String>,
     pub confidence_score: f32,
     pub contradicts_edge_id: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl EntityRelationRecord {

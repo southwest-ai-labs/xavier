@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
@@ -160,8 +160,8 @@ impl CollectionStore {
                 col.owner_id,
                 access_json,
                 col.language,
-                col.created_at.to_rfc3339(),
-                col.updated_at.to_rfc3339(),
+                col.created_at.to_string(),
+                col.updated_at.to_string(),
             ],
         )
         .context("inserting doc_collection")?;
@@ -248,8 +248,8 @@ impl CollectionStore {
                 doc.error_message,
                 doc.sha256,
                 meta_json,
-                doc.ingested_at.to_rfc3339(),
-                doc.updated_at.to_rfc3339(),
+                doc.ingested_at.to_string(),
+                doc.updated_at.to_string(),
             ],
         )
         .context("inserting doc_entry")?;
@@ -267,7 +267,7 @@ impl CollectionStore {
     ) -> Result<()> {
         let conn = self.pool.get()?;
         let status_json = serde_json::to_string(status)?;
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
 
         if let Some(count) = chunk_count {
             conn.execute(
@@ -484,12 +484,12 @@ fn row_to_collection(row: &rusqlite::Row<'_>) -> Result<DocCollection> {
         owner_id: row.get(4)?,
         access: serde_json::from_str(&access_json).unwrap_or(CollectionAccess::Private),
         language: row.get(6)?,
-        created_at: DateTime::parse_from_rfc3339(&created_str)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now()),
-        updated_at: DateTime::parse_from_rfc3339(&updated_str)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now()),
+        created_at: created_str
+            .parse::<Timestamp>()
+            .unwrap_or_else(|_| Timestamp::now()),
+        updated_at: updated_str
+            .parse::<Timestamp>()
+            .unwrap_or_else(|_| Timestamp::now()),
     })
 }
 
@@ -521,12 +521,12 @@ fn row_to_doc(row: &rusqlite::Row<'_>) -> Result<DocEntry> {
         error_message: row.get(10)?,
         sha256: row.get(11)?,
         metadata: serde_json::from_str(&meta_json).unwrap_or_default(),
-        ingested_at: DateTime::parse_from_rfc3339(&ingested_str)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now()),
-        updated_at: DateTime::parse_from_rfc3339(&updated_str)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now()),
+        ingested_at: ingested_str
+            .parse::<Timestamp>()
+            .unwrap_or_else(|_| Timestamp::now()),
+        updated_at: updated_str
+            .parse::<Timestamp>()
+            .unwrap_or_else(|_| Timestamp::now()),
     })
 }
 

@@ -236,8 +236,8 @@ impl HybridSearcher {
                     .metadata
                     .get("updated_at")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.timestamp_millis());
+                    .and_then(|s| s.parse::<jiff::Timestamp>().ok())
+                    .map(|dt| dt.as_millisecond());
                 ScoredResult {
                     id: document.id.unwrap_or_else(|| document.path.clone()),
                     content: document.content,

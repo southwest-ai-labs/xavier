@@ -528,7 +528,7 @@ impl ServiceRegistry {
             node_id,
             kind: ServiceKind::Custom("health_snapshot".to_string()),
             payload,
-            ts: health.timestamp.timestamp(),
+            ts: health.timestamp.as_second(),
             classification: ClearanceLevel::Internal.as_str().to_uppercase(),
         };
         self.publish_telemetry(sample)

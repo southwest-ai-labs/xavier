@@ -150,7 +150,7 @@ pub fn get_last_accessed(record: &MemoryRecord) -> Timestamp {
         }
     }
     // Also check for standard lowercase format or fallback to updated_at
-    Timestamp::from_second(record.updated_at.timestamp()).unwrap_or_else(|_| Timestamp::now())
+    record.updated_at
 }
 
 /// Helper function to update/touch the last accessed time of a MemoryRecord.

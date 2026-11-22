@@ -2,7 +2,7 @@ use crate::agents::provider::config::ModelProviderConfig;
 use crate::agents::provider::types::LlmResponse;
 use crate::domain::proxy::types::{ApiTier, ProviderKind, ProviderQuota};
 use anyhow::{anyhow, Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use reqwest::Client;
 use serde_json::json;
 
@@ -63,7 +63,7 @@ pub(crate) async fn generate_gemini_legacy(
         requests_limit: Some(15), // Free tier estimate
         tokens_limit: Some(32768),
         resets_at: None,
-        last_checked: Utc::now(),
+        last_checked: Timestamp::now(),
     });
 
     Ok(LlmResponse { text, quota })

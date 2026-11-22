@@ -284,7 +284,7 @@ impl Default for TelegramConfig {
 
 use crate::domain::memory::MemoryRecord;
 use crate::ports::inbound::{AgentLifecyclePort, MemoryQueryPort, SecurityScanPort};
-use chrono::Utc;
+use jiff::Timestamp;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -1871,7 +1871,7 @@ mod tests {
             &db,
             "admin@x.io",
             code,
-            chrono::Utc::now().timestamp() + 5,
+            Timestamp::now().as_second() + 5,
         )
         .unwrap();
         assert!(user.is_some());
@@ -1880,7 +1880,7 @@ mod tests {
             &db,
             "admin@x.io",
             code,
-            chrono::Utc::now().timestamp() + 5,
+            Timestamp::now().as_second() + 5,
         )
         .unwrap();
         assert!(

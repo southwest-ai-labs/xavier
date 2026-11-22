@@ -684,7 +684,6 @@ use std::sync::LazyLock;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
 
     #[test]
     fn test_drift_threshold_default() {

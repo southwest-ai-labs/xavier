@@ -60,7 +60,7 @@ pub struct RawTurn {
     pub turn_index: usize,
     pub role: String,
     pub content: String,
-    pub timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    pub timestamp: Option<jiff::Timestamp>,
     pub model: Option<String>,
     pub file_paths: Vec<String>,
     pub meta: serde_json::Value,

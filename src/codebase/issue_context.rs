@@ -720,7 +720,7 @@ pub async fn pack_issue(issue_id: &str, repo: &str) -> Result<IssueContextPack> 
         _ => String::new(),
     };
 
-    let generated_at = chrono::Utc::now().to_rfc3339();
+    let generated_at = jiff::Timestamp::now().to_string();
 
     Ok(IssueContextPack {
         issue: issue_val,

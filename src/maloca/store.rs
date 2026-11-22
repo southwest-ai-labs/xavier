@@ -9,7 +9,7 @@ use super::params::network_parameters;
 use super::support_flow::{self, SupportStatus};
 use super::types::*;
 use anyhow::{bail, Context, Result};
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -179,7 +179,7 @@ impl MalocaStore {
                 actor_node_id: actor_node_id.into(),
                 genesis_node_id: GENESIS_NODE_ID.into(),
                 payload,
-                created_at: Utc::now().to_rfc3339(),
+                created_at: Timestamp::now().to_string(),
             },
         );
     }
@@ -187,7 +187,7 @@ impl MalocaStore {
     pub fn pack(&self) -> MalocaPack {
         let g = self.inner.read();
         MalocaPack {
-            generated_at: Utc::now().to_rfc3339(),
+            generated_at: Timestamp::now().to_string(),
             codegraph_indexed_at: None,
             codegraph_head: None,
             features_total: 0,
@@ -213,7 +213,7 @@ impl MalocaStore {
             title: body.title,
             body: body.body,
             status: "open".into(),
-            created_at: Utc::now().to_rfc3339(),
+            created_at: Timestamp::now().to_string(),
             feature_id: body.feature_id,
         };
         let mut g = self.inner.write();
@@ -286,7 +286,7 @@ impl MalocaStore {
             ticket_id: id.to_string(),
             xp: offer.microtask.reward_hint as i64,
             karma_delta: 1,
-            recorded_at: Utc::now().to_rfc3339(),
+            recorded_at: Timestamp::now().to_string(),
         };
         if let Some(node_id) = claimed_by {
             if let Some(node) = g.nodes.iter_mut().find(|n| n.node_id == node_id) {
@@ -345,7 +345,7 @@ impl MalocaStore {
     }
 
     pub fn list_proposals(&self) -> Vec<Proposal> {
-        self.close_due_proposals(Utc::now());
+        self.close_due_proposals(Timestamp::now());
         self.inner.read().proposals.clone()
     }
 
@@ -357,7 +357,7 @@ impl MalocaStore {
                 None
             }
         });
-        let created_at = Utc::now();
+        let created_at = Timestamp::now();
         let expires_at = expiry_after(created_at, network_param("proposal_duration_days", 7));
         let proposal = Proposal {
             id: format!("p-{}", short_id()),
@@ -365,9 +365,9 @@ impl MalocaStore {
             title: body.title,
             body: body.body,
             status: ProposalStatus::Open,
-            created_at: created_at.to_rfc3339(),
+            created_at: created_at.to_string(),
             locked_param: locked,
-            expires_at: expires_at.map(|t| t.to_rfc3339()),
+            expires_at: expires_at.map(|t| t.to_string()),
             outcome: None,
         };
         let mut g = self.inner.write();
@@ -390,7 +390,7 @@ impl MalocaStore {
     /// its current votes; eligible weight is the number of active nodes with
     /// karma >= `vote_karma_min` (1.0 each). Closed proposals are skipped, so a
     /// second call returns nothing. Returns the proposals closed by this call.
-    pub fn close_due_proposals(&self, now: DateTime<Utc>) -> Vec<Proposal> {
+    pub fn close_due_proposals(&self, now: Timestamp) -> Vec<Proposal> {
         let mut g = self.inner.write();
         let duration_days = network_param("proposal_duration_days", 7);
         let quorum_pct = network_param("quorum_pct_eligible", 30.0);
@@ -471,7 +471,7 @@ impl MalocaStore {
     /// Cast a vote. Requires active node with karma >= vote_karma_min.
     /// Manager role never adds extra weight (weight hardcoded = 1.0).
     pub fn cast_vote(&self, proposal_id: &str, body: CastVoteBody) -> Result<Vote> {
-        self.close_due_proposals(Utc::now());
+        self.close_due_proposals(Timestamp::now());
         let mut g = self.inner.write();
         let min_karma = Self::vote_karma_min(&g);
 
@@ -517,7 +517,7 @@ impl MalocaStore {
             node_id: body.node_id.clone(),
             choice: body.choice.clone(),
             weight: 1.0,
-            created_at: Utc::now().to_rfc3339(),
+            created_at: Timestamp::now().to_string(),
         };
 
         Self::append_decision(
@@ -580,7 +580,7 @@ impl MalocaStore {
             action_type: body.action_type,
             proposal_id: body.proposal_id.clone(),
             reason: body.reason.clone(),
-            created_at: Utc::now().to_rfc3339(),
+            created_at: Timestamp::now().to_string(),
         };
         Self::append_decision(
             &mut g,
@@ -637,19 +637,18 @@ fn network_param<T: std::str::FromStr>(key: &str, fallback: T) -> T {
 }
 
 /// `created_at + days`, or `None` when the duration is out of range (never expires).
-fn expiry_after(created_at: DateTime<Utc>, days: i64) -> Option<DateTime<Utc>> {
-    Duration::try_days(days).and_then(|d| created_at.checked_add_signed(d))
+fn expiry_after(created_at: Timestamp, days: i64) -> Option<Timestamp> {
+    let hours = days.checked_mul(24)?;
+    created_at.checked_add(Span::new().hours(hours)).ok()
 }
 
-fn parse_timestamp(raw: &str) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(raw)
-        .ok()
-        .map(|t| t.with_timezone(&Utc))
+fn parse_timestamp(raw: &str) -> Option<Timestamp> {
+    raw.parse::<Timestamp>().ok()
 }
 
 /// Whether a proposal is due at `now`. A stored `expires_at` wins; proposals
 /// saved before that field existed expire at `created_at + duration_days`.
-fn proposal_is_due(proposal: &Proposal, duration_days: i64, now: DateTime<Utc>) -> bool {
+fn proposal_is_due(proposal: &Proposal, duration_days: i64, now: Timestamp) -> bool {
     if let Some(expires_at) = proposal.expires_at.as_deref().and_then(parse_timestamp) {
         return now >= expires_at;
     }
@@ -693,7 +692,7 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
 /// so the corrupt bytes are preserved on disk instead of being lost the next
 /// time `persist()` writes a fresh (empty) state to the original path.
 fn quarantine_corrupt_file(path: &Path) {
-    let ts = Utc::now().format("%Y%m%dT%H%M%SZ");
+    let ts = Timestamp::now().strftime("%Y%m%dT%H%M%SZ");
     let quarantined = path.with_extension(format!("json.corrupt-{ts}"));
     match std::fs::rename(path, &quarantined) {
         Ok(()) => {
@@ -733,7 +732,7 @@ fn default_nodes() -> Vec<NodeRecord> {
 }
 
 fn default_state() -> PersistedState {
-    let now = Utc::now().to_rfc3339();
+    let now = Timestamp::now().to_string();
     let seed = Proposal {
         id: "p-genesis-params".into(),
         proposal_type: "network_parameter".into(),
@@ -1279,7 +1278,12 @@ mod tests {
             .iter_mut()
             .find(|p| p.id == proposal_id)
             .unwrap();
-        proposal.expires_at = Some((Utc::now() - Duration::days(1)).to_rfc3339());
+        proposal.expires_at = Some(
+            Timestamp::now()
+                .checked_sub(Span::new().hours(24))
+                .unwrap()
+                .to_string(),
+        );
     }
 
     fn new_proposal(store: &MalocaStore, title: &str) -> Proposal {
@@ -1330,7 +1334,7 @@ mod tests {
         let p = new_proposal(&store, "expiry");
         let created = parse_timestamp(&p.created_at).unwrap();
         let expires = parse_timestamp(p.expires_at.as_deref().unwrap()).unwrap();
-        assert_eq!(expires - created, Duration::days(7));
+        assert_eq!(expires.as_second() - created.as_second(), 7 * 86400);
         assert!(p.outcome.is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -1401,7 +1405,7 @@ mod tests {
         let open = find_proposal(&store, &p.id);
         assert_eq!(open.status, ProposalStatus::Open);
         assert!(open.outcome.is_none());
-        assert!(store.close_due_proposals(Utc::now()).is_empty());
+        assert!(store.close_due_proposals(Timestamp::now()).is_empty());
         assert!(closed_decisions(&store, &p.id).is_empty());
         let _ = std::fs::remove_dir_all(dir);
     }
@@ -1412,9 +1416,9 @@ mod tests {
         let p = new_proposal(&store, "close twice");
         expire_proposal(&store, &p.id);
 
-        let first = store.close_due_proposals(Utc::now());
+        let first = store.close_due_proposals(Timestamp::now());
         assert_eq!(first.len(), 1);
-        assert!(store.close_due_proposals(Utc::now()).is_empty());
+        assert!(store.close_due_proposals(Timestamp::now()).is_empty());
         assert_eq!(closed_decisions(&store, &p.id).len(), 1);
 
         // The close survives a restart.
@@ -1430,8 +1434,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("maloca-legacy-expiry-{}", short_id()));
         let maloca_dir = dir.join("maloca");
         std::fs::create_dir_all(&maloca_dir).unwrap();
-        let old = (Utc::now() - Duration::days(30)).to_rfc3339();
-        let fresh = Utc::now().to_rfc3339();
+        let old = Timestamp::now()
+            .checked_sub(Span::new().hours(30 * 24))
+            .unwrap()
+            .to_string();
+        let fresh = Timestamp::now().to_string();
         // No `expires_at` and no `outcome` keys: a store written before this change.
         let fixture = serde_json::json!({
             "support": [],

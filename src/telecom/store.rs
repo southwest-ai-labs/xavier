@@ -3,7 +3,7 @@
 //! Enforces PRAGMA journal_mode=WAL and PRAGMA busy_timeout=5000 to guarantee
 //! concurrent read/write isolation without database lock collisions.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -34,7 +34,7 @@ pub struct StoredMessage {
     pub encrypted_payload: Vec<u8>,
     pub sequence: u64,
     pub is_ephemeral: bool,
-    pub sent_at: DateTime<Utc>,
+    pub sent_at: Timestamp,
 }
 
 /// A stored telecom room metadata entry.
@@ -44,7 +44,7 @@ pub struct StoredRoom {
     pub name: String,
     pub clearance: String,
     pub is_group: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// A stored peer session state.
@@ -53,7 +53,7 @@ pub struct StoredSession {
     pub session_id: String,
     pub peer_node_id: String,
     pub state: String,
-    pub last_active: DateTime<Utc>,
+    pub last_active: Timestamp,
 }
 
 /// Database storage engine for the telecom subsystem.
@@ -139,7 +139,7 @@ impl TelecomStore {
                 msg.encrypted_payload,
                 msg.sequence,
                 msg.is_ephemeral as i32,
-                msg.sent_at.to_rfc3339()
+                msg.sent_at.to_string()
             ],
         )?;
         Ok(())
@@ -162,9 +162,9 @@ impl TelecomStore {
 
         let rows = stmt.query_map(params![room_id, limit as i64], |row| {
             let sent_at_str: String = row.get(6)?;
-            let sent_at = DateTime::parse_from_rfc3339(&sent_at_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now());
+            let sent_at = sent_at_str
+                .parse::<Timestamp>()
+                .unwrap_or_else(|_| Timestamp::now());
 
             Ok(StoredMessage {
                 message_id: row.get(0)?,
@@ -195,7 +195,7 @@ impl TelecomStore {
                 room.name,
                 room.clearance,
                 room.is_group as i32,
-                room.created_at.to_rfc3339()
+                room.created_at.to_string()
             ],
         )?;
         Ok(())
@@ -207,13 +207,13 @@ impl TelecomStore {
         session_id: &str,
         peer_node_id: &str,
         state: &str,
-        last_active: DateTime<Utc>,
+        last_active: Timestamp,
     ) -> Result<(), TelecomStoreError> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT OR REPLACE INTO telecom_sessions (session_id, peer_node_id, state, last_active)
              VALUES (?1, ?2, ?3, ?4)",
-            params![session_id, peer_node_id, state, last_active.to_rfc3339()],
+            params![session_id, peer_node_id, state, last_active.to_string()],
         )?;
         Ok(())
     }
@@ -236,7 +236,7 @@ mod tests {
             name: "Operations Room".to_string(),
             clearance: "Internal".to_string(),
             is_group: false,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         assert!(store.persist_room(&room).is_ok());
@@ -252,7 +252,7 @@ mod tests {
                 name: "Legal Team".to_string(),
                 clearance: "Confidential".to_string(),
                 is_group: true,
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             })
             .unwrap();
 
@@ -264,7 +264,7 @@ mod tests {
                 encrypted_payload: vec![i as u8, 0, 1],
                 sequence: i,
                 is_ephemeral: false,
-                sent_at: Utc::now(),
+                sent_at: Timestamp::now(),
             };
             store.persist_message(&msg).unwrap();
         }
@@ -279,7 +279,7 @@ mod tests {
     fn test_session_state_update() {
         let store = TelecomStore::open_in_memory().unwrap();
         assert!(store
-            .update_session_state("sess-xyz", "peer-bob", "Established", Utc::now())
+            .update_session_state("sess-xyz", "peer-bob", "Established", Timestamp::now())
             .is_ok());
     }
 }

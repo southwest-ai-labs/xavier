@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -83,8 +83,8 @@ pub struct SecretLease {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret_value: Option<String>,
     pub agent_id: String,
-    pub expires_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
+    pub expires_at: Timestamp,
+    pub created_at: Timestamp,
 }
 
 impl fmt::Debug for SecretLease {
@@ -103,7 +103,7 @@ impl fmt::Debug for SecretLease {
 impl SecretLease {
     /// Is expired.
     pub fn is_expired(&self) -> bool {
-        Utc::now() > self.expires_at
+        Timestamp::now() > self.expires_at
     }
 }
 
@@ -132,8 +132,8 @@ pub struct SecretLeaseView {
     pub lease_id: String,
     pub secret_name: String,
     pub agent_id: String,
-    pub expires_at: DateTime<Utc>,
-    pub created_at: DateTime<Utc>,
+    pub expires_at: Timestamp,
+    pub created_at: Timestamp,
 }
 
 impl SecretLeaseView {
@@ -200,7 +200,7 @@ impl KeyLendingEngine {
             }
         };
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut lapsed = Vec::new();
         {
             let mut leases = self.leases.write().await;
@@ -284,8 +284,10 @@ impl KeyLendingEngine {
         self.ensure_restored().await;
 
         let token = Uuid::new_v4().to_string();
-        let now = Utc::now();
-        let expires_at = now + Duration::seconds(ttl_secs as i64);
+        let now = Timestamp::now();
+        let expires_at = now
+            .checked_add(Span::new().seconds(ttl_secs as i64))
+            .unwrap();
 
         let lease = SecretLease {
             token: token.clone(),
@@ -391,9 +393,11 @@ impl KeyLendingEngine {
     pub async fn renew_for_agent(&self, agent_id: &str, ttl_secs: u64) -> usize {
         self.ensure_restored().await;
 
-        let renewed: Vec<(String, DateTime<Utc>)> = {
+        let renewed: Vec<(String, Timestamp)> = {
             let mut leases = self.leases.write().await;
-            let new_expiry = Utc::now() + Duration::seconds(ttl_secs as i64);
+            let new_expiry = Timestamp::now()
+                .checked_add(Span::new().seconds(ttl_secs as i64))
+                .unwrap();
             leases
                 .values_mut()
                 .filter(|lease| lease.agent_id == agent_id)
@@ -516,8 +520,10 @@ impl KeyLendingEngine {
         let new_expiry = {
             let mut leases = self.leases.write().await;
             leases.get_mut(token).map(|lease| {
-                let now = Utc::now();
-                lease.expires_at = now + Duration::seconds(ttl_secs as i64);
+                let now = Timestamp::now();
+                lease.expires_at = now
+                    .checked_add(Span::new().seconds(ttl_secs as i64))
+                    .unwrap();
                 lease.expires_at
             })
         };
@@ -546,13 +552,15 @@ impl KeyLendingEngine {
         let new_expiry = {
             let mut leases = self.leases.write().await;
             leases.get_mut(token).map(|lease| {
-                let now = Utc::now();
+                let now = Timestamp::now();
                 let base = if lease.is_expired() {
                     now
                 } else {
                     lease.expires_at
                 };
-                lease.expires_at = base + Duration::seconds(seconds as i64);
+                lease.expires_at = base
+                    .checked_add(Span::new().seconds(seconds as i64))
+                    .unwrap();
                 lease.expires_at
             })
         };
@@ -704,7 +712,7 @@ mod tests {
 
     #[test]
     fn test_secret_lease_serialization_redaction() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let lease = SecretLease {
             token: "test-token".to_string(),
             secret_name: "test-secret".to_string(),
@@ -984,13 +992,15 @@ mod tests {
         let (project_id, _dir) = isolated_leases_project("restore-expired");
         // Seed a lease whose TTL lapsed while "the process was down" --
         // written directly to the store, bypassing any engine's clock.
-        let past = Utc::now() - Duration::seconds(120);
+        let past = Timestamp::now()
+            .checked_sub(Span::new().seconds(120))
+            .unwrap();
         crate::secrets::audit::insert_lease(
             &project_id,
             "lapsed-token",
             "lapsed-secret",
             "agent-lapsed",
-            past - Duration::seconds(60),
+            past.checked_sub(Span::new().seconds(60)).unwrap(),
             past,
         )
         .await
@@ -1026,13 +1036,15 @@ mod tests {
             .lend("kept-secret", Some("s3cr3t"), "agent-kept", 3600)
             .await
             .unwrap();
-        let past = Utc::now() - Duration::seconds(60);
+        let past = Timestamp::now()
+            .checked_sub(Span::new().seconds(60))
+            .unwrap();
         crate::secrets::audit::insert_lease(
             &project_id,
             "dropped-token",
             "dropped-secret",
             "agent-dropped",
-            past - Duration::seconds(60),
+            past.checked_sub(Span::new().seconds(60)).unwrap(),
             past,
         )
         .await
@@ -1073,7 +1085,7 @@ mod tests {
 
     #[test]
     fn lease_view_serializes_only_opaque_fields() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let lease = SecretLease {
             token: "raw-token-value".to_string(),
             secret_name: "db-password".to_string(),

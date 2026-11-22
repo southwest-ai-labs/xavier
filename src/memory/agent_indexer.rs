@@ -297,7 +297,7 @@ mod scan_persistence_tests {
             let reloaded = QmdMemory::new_lazy(WORKSPACE);
             reloaded.set_store(store.clone()).await;
             let second = persist_scan(&indexer, &reloaded).await;
-            assert_eq!(first.last_modified, "2023-11-14T22:13:20+00:00");
+            assert_eq!(first.last_modified, "2023-11-14T22:13:20Z");
             assert_eq!(first.content, second.content);
             assert_eq!(first.last_modified, second.last_modified);
             let after = records(&store).await;
@@ -333,7 +333,7 @@ mod scan_persistence_tests {
             assert_eq!(after[0].id, before.id);
             assert_eq!(first.path, second.path);
             assert_ne!(first.content, second.content);
-            assert_eq!(second.last_modified, "2023-11-14T22:15:00+00:00");
+            assert_eq!(second.last_modified, "2023-11-14T22:15:00Z");
             assert_eq!(after[0].content, second.content);
             assert_eq!(after[0].metadata["last_modified"], second.last_modified);
             assert_eq!(reloaded.all_documents().await.len(), 1);

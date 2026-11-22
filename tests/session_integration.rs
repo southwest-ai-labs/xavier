@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo test --test integration -- session
 
-use chrono::Utc;
+use jiff::Timestamp;
 use reqwest::Client;
 use xavier::session::event_mapper::PanelThreadEntry;
 use xavier::session::types::{SessionEvent, SessionEventType};
@@ -19,7 +19,7 @@ mod session_event_tests {
     async fn test_webhook_session_event() {
         let client = Client::new();
         let session_id = format!("test-session-{}", ulid::Ulid::new());
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
 
         let payload = SessionEvent {
             session_id: session_id.clone(),
@@ -60,7 +60,7 @@ mod session_event_tests {
     async fn test_webhook_session_event_with_tool_call() {
         let client = Client::new();
         let session_id = format!("test-session-tool-{}", ulid::Ulid::new());
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
 
         let payload = SessionEvent {
             session_id: session_id.clone(),
@@ -102,7 +102,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_maps_session_to_panel_thread() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -129,7 +129,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_skips_session_start() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-start-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -146,7 +146,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_skips_session_end() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-end-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -163,7 +163,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_maps_tool_call() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-tool-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -181,7 +181,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_maps_tool_result() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-result-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -199,7 +199,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_maps_error() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-error-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -217,7 +217,7 @@ mod event_mapper_tests {
 
     #[test]
     fn test_event_mapper_handles_empty_content() {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let session_id = format!("mapper-test-empty-{}", ulid::Ulid::new());
 
         let session_event = SessionEvent {
@@ -246,10 +246,7 @@ mod auto_verifier_tests {
         let xavier_url = "http://localhost:8006";
         let auth_token = TEST_AUTH_TOKEN;
         let path = format!("test/verification/{}", ulid::Ulid::new());
-        let test_content = format!(
-            "Verification test content {}",
-            chrono::Utc::now().to_rfc3339()
-        );
+        let test_content = format!("Verification test content {}", Timestamp::now());
 
         let result =
             AutoVerifier::verify_save(&client, xavier_url, auth_token, &path, &test_content).await;

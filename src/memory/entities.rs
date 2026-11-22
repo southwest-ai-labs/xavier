@@ -5,7 +5,7 @@
 //! Concept, Location, and Event entity types with trust scoring and
 //! property tracking.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -75,9 +75,9 @@ pub struct SemanticEntity {
     /// Trust score [0.0, 1.0] based on confirmation count
     pub trust_score: f32,
     /// Timestamp of last update
-    pub last_updated: DateTime<Utc>,
+    pub last_updated: Timestamp,
     /// When this entity was first created
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// Number of times this entity has been confirmed
     #[serde(default)]
     pub confirmation_count: u32,
@@ -92,7 +92,7 @@ pub struct SemanticEntity {
 impl SemanticEntity {
     /// Create a new entity with default trust score
     pub fn new(name: String, entity_type: SemanticEntityType) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: ulid::Ulid::new().to_string(),
             name,
@@ -109,7 +109,7 @@ impl SemanticEntity {
 
     /// Create a new entity with specific ID (for testing/import)
     pub fn with_id(id: String, name: String, entity_type: SemanticEntityType) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id,
             name,
@@ -127,7 +127,7 @@ impl SemanticEntity {
     /// Add a property to the entity
     pub fn add_property(&mut self, key: impl Into<String>, value: serde_json::Value) {
         self.properties.insert(key.into(), value);
-        self.last_updated = Utc::now();
+        self.last_updated = Timestamp::now();
     }
 
     /// Get a property value
@@ -139,7 +139,7 @@ impl SemanticEntity {
     pub fn add_alias(&mut self, alias: String) {
         if !self.aliases.contains(&alias) {
             self.aliases.push(alias);
-            self.last_updated = Utc::now();
+            self.last_updated = Timestamp::now();
         }
     }
 
@@ -148,7 +148,7 @@ impl SemanticEntity {
         if !self.source_memories.contains(&memory_id) {
             self.source_memories.push(memory_id);
             self.confirmation_count += 1;
-            self.last_updated = Utc::now();
+            self.last_updated = Timestamp::now();
             // Update trust score based on confirmation count
             self.update_trust_score();
         }
@@ -213,7 +213,7 @@ pub struct EntitySummary {
     pub entity_type: SemanticEntityType,
     pub trust_score: f32,
     pub confirmation_count: u32,
-    pub last_updated: DateTime<Utc>,
+    pub last_updated: Timestamp,
 }
 
 /// A relationship/edge between two entities in the semantic graph.
@@ -233,9 +233,9 @@ pub struct SemanticRelation {
     #[serde(default)]
     pub confirmation_count: u32,
     /// When this relation was first created
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// When this relation was last updated
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     /// Source memories where this relationship was mentioned
     #[serde(default)]
     pub source_memories: Vec<String>,
@@ -247,7 +247,7 @@ pub struct SemanticRelation {
 impl SemanticRelation {
     /// Create a new relation
     pub fn new(source_id: String, target_id: String, relation_type: String) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: ulid::Ulid::new().to_string(),
             source_id,
@@ -267,7 +267,7 @@ impl SemanticRelation {
         if !self.source_memories.contains(&memory_id) {
             self.source_memories.push(memory_id);
             self.confirmation_count += 1;
-            self.updated_at = Utc::now();
+            self.updated_at = Timestamp::now();
             // Update weight based on confirmation count
             self.weight = (0.3 + 0.4 * (self.confirmation_count as f32).min(3.0) / 3.0).min(1.0);
         }
@@ -276,7 +276,7 @@ impl SemanticRelation {
     /// Add a property to the relation
     pub fn add_property(&mut self, key: impl Into<String>, value: serde_json::Value) {
         self.properties.insert(key.into(), value);
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
     }
 }
 

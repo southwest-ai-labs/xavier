@@ -3,7 +3,7 @@
 //! Schedules and triggers mini-expert LLM fine-tuning jobs during configured night windows
 //! when sufficient curated human challenge datasets are ready.
 
-use chrono::{DateTime, Timelike, Utc};
+use jiff::{Timestamp, Zoned};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -29,7 +29,7 @@ pub struct TrainingJob {
     pub provider: ComputeProvider,
     pub dataset_path: String,
     pub status: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 impl TrainingJob {
@@ -40,7 +40,7 @@ impl TrainingJob {
             provider,
             dataset_path: dataset_path.into(),
             status: "pending".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         }
     }
 }
@@ -115,7 +115,7 @@ impl NightTrainer {
 
     /// Checks if current UTC hour is within the configured training window.
     pub fn is_training_window(&self) -> bool {
-        self.is_training_window_at(Utc::now().hour())
+        self.is_training_window_at(Zoned::now().hour() as u32)
     }
 
     /// Checks if a specific UTC hour is within the configured training window.
@@ -259,7 +259,7 @@ mod tests {
         if !trainer.is_training_window() {
             assert!(!trainer.should_train());
         } else {
-            let current_hour = Utc::now().hour();
+            let current_hour = Zoned::now().hour() as u32;
             let disjoint_config = config(
                 (current_hour + 12) % 24,
                 (current_hour + 13) % 24,

@@ -263,7 +263,7 @@ fn export_jsonl(
                 "content": name,
                 "metadata": metadata,
                 "hash": hash,
-                "ts": chrono::Utc::now().to_rfc3339(),
+                "ts": jiff::Timestamp::now().to_string(),
             }))?);
         }
     }
@@ -404,8 +404,8 @@ fn insert_memory(conn: &Connection, rec: &MemoryRecord) -> Result<()> {
             rec.encrypted_dek,
             rec.content_iv,
             rec.metadata_iv,
-            rec.created_at.to_rfc3339(),
-            rec.updated_at.to_rfc3339(),
+            rec.created_at.to_string(),
+            rec.updated_at.to_string(),
             rec.revision,
             rec.primary as i32,
             rec.level.as_str(),

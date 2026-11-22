@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use std::time::Duration;
 use xavier::humanchallenge::{
     ChallengeStatus, ChallengeType, HumanChallengeCron, HumanChallengeCronConfig,
@@ -18,7 +18,7 @@ fn test_humanchallenge_store_crud() {
         raw_content: "Decision A contradicts Decision B".to_string(),
         confidence_score: 0.95,
         status: ChallengeStatus::Candidate,
-        created_at: Utc::now(),
+        created_at: Timestamp::now(),
         answered_at: None,
         response: None,
         points_awarded: 0,
@@ -71,7 +71,7 @@ fn test_humanchallenge_farming_summary() {
             raw_content: "raw text".to_string(),
             confidence_score: 0.88,
             status: ChallengeStatus::Candidate,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             answered_at: None,
             response: None,
             points_awarded: 0,
@@ -80,7 +80,7 @@ fn test_humanchallenge_farming_summary() {
         store.save_event(&event).expect("save event");
     }
 
-    let ym = Utc::now().format("%Y-%m").to_string();
+    let ym = Timestamp::now().strftime("%Y-%m").to_string();
     let summary = store.get_farming_summary(&ym).expect("get farming summary");
     assert_eq!(summary.year_month, ym);
     assert_eq!(summary.total_points, 0);
@@ -105,7 +105,7 @@ fn test_humanchallenge_scanner_heuristics() {
         SessionEvent {
             session_id: "sess-001".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Decidí que la base de datos debe ser PostgreSQL, sin embargo en el archivo anterior declaré SQLite.".to_string()),
             metadata: None,
         }
@@ -131,7 +131,7 @@ fn test_humanchallenge_cron_process_and_award() {
     let events = vec![SessionEvent {
         session_id: "sess-cron-01".to_string(),
         event_type: SessionEventType::Message,
-        timestamp: Utc::now(),
+        timestamp: Timestamp::now(),
         content: Some("He decidido migrar a NixOS pero sin embargo mantengo Ubuntu.".to_string()),
         metadata: None,
     }];

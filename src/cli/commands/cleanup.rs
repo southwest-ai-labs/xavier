@@ -4,7 +4,7 @@
 //! reports the legacy sqlite store and removes it with the `--apply` flag.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use std::path::{Path, PathBuf};
 
 /// Handle the cleanup command.
@@ -39,13 +39,14 @@ pub async fn handle_cleanup(dry_run: bool, apply: bool, days: u64) -> Result<()>
                 let _filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
                 let metadata = std::fs::metadata(&path)?;
                 let file_size = metadata.len();
-                let modified: DateTime<Utc> = metadata.modified()?.into();
-                let age = Utc::now().signed_duration_since(modified);
+                let modified =
+                    Timestamp::try_from(metadata.modified()?).unwrap_or(Timestamp::UNIX_EPOCH);
+                let age_days = (Timestamp::now().as_second() - modified.as_second()) / 86400;
 
                 let is_empty = file_size <= 4096;
 
                 // Check age condition
-                let matches_age = age.num_days() >= days as i64;
+                let matches_age = age_days >= days as i64;
 
                 if is_empty && matches_age {
                     qualified_for_deletion.push((path, file_size, modified));
@@ -73,12 +74,7 @@ pub async fn handle_cleanup(dry_run: bool, apply: bool, days: u64) -> Result<()>
         println!("\n🗑️  Empty databases to purge:");
         for (path, size, modified) in &qualified_for_deletion {
             let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-            println!(
-                "   - {} ({} bytes, modified: {})",
-                filename,
-                size,
-                modified.to_rfc3339()
-            );
+            println!("   - {} ({} bytes, modified: {})", filename, size, modified);
         }
 
         if !is_dry_run {
@@ -116,12 +112,7 @@ pub async fn handle_cleanup(dry_run: bool, apply: bool, days: u64) -> Result<()>
         println!("\n🛡️  Active databases surviving:");
         for (path, size, modified) in &surviving_dbs {
             let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-            println!(
-                "   - {} ({} bytes, modified: {})",
-                filename,
-                size,
-                modified.to_rfc3339()
-            );
+            println!("   - {} ({} bytes, modified: {})", filename, size, modified);
         }
 
         // Run checkpoints and vacuums on surviving databases to optimize them as per WAL mode technical research
@@ -172,11 +163,12 @@ pub async fn handle_cleanup(dry_run: bool, apply: bool, days: u64) -> Result<()>
         for legacy_path in legacy_paths {
             let metadata = std::fs::metadata(&legacy_path)?;
             let size = metadata.len();
-            let modified: DateTime<Utc> = metadata.modified()?.into();
+            let modified =
+                Timestamp::try_from(metadata.modified()?).unwrap_or(Timestamp::UNIX_EPOCH);
 
             println!("   Found legacy store at: {}", legacy_path.display());
             println!("   Size: {} bytes", size);
-            println!("   Last modified: {}", modified.to_rfc3339());
+            println!("   Last modified: {}", modified);
 
             // Report table and row counts
             let mut total_rows = 0;

@@ -43,7 +43,7 @@ impl PublicNodeIdentity {
             node_id: keys.node_id.as_str().to_string(),
             ed25519_public_hex: crate::crypto::hex_encode(keys.ed25519_public),
             ml_dsa_commitment_hex: crate::crypto::hex_encode(keys.ml_dsa_commitment),
-            created_at: chrono::Utc::now().to_rfc3339(),
+            created_at: jiff::Timestamp::now().to_string(),
         }
     }
 }
@@ -191,7 +191,7 @@ impl NodeStore {
             salt_hex: crate::crypto::hex_encode(salt),
             nonce_hex: crate::crypto::hex_encode(nonce),
             ciphertext_hex: crate::crypto::hex_encode(ciphertext),
-            created_at: chrono::Utc::now().to_rfc3339(),
+            created_at: jiff::Timestamp::now().to_string(),
         })
     }
 }

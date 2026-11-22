@@ -287,9 +287,8 @@ fn issue_writes_private_file_and_only_metadata_to_json() {
     let body: Value = serde_json::from_str(requests[0].split_once("\r\n\r\n").unwrap().1).unwrap();
     assert_eq!(body["name"], "reader");
     assert_eq!(body["scopes"], json!(["read"]));
-    let expiry =
-        chrono::DateTime::parse_from_rfc3339(body["expires_at"].as_str().unwrap()).unwrap();
-    assert!((expiry.timestamp() - chrono::Utc::now().timestamp() - 7200).abs() < 10);
+    let expiry: jiff::Timestamp = body["expires_at"].as_str().unwrap().parse().unwrap();
+    assert!((expiry.as_second() - jiff::Timestamp::now().as_second() - 7200).abs() < 10);
 }
 
 #[test]

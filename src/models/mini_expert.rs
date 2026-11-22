@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -16,7 +16,7 @@ pub struct MiniExpert {
     pub clearance: ClearanceLevel,
     pub model_path: String,
     pub dataset_id: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// Registry to load, save, and manage MiniExperts.
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_mini_expert_instantiation() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let expert = MiniExpert {
             id: "expert-123".to_string(),
             name: "Iroh Transport Expert".to_string(),
@@ -164,7 +164,7 @@ mod tests {
             clearance: ClearanceLevel::Confidential,
             model_path: "/models/gara_expert.gguf".to_string(),
             dataset_id: "dataset-xyz".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         registry.register(expert.clone()).unwrap();
@@ -187,7 +187,7 @@ mod tests {
             clearance: ClearanceLevel::TopSecret,
             model_path: "/models/xavier_core.gguf".to_string(),
             dataset_id: "dataset-123".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         registry.register(expert.clone()).unwrap();
@@ -218,7 +218,7 @@ mod tests {
             clearance: ClearanceLevel::Unclassified,
             model_path: "/models/temp.gguf".to_string(),
             dataset_id: "dataset-temp".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         registry.register(expert).unwrap();
@@ -247,7 +247,7 @@ mod tests {
             clearance: ClearanceLevel::Unclassified,
             model_path: "/models/1.gguf".to_string(),
             dataset_id: "ds1".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         let expert2 = MiniExpert {
@@ -258,7 +258,7 @@ mod tests {
             clearance: ClearanceLevel::Secret,
             model_path: "/models/2.gguf".to_string(),
             dataset_id: "ds2".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         registry.register(expert1).unwrap();

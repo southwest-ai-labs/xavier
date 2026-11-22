@@ -1,6 +1,6 @@
 //! Integration tests for hierarchical semantic memory compression
 
-use chrono::{Duration, Utc};
+use jiff::{Span, Timestamp};
 use xavier::memory::compression::{DialogueTurn, SemanticCompressor, SemanticCompressorConfig};
 
 #[test]
@@ -172,10 +172,10 @@ fn test_aged_session_detection() {
     });
 
     let recent_turn = DialogueTurn::new("t1", "recent-sess", "user", "Recent message", 0)
-        .with_timestamp(Utc::now());
+        .with_timestamp(Timestamp::now());
     assert!(!compressor.is_session_aged(&[recent_turn]));
 
-    let old_timestamp = Utc::now() - Duration::hours(48);
+    let old_timestamp = Timestamp::now().checked_sub(Span::new().hours(48)).unwrap();
     let aged_turn = DialogueTurn::new("t2", "aged-sess", "user", "Old message", 0)
         .with_timestamp(old_timestamp);
     assert!(compressor.is_session_aged(&[aged_turn]));

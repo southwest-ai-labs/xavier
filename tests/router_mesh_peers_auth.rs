@@ -54,7 +54,7 @@ fn workspace_token(identity: &NodeIdentity, workspace_id: &str) -> String {
         "endpoint": "http://localhost",
         "public_key_hex": xavier::crypto::hex_encode(&identity.public_key),
         "workspace_id": workspace_id,
-        "expires_at": chrono::Utc::now().timestamp() + 3600,
+        "expires_at": jiff::Timestamp::now().as_second() + 3600,
     });
     let payload_str = serde_json::to_string(&payload).expect("payload json");
     let signature = identity.sign(payload_str.as_bytes());

@@ -1,6 +1,6 @@
 //! Structured security audit logger for clearance rejections & signature verification (#2398 / WAVE-27.20)
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -46,7 +46,7 @@ pub struct SecurityAuditRecord {
     pub event_type: SecurityEventType,
     pub node_id: String,
     pub details: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// Thread-safe audit logger storing security events in SQLite.
@@ -109,7 +109,7 @@ impl TelecomAuditLogger {
             event_type,
             node_id: node_id.to_string(),
             details: details.to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         };
 
         let conn = self.conn.lock().unwrap();
@@ -121,7 +121,7 @@ impl TelecomAuditLogger {
                 record.event_type.as_str(),
                 record.node_id,
                 record.details,
-                record.timestamp.to_rfc3339()
+                record.timestamp.to_string()
             ],
         )?;
 
@@ -150,9 +150,9 @@ impl TelecomAuditLogger {
                 _ => SecurityEventType::MalformedPacket,
             };
             let ts_str: String = row.get(4)?;
-            let timestamp = DateTime::parse_from_rfc3339(&ts_str)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now());
+            let timestamp = ts_str
+                .parse::<Timestamp>()
+                .unwrap_or_else(|_| Timestamp::now());
 
             Ok(SecurityAuditRecord {
                 event_id: row.get(0)?,

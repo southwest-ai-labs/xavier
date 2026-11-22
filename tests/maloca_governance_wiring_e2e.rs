@@ -4,8 +4,8 @@ use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
 };
-use chrono::{Duration, Utc};
 use http_body_util::BodyExt;
+use jiff::{Span, Timestamp};
 use serde_json::json;
 use std::fs;
 use tower::util::ServiceExt;
@@ -95,7 +95,10 @@ async fn proposal_lifecycle_e2e() {
     let mut state = read_store_json(&dir);
     for p in state["proposals"].as_array_mut().unwrap() {
         if p["id"] == prop_id {
-            p["expires_at"] = json!((Utc::now() - Duration::days(1)).to_rfc3339());
+            p["expires_at"] = json!(Timestamp::now()
+                .checked_sub(Span::new().hours(24))
+                .unwrap()
+                .to_string());
         }
     }
     write_store_json(&dir, state);
@@ -200,7 +203,10 @@ async fn governance_proposal_rejection_e2e() {
     let mut state = read_store_json(&dir);
     for p in state["proposals"].as_array_mut().unwrap() {
         if p["id"] == prop_id {
-            p["expires_at"] = json!((Utc::now() - Duration::days(1)).to_rfc3339());
+            p["expires_at"] = json!(Timestamp::now()
+                .checked_sub(Span::new().hours(24))
+                .unwrap()
+                .to_string());
         }
     }
     write_store_json(&dir, state);

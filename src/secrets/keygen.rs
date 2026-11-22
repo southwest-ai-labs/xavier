@@ -71,8 +71,8 @@ pub struct KeyMetadata {
     pub scope: String,
     /// Lifetime in seconds; `0` means "never expires".
     pub ttl_secs: u64,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: jiff::Timestamp,
+    pub expires_at: Option<jiff::Timestamp>,
     pub rotation_count: u32,
     pub fingerprint: String,
 }
@@ -284,7 +284,7 @@ pub fn generate_key(
     name: &str,
     scope: KeyScope,
     ttl_secs: u64,
-    now: chrono::DateTime<chrono::Utc>,
+    now: jiff::Timestamp,
 ) -> SecretResult<GeneratedKey> {
     validate_entry_names(name)?;
     let value = generate_key_value(scope)?;
@@ -294,7 +294,10 @@ pub fn generate_key(
 
     let previous = load_metadata(vault, name);
     let rotation_count = previous.map_or(0, |p| p.rotation_count.saturating_add(1));
-    let expires_at = (ttl_secs > 0).then(|| now + chrono::Duration::seconds(ttl_secs as i64));
+    let expires_at = (ttl_secs > 0).then(|| {
+        now.checked_add(jiff::Span::new().seconds(ttl_secs as i64))
+            .unwrap_or(now)
+    });
     let fingerprint = fingerprint(&value);
 
     let key = GeneratedKey {
@@ -319,7 +322,7 @@ pub fn format_generate_output(key: &GeneratedKey) -> String {
     let expiry = key
         .metadata
         .expires_at
-        .map(|t| t.to_rfc3339())
+        .map(|t| t.to_string())
         .unwrap_or_else(|| "never".to_string());
     format!(
         "{}: env={} backend=hardware-vault fingerprint={} ttl_secs={} expires_at={} rotation={} value=<hidden>",
@@ -410,8 +413,8 @@ mod tests {
         out
     }
 
-    fn now() -> chrono::DateTime<chrono::Utc> {
-        chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("valid timestamp")
+    fn now() -> jiff::Timestamp {
+        jiff::Timestamp::from_second(1_700_000_000).expect("valid timestamp")
     }
 
     #[test]
@@ -661,7 +664,7 @@ mod tests {
                 name: "test-key".to_string(),
                 scope: "test".to_string(),
                 ttl_secs: 0,
-                created_at: chrono::Utc::now(),
+                created_at: jiff::Timestamp::now(),
                 expires_at: None,
                 rotation_count: 0,
                 fingerprint: "fp".to_string(),

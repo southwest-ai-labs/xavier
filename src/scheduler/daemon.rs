@@ -514,7 +514,7 @@ async fn run_auto_tune(memory: &Arc<QmdMemory>) -> anyhow::Result<()> {
 
     // 6. Persist the result so the next pass and the CLI share the baseline.
     let entry = HistoryEntry {
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: jiff::Timestamp::now().to_string(),
         baseline: current,
         proposal,
     };
@@ -738,7 +738,6 @@ mod daemon_telemetry_tests {
     use crate::memory::manager::core::MemoryManager;
     use crate::memory::qmd_memory::QmdMemory;
     use crate::mesh::{NodeId, RetentionPolicy, TelemetryCollector};
-    use chrono::Utc;
     use std::collections::HashMap;
 
     #[tokio::test]
@@ -747,7 +746,7 @@ mod daemon_telemetry_tests {
         let mut collector = TelemetryCollector::new(node_id);
         collector.set_retention_policy(RetentionPolicy::Standard { days: 1 });
 
-        let old_ts = Utc::now().timestamp() - (2 * 86400);
+        let old_ts = jiff::Timestamp::now().as_second() - (2 * 86400);
         {
             let mut store = collector.collector().lock().unwrap();
             store.insert(

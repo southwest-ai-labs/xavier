@@ -3,7 +3,7 @@
 //! Tracks peer state through Init, Handshaking, Established, Expired, and Terminated,
 //! ensuring cryptographic authenticity and automated heartbeat liveness.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,7 +47,7 @@ pub struct HandshakeChallenge {
     pub initiator_node_id: String,
     pub initiator_ephemeral_pubkey: [u8; 32],
     pub challenge_nonce: [u8; 32],
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// Response returned to finalize session establishment.
@@ -65,7 +65,7 @@ pub struct KeepAliveBeacon {
     pub session_id: String,
     pub node_id: String,
     pub sequence: u64,
-    pub sent_at: DateTime<Utc>,
+    pub sent_at: Timestamp,
 }
 
 /// Active authenticated session context with a peer node.
@@ -77,8 +77,8 @@ pub struct PeerSession {
     pub ephemeral_keypair: TelecomKeypair,
     pub remote_ephemeral_pubkey: Option<[u8; 32]>,
     pub ratchet: Option<SessionRatchet>,
-    pub created_at: DateTime<Utc>,
-    pub last_heartbeat: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub last_heartbeat: Timestamp,
     pub heartbeat_sequence: u64,
 }
 
@@ -96,7 +96,7 @@ impl PeerSession {
         let keypair = TelecomKeypair::generate();
         let mut nonce = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut nonce);
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         let challenge = HandshakeChallenge {
             session_id: sid.clone(),
@@ -141,7 +141,7 @@ impl PeerSession {
         self.remote_ephemeral_pubkey = Some(response.responder_ephemeral_pubkey);
         self.ratchet = Some(SessionRatchet::new(root_key));
         self.state = SessionState::Established;
-        self.last_heartbeat = Utc::now();
+        self.last_heartbeat = Timestamp::now();
 
         Ok(())
     }
@@ -156,7 +156,7 @@ impl PeerSession {
             return Err(TelecomSessionError::SessionExpired);
         }
 
-        self.last_heartbeat = Utc::now();
+        self.last_heartbeat = Timestamp::now();
         self.heartbeat_sequence = beacon.sequence;
         Ok(())
     }
@@ -166,8 +166,8 @@ impl PeerSession {
         if self.state != SessionState::Established {
             return false;
         }
-        let elapsed = Utc::now() - self.last_heartbeat;
-        elapsed.num_seconds() <= SESSION_TTL_SECONDS
+        let elapsed_secs = (Timestamp::now().as_second() - self.last_heartbeat.as_second()).max(0);
+        elapsed_secs <= SESSION_TTL_SECONDS
     }
 
     /// Terminate session gracefully.
@@ -243,7 +243,7 @@ mod tests {
             session_id: "sess-2".to_string(),
             node_id: "node-b".to_string(),
             sequence: 5,
-            sent_at: Utc::now(),
+            sent_at: Timestamp::now(),
         };
 
         assert!(session.record_heartbeat(&beacon).is_ok());

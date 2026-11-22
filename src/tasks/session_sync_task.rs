@@ -495,7 +495,7 @@ pub async fn calculate_indexing_lag(storage: &dyn MemoryStore, workspace_id: &st
 
     for record in records {
         if let Some(event_ts) = session_event_timestamp_ms(&record.content) {
-            let indexed_ts = record.updated_at.timestamp_millis();
+            let indexed_ts = record.updated_at.as_millisecond();
             let lag = indexed_ts.saturating_sub(event_ts);
             if lag >= 0 {
                 total_lag += lag;
@@ -534,9 +534,10 @@ fn parse_timestamp_ms(value: &serde_json::Value) -> Option<i64> {
     }
 
     let timestamp = value.as_str()?;
-    chrono::DateTime::parse_from_rfc3339(timestamp)
+    timestamp
+        .parse::<jiff::Timestamp>()
         .ok()
-        .map(|dt| dt.timestamp_millis())
+        .map(|ts| ts.as_millisecond())
 }
 
 #[cfg(test)]

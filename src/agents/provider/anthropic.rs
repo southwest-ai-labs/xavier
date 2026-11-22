@@ -2,7 +2,7 @@ use crate::agents::provider::config::ModelProviderConfig;
 use crate::agents::provider::types::LlmResponse;
 use crate::domain::proxy::types::{ApiTier, ProviderKind, ProviderQuota};
 use anyhow::{anyhow, Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use reqwest::Client;
 use serde_json::json;
 
@@ -146,7 +146,7 @@ pub(crate) async fn generate_anthropic_compatible(
             requests_limit: limit_req,
             tokens_limit: limit_tok,
             resets_at: None, // Anthropic resets are complicated to parse from headers
-            last_checked: Utc::now(),
+            last_checked: Timestamp::now(),
         });
     }
 

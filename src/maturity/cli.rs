@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::maturity::{MaturityResult, MaturityScanner, ProgressCallback};
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 
 /// Maturity scanning & reporting subcommands
 #[derive(Subcommand, Debug, Clone)]
@@ -119,7 +119,7 @@ pub async fn handle_maturity_command(cmd: MaturityCommand) -> Result<()> {
                                         &serde_json::json!({
                                             "progress_event": json_str,
                                             "note": "Partial scan — run 'maturity deep-scan' again to complete",
-                                            "timestamp": Utc::now().to_rfc3339(),
+                                            "timestamp": Timestamp::now().to_string(),
                                         }),
                                     ) {
                                         if let Some(parent) = report_path.parent() {

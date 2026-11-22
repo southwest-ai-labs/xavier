@@ -1,4 +1,4 @@
-use chrono::{Duration, Utc};
+use jiff::{Span, Timestamp};
 use std::fs;
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -68,7 +68,7 @@ async fn test_full_harvest_workflow() {
 
     // 4. Run Harvester
     let harvester = Harvester::new(workspace_path.to_path_buf(), memory, code_db);
-    let since = Utc::now() - Duration::days(1);
+    let since = Timestamp::now().checked_sub(Span::new().hours(24)).unwrap();
 
     let output_path = harvester.run(since).await.expect("test assertion");
 

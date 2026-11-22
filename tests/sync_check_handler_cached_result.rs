@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::{Span, Timestamp};
 
 use xavier::adapters::inbound::http::routes::sync_check_handler;
 use xavier::adapters::outbound::http_health_adapter::HttpHealthAdapter;
@@ -146,8 +146,10 @@ impl MemoryStore for MockMemoryStore {
 }
 
 fn make_session_record(seconds_ago: i64) -> MemoryRecord {
-    let event_at = Utc::now() - chrono::Duration::seconds(seconds_ago);
-    let indexed_at = Utc::now();
+    let event_at = Timestamp::now()
+        .checked_sub(Span::new().seconds(seconds_ago))
+        .unwrap();
+    let indexed_at = Timestamp::now();
     MemoryRecord {
         id: "session-1".to_string(),
         workspace_id: "default".to_string(),

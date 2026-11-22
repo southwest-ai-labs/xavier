@@ -60,7 +60,7 @@ async fn test_workspace_sharing_token_roundtrip() {
         "endpoint": "http://localhost:8006",
         "public_key_hex": xavier::crypto::hex_encode(&identity.public_key),
         "workspace_id": "default-workspace",
-        "expires_at": chrono::Utc::now().timestamp() + 3600,
+        "expires_at": jiff::Timestamp::now().as_second() + 3600,
     });
 
     let payload_str = serde_json::to_string(&payload_data).unwrap();
@@ -156,7 +156,7 @@ async fn test_workspace_sharing_with_namespace_acl_filtering() {
         "public_key_hex": xavier::crypto::hex_encode(&identity.public_key),
         "workspace_id": workspace_id,
         "namespaces": vec!["docs/publico".to_string()],
-        "expires_at": chrono::Utc::now().timestamp() + 3600,
+        "expires_at": jiff::Timestamp::now().as_second() + 3600,
     });
 
     let payload_str = serde_json::to_string(&payload_data).unwrap();
@@ -271,7 +271,7 @@ async fn test_data_consent_token_revocation() {
     let consent = xavier::mesh::ActiveConsent {
         token_id: token_id.clone(),
         workspace_id: "workspace-alpha".to_string(),
-        expires_at: chrono::Utc::now().timestamp() as u64 + 3600, // active
+        expires_at: (jiff::Timestamp::now().as_second() + 3600) as u64, // active
         token: "mock-base64-token-string".to_string(),
     };
 

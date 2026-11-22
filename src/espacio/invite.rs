@@ -189,7 +189,7 @@ impl InviteManager {
             inviter_node,
             target_node,
             role,
-            now + Span::new().hours(24),
+            now.checked_add(Span::new().hours(24)).unwrap(),
         )
         .await
     }

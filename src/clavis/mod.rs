@@ -3,7 +3,7 @@
 //! Provides automatic key masking in logs, key auto-rotation with configurable TTL,
 //! and integration with the proxy.
 
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, OnceLock, RwLock};
@@ -185,7 +185,7 @@ pub struct ClavisKey {
     pub name: String,
     pub value: String,
     pub ttl_secs: u64,
-    pub last_rotated: DateTime<Utc>,
+    pub last_rotated: Timestamp,
     pub rotation_count: usize,
 }
 
@@ -213,7 +213,7 @@ impl ClavisEngine {
             name: name.to_string(),
             value: initial_value.to_string(),
             ttl_secs,
-            last_rotated: Utc::now(),
+            last_rotated: Timestamp::now(),
             rotation_count: 0,
         };
         register_secret(initial_value);
@@ -237,7 +237,7 @@ impl ClavisEngine {
             name: name.to_string(),
             value: initial_value.to_string(),
             ttl_secs,
-            last_rotated: Utc::now(),
+            last_rotated: Timestamp::now(),
             rotation_count: 0,
         };
         register_secret(initial_value);
@@ -278,7 +278,7 @@ impl ClavisEngine {
         if let Some(key) = keys.get_mut(id) {
             unregister_secret(&key.value);
             key.value = new_value.to_string();
-            key.last_rotated = Utc::now();
+            key.last_rotated = Timestamp::now();
             key.rotation_count += 1;
             register_secret(new_value);
             true
@@ -290,7 +290,7 @@ impl ClavisEngine {
     /// Check all registered keys and perform automatic rotation if TTL is expired.
     /// Returns a list of rotated (key_id, new_value).
     pub async fn check_and_rotate_keys(&self) -> Vec<(String, String)> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut rotated = Vec::new();
 
         // Find keys that need rotation
@@ -298,7 +298,10 @@ impl ClavisEngine {
             let keys = self.keys.read().unwrap();
             keys.iter()
                 .filter(|(_, key)| {
-                    let expiration = key.last_rotated + Duration::seconds(key.ttl_secs as i64);
+                    let expiration = key
+                        .last_rotated
+                        .checked_add(Span::new().seconds(key.ttl_secs as i64))
+                        .unwrap_or(key.last_rotated);
                     now > expiration
                 })
                 .map(|(id, key)| (id.clone(), key.name.clone(), key.ttl_secs))

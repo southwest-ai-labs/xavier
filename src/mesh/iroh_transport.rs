@@ -763,7 +763,8 @@ async fn apply_memory_sync(
                 continue;
             }
         };
-        let at = chrono::DateTime::from_timestamp(m.created_at, 0).unwrap_or_else(chrono::Utc::now);
+        let at =
+            jiff::Timestamp::from_second(m.created_at).unwrap_or_else(|_| jiff::Timestamp::now());
         let record = crate::memory::store::MemoryRecord {
             id: uuid::Uuid::new_v4().to_string(),
             workspace_id: workspace.clone(),
@@ -892,7 +893,7 @@ async fn handle_request_with_policy(
                 .map(|entry| ChunkRef {
                     hash: entry.chunk_hash,
                     document_count: entry.size_bytes as usize,
-                    created_at: entry.updated_at.timestamp(),
+                    created_at: entry.updated_at.as_second(),
                 })
                 .collect();
 
@@ -1164,8 +1165,8 @@ mod tests {
             content: content.into(),
             metadata: serde_json::Value::Null,
             embedding: Vec::new(),
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             revision,
             primary: true,
             parent_id: None,
@@ -1519,7 +1520,7 @@ mod tests {
         let store = InMemoryMemoryStore::default();
         let mut victim = make_test_record("victim-id", "victim", "original", 1);
         victim.path = "notes/a".into();
-        victim.updated_at = chrono::DateTime::from_timestamp(1_577_836_800, 0).unwrap();
+        victim.updated_at = jiff::Timestamp::from_second(1_577_836_800).unwrap();
         store.put(victim.clone()).await.unwrap();
 
         let req = signed_memory_sync(

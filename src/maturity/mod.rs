@@ -219,7 +219,7 @@ impl MaturityScanner {
         MaturityResult {
             features: scored_features,
             summary,
-            scanned_at: chrono::Utc::now().to_rfc3339(),
+            scanned_at: jiff::Timestamp::now().to_string(),
             head_commit: self.get_head_commit().unwrap_or_default(),
             errors,
             layers: LayerTiming::default(),
@@ -318,7 +318,7 @@ impl MaturityScanner {
         MaturityResult {
             features: scored_features,
             summary,
-            scanned_at: chrono::Utc::now().to_rfc3339(),
+            scanned_at: jiff::Timestamp::now().to_string(),
             head_commit: self.get_head_commit().unwrap_or_default(),
             errors: evidence.errors,
             layers: LayerTiming {

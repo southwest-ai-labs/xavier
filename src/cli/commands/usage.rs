@@ -33,7 +33,7 @@ pub async fn handle_usage_command(cmd: UsageCommand) -> Result<()> {
                     let status: xavier::agents::rate_limit::QuotaStatus = resp.json().await?;
                     let limited = status
                         .rate_limited_until
-                        .map(|u| u.to_rfc3339())
+                        .map(|u| u.to_string())
                         .unwrap_or_else(|| "No".to_string());
                     println!(
                         "{:<15} | {:<10} | {:<10} | {:<10} | {:<10} | {:<20}",

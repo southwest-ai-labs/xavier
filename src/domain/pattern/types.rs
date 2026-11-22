@@ -3,7 +3,7 @@
 //! Patterns represent discovered code patterns, naming conventions, architectural
 //! decisions, and workflow practices that have been verified through usage.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 /// A verified pattern discovered in a codebase or project.
@@ -28,9 +28,9 @@ pub struct VerifiedPattern {
     /// Code/text snippet showing the pattern in context
     pub source_snippet: String,
     /// When this pattern was first discovered
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// When this pattern was last updated
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     /// Number of times this pattern was retrieved or used
     pub usage_count: usize,
     /// Verification status of this pattern

@@ -1,6 +1,6 @@
 //! Owned by issue [WAVE-30.14] (ADR-033 Wave 0).
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 
@@ -83,9 +83,9 @@ pub struct Task {
     pub created_by: String,
 
     /// Timestamps
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub completed_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
+    pub completed_at: Option<Timestamp>,
 
     /// External sync (Planka)
     #[serde(skip_serializing_if = "Option::is_none")]

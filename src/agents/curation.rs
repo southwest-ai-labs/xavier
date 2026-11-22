@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -209,7 +209,7 @@ impl CurationAgent {
         let response = self.client.generate_response(&prompt, &[]).await?;
         let summary = response.text;
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         Ok(MemoryRecord {
             id: uuid::Uuid::new_v4().to_string(),
             workspace_id: workspace_id.to_string(),

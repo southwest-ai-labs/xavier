@@ -96,7 +96,7 @@ const COLS: &str = "id, owner, domain, bundle_path, bundle_hash, backend, base_m
                     logs_path, artifact_path, metrics_json, error, created_at, updated_at";
 
 fn now() -> String {
-    chrono::Utc::now().to_rfc3339()
+    jiff::Timestamp::now().to_string()
 }
 
 fn row_to_job(r: &Row<'_>) -> rusqlite::Result<TrainingJob> {

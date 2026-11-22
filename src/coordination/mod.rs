@@ -23,7 +23,7 @@ pub use secrets::KeyLendingEngine;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use ulid::Ulid;
@@ -220,7 +220,7 @@ pub struct AgentMetadata {
     pub description: Option<String>,
     pub owner: Option<String>,
     pub config: HashMap<String, serde_json::Value>,
-    pub registered_at: DateTime<Utc>,
+    pub registered_at: Timestamp,
 }
 
 impl AgentRegistry {
@@ -274,7 +274,7 @@ impl AgentRegistry {
                     description,
                     owner: None,
                     config: HashMap::new(),
-                    registered_at: Utc::now(),
+                    registered_at: Timestamp::now(),
                 },
             );
         }
@@ -415,8 +415,8 @@ pub struct CoordinationTask {
     pub required_capabilities: Vec<String>,
     pub assigned_agents: Vec<String>,
     pub status: CoordinationTaskStatus,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub result: Option<serde_json::Value>,
 }
 
@@ -471,8 +471,8 @@ impl CoordinationService {
             required_capabilities,
             assigned_agents: Vec::new(),
             status: CoordinationTaskStatus::Pending,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
             result: None,
         };
 
@@ -538,7 +538,7 @@ impl CoordinationService {
             if let Some(t) = tasks.get_mut(task_id) {
                 t.status = CoordinationTaskStatus::Dispatched;
                 t.assigned_agents.push(agent.id.clone());
-                t.updated_at = Utc::now();
+                t.updated_at = Timestamp::now();
             }
         }
 
@@ -590,7 +590,7 @@ impl CoordinationService {
             if let Some(t) = tasks.get_mut(task_id) {
                 t.status = CoordinationTaskStatus::Dispatched;
                 t.assigned_agents = assigned.clone();
-                t.updated_at = Utc::now();
+                t.updated_at = Timestamp::now();
             }
         }
 
@@ -626,7 +626,7 @@ impl CoordinationService {
         if let Some(task) = tasks.get_mut(task_id) {
             task.status = CoordinationTaskStatus::Completed;
             task.result = Some(result);
-            task.updated_at = Utc::now();
+            task.updated_at = Timestamp::now();
             return Ok(());
         }
 
@@ -639,7 +639,7 @@ impl CoordinationService {
 
         if let Some(task) = tasks.get_mut(task_id) {
             task.status = CoordinationTaskStatus::Cancelled;
-            task.updated_at = Utc::now();
+            task.updated_at = Timestamp::now();
             return Ok(());
         }
 

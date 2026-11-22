@@ -172,7 +172,7 @@ fn index_freshness_json(db_path: &std::path::Path) -> serde_json::Value {
         "path": db_path.to_string_lossy(),
         "present": db_path.exists(),
         "last_modified": modified
-            .map(|time| chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339()),
+            .and_then(|time| jiff::Timestamp::try_from(time).ok().map(|ts| ts.to_string())),
         "index_age_seconds": age_seconds,
         "stale": age_seconds.is_some_and(|secs| secs > STALE_INDEX_AFTER_SECS),
     })
@@ -4036,7 +4036,7 @@ mod tests {
                 "tester".to_string(),
                 "tester@example.com".to_string(),
                 role,
-                chrono::TimeDelta::seconds(60),
+                std::time::Duration::from_secs(60),
             );
             builder = builder.extension(claims);
         }

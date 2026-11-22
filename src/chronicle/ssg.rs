@@ -446,7 +446,7 @@ impl DevLogSSG {
                         .trim_matches(|c: char| c == '*' || c == ':' || c == ' ');
                     cleaned.to_string()
                 });
-            date_line.unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string())
+            date_line.unwrap_or_else(|| jiff::Timestamp::now().strftime("%Y-%m-%d").to_string())
         };
 
         // Extract tags from content

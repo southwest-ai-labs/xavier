@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use parking_lot::Mutex;
 use rusqlite::{params, Connection};
 use std::sync::Arc;
@@ -112,7 +112,7 @@ impl SqliteGraphStore {
                     "UPDATE {} SET confirmation_count = confirmation_count + 1, trust_score = MIN(1.0, trust_score + 0.1), updated_at = ?2 WHERE id = ?1",
                     TABLE_GRAPH_NODES
                 ),
-                params![id, Utc::now().to_rfc3339()],
+                params![id, Timestamp::now().to_string()],
             )?;
             Ok(id)
         } else {
@@ -132,8 +132,8 @@ impl SqliteGraphStore {
                     entity.trust_score,
                     entity.confirmation_count,
                     serde_json::to_string(&entity.metadata)?,
-                    entity.created_at.to_rfc3339(),
-                    entity.updated_at.to_rfc3339(),
+                    entity.created_at.to_string(),
+                    entity.updated_at.to_string(),
                 ],
             )?;
             Ok(entity.id)
@@ -164,7 +164,7 @@ impl SqliteGraphStore {
                     "UPDATE {} SET confirmation_count = confirmation_count + 1, weight = MIN(1.0, weight + 0.1), updated_at = ?2 WHERE id = ?1",
                     TABLE_GRAPH_EDGES
                 ),
-                params![id, Utc::now().to_rfc3339()],
+                params![id, Timestamp::now().to_string()],
             )?;
             Ok(id)
         } else {
@@ -182,8 +182,8 @@ impl SqliteGraphStore {
                     rel.weight,
                     rel.confirmation_count,
                     serde_json::to_string(&rel.metadata)?,
-                    rel.created_at.to_rfc3339(),
-                    rel.updated_at.to_rfc3339(),
+                    rel.created_at.to_string(),
+                    rel.updated_at.to_string(),
                 ],
             )?;
             Ok(rel.id)
@@ -215,12 +215,14 @@ impl SqliteGraphStore {
                     trust_score: row.get(6)?,
                     confirmation_count: row.get(7)?,
                     metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
-                    created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
-                    updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(10)?)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                    created_at: row
+                        .get::<_, String>(9)?
+                        .parse::<Timestamp>()
+                        .unwrap_or_else(|_| Timestamp::now()),
+                    updated_at: row
+                        .get::<_, String>(10)?
+                        .parse::<Timestamp>()
+                        .unwrap_or_else(|_| Timestamp::now()),
                 })
             })
             .ok();
@@ -252,12 +254,14 @@ impl SqliteGraphStore {
                 trust_score: row.get(6)?,
                 confirmation_count: row.get(7)?,
                 metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(9)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
-                updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(10)?)
-                    .map(|dt| dt.with_timezone(&Utc))
-                    .unwrap_or_else(|_| Utc::now()),
+                created_at: row
+                    .get::<_, String>(9)?
+                    .parse::<Timestamp>()
+                    .unwrap_or_else(|_| Timestamp::now()),
+                updated_at: row
+                    .get::<_, String>(10)?
+                    .parse::<Timestamp>()
+                    .unwrap_or_else(|_| Timestamp::now()),
             })
         })?;
 

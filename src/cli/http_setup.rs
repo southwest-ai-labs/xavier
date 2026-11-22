@@ -325,7 +325,7 @@ pub(crate) async fn handle_space_token(
             auth.member_id.clone(),
             "space_token@swal.dev".to_string(),
             claims_role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
     req.extensions_mut().insert(auth);
     next.run(with_memory_write_caller(req)).await
@@ -491,7 +491,7 @@ pub async fn auth_middleware(
                 "root".to_string(),
                 "admin@swal.dev".to_string(),
                 xavier::security::auth::UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         return next.run(with_memory_write_caller(req)).await;
     }
@@ -528,7 +528,7 @@ pub async fn auth_middleware(
                     "agent_lease".to_string(),
                     "agent@swal.dev".to_string(),
                     xavier::security::auth::UserRole::User,
-                    chrono::Duration::hours(1),
+                    jiff::Span::new().hours(1),
                 ));
             return next.run(with_memory_write_caller(req)).await;
         }
@@ -554,7 +554,7 @@ pub async fn auth_middleware(
                 "ephemeral_session".to_string(),
                 "session@swal.dev".to_string(),
                 xavier::security::auth::UserRole::User,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
         return next.run(with_memory_write_caller(req)).await;
     }
@@ -586,7 +586,7 @@ pub async fn auth_middleware(
                     "api_token".to_string(),
                     "api_token@swal.dev".to_string(),
                     xavier::security::auth::UserRole::User,
-                    chrono::Duration::hours(1),
+                    jiff::Span::new().hours(1),
                 ));
             return next.run(with_memory_write_caller(req)).await;
         }
@@ -812,14 +812,14 @@ pub async fn rate_limit_middleware(
     match state.rate_manager.get_status(&provider).await {
         Ok(status) => {
             if let Some(until) = status.rate_limited_until {
-                if until > chrono::Utc::now() {
+                if until > jiff::Timestamp::now() {
                     warn!("Global rate limit reached, blocking request");
                     return json_response(
                         StatusCode::TOO_MANY_REQUESTS,
                         serde_json::json!({
                             "status": "error",
                             "message": "Rate limit exceeded. Please try again later.",
-                            "retry_after": until.to_rfc3339()
+                            "retry_after": until.to_string()
                         }),
                     );
                 }
@@ -1569,7 +1569,7 @@ name = "demo"
                 subject.to_string(),
                 "test@example.invalid".to_string(),
                 role,
-                chrono::Duration::minutes(1),
+                jiff::Span::new().minutes(1),
             ));
         app.clone().oneshot(request).await.unwrap()
     }

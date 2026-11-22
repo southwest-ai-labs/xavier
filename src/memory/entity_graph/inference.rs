@@ -6,7 +6,7 @@
 
 use super::storage::{GraphData, RelationUpsert};
 use super::types::EntityRelationRecord;
-use chrono::Utc;
+use jiff::Timestamp;
 
 pub struct InferenceEngine;
 
@@ -14,7 +14,7 @@ impl InferenceEngine {
     /// Run.
     pub fn run(data: &mut GraphData) -> Vec<EntityRelationRecord> {
         let mut inferred = Vec::new();
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         // 1. Transitivity for "is_a" and "part_of"
         let transitivity_types = ["is_a", "part_of"];

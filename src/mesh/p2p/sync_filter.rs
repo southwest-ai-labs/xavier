@@ -305,7 +305,7 @@ mod tests {
             chunk_hash: format!("hash_{}", namespace),
             namespace: namespace.to_string(),
             revision: 1,
-            updated_at: chrono::Utc::now(),
+            updated_at: jiff::Timestamp::now(),
             size_bytes: 100,
             record_path: Some(format!("/memories/{}", namespace)),
         }

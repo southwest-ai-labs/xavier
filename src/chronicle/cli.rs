@@ -3,8 +3,8 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Duration, NaiveDate, Utc};
 use clap::Subcommand;
+use jiff::{Span, Timestamp};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -161,7 +161,7 @@ pub async fn handle_chronicle_command(cmd: ChronicleCommand) -> Result<()> {
                         "type": "daily-chronicle",
                         "date": harvest.date,
                         "content_hash": hash,
-                        "generated_at": chrono::Utc::now().to_rfc3339(),
+                        "generated_at": Timestamp::now().to_string(),
                         "source": "chronicle_generate"
                     });
 
@@ -188,7 +188,7 @@ pub async fn handle_chronicle_command(cmd: ChronicleCommand) -> Result<()> {
                 .with_context(|| format!("failed to read {}", post_path.display()))?;
             let post = ChroniclePost {
                 date: extract_date_from_filename(&post_path)
-                    .unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string()),
+                    .unwrap_or_else(|| Timestamp::now().strftime("%Y-%m-%d").to_string()),
                 title: extract_title(&markdown).unwrap_or_else(|| "Daily Chronicle".to_string()),
                 markdown,
                 metadata: HashMap::new(),
@@ -265,7 +265,7 @@ pub async fn handle_chronicle_command(cmd: ChronicleCommand) -> Result<()> {
                             "type": "auto-doc",
                             "module": doc.module,
                             "content_hash": hash,
-                            "generated_at": chrono::Utc::now().to_rfc3339(),
+                            "generated_at": Timestamp::now().to_string(),
                             "total_symbols": doc.stats.total_symbols,
                             "loc_estimate": doc.stats.loc_estimate,
                             "complexity_hotspots": doc.stats.complexity_hotspots.len(),
@@ -287,21 +287,22 @@ pub async fn handle_chronicle_command(cmd: ChronicleCommand) -> Result<()> {
     Ok(())
 }
 
-fn parse_since_arg(value: Option<&str>) -> Result<DateTime<Utc>> {
+fn parse_since_arg(value: Option<&str>) -> Result<Timestamp> {
     match value {
-        None => Ok(Utc::now() - Duration::days(1)),
+        None => Ok(Timestamp::now().checked_sub(Span::new().hours(24)).unwrap()),
         Some(raw) => {
-            if let Ok(date_time) = DateTime::parse_from_rfc3339(raw) {
-                return Ok(date_time.with_timezone(&Utc));
+            if let Ok(ts) = raw.parse::<Timestamp>() {
+                return Ok(ts);
             }
 
-            let date = NaiveDate::parse_from_str(raw, "%Y-%m-%d").with_context(|| {
+            let date = jiff::civil::Date::strptime("%Y-%m-%d", raw).with_context(|| {
                 format!("invalid --since value '{raw}', expected YYYY-MM-DD or RFC3339")
             })?;
-            let naive = date
-                .and_hms_opt(0, 0, 0)
-                .ok_or_else(|| anyhow!("failed to build timestamp for '{raw}'"))?;
-            Ok(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc))
+            let ts = date
+                .to_zoned(jiff::tz::TimeZone::UTC)
+                .map_err(|e| anyhow!("failed to build timestamp for '{raw}': {e}"))?
+                .timestamp();
+            Ok(ts)
         }
     }
 }
@@ -356,14 +357,14 @@ async fn load_memory_from_env() -> Result<Arc<QmdMemory>> {
 
 fn resolve_harvest_path(workspace_path: &Path, since: Option<&str>) -> Result<PathBuf> {
     if let Some(raw) = since {
-        let date = if let Ok(date_time) = DateTime::parse_from_rfc3339(raw) {
-            date_time.format("%Y-%m-%d").to_string()
+        let date = if let Ok(ts) = raw.parse::<Timestamp>() {
+            ts.strftime("%Y-%m-%d").to_string()
         } else {
-            NaiveDate::parse_from_str(raw, "%Y-%m-%d")
+            jiff::civil::Date::strptime("%Y-%m-%d", raw)
                 .with_context(|| {
                     format!("invalid --since value '{raw}', expected YYYY-MM-DD or RFC3339")
                 })?
-                .format("%Y-%m-%d")
+                .strftime("%Y-%m-%d")
                 .to_string()
         };
         let path = chronicle_dir(workspace_path).join(format!("harvest-{date}.json"));
@@ -502,6 +503,6 @@ mod tests {
     #[test]
     fn test_parse_since_arg_supports_date() {
         let parsed = parse_since_arg(Some("2026-05-01")).expect("test assertion");
-        assert_eq!(parsed.format("%Y-%m-%d").to_string(), "2026-05-01");
+        assert_eq!(parsed.strftime("%Y-%m-%d").to_string(), "2026-05-01");
     }
 }

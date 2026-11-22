@@ -241,7 +241,7 @@ pub async fn add_handler(
     Json(payload): Json<AddPayload>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     check_auth(&headers, &state)?;
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     // FIX A001: Sanitize unicode to prevent JSON serialization errors
     let sanitized_content = sanitize_unicode(&payload.content);
     let sanitized_path = sanitize_unicode(&payload.path);
@@ -303,7 +303,7 @@ pub async fn update_handler(
     Json(payload): Json<UpdatePayload>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     check_auth(&headers, &state)?;
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     let sanitized_content = sanitize_unicode(&payload.content);
     let sanitized_path = sanitize_unicode(&payload.path);
 
@@ -378,11 +378,11 @@ pub async fn export_markdown_handler(
                     );
                     yaml_obj.insert(
                         "created_at".to_string(),
-                        serde_json::json!(r.created_at.to_rfc3339()),
+                        serde_json::json!(r.created_at.to_string()),
                     );
                     yaml_obj.insert(
                         "updated_at".to_string(),
-                        serde_json::json!(r.updated_at.to_rfc3339()),
+                        serde_json::json!(r.updated_at.to_string()),
                     );
 
                     if let Some(meta) = r.metadata.as_object() {

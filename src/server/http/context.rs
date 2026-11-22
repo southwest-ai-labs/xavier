@@ -674,6 +674,7 @@ mod tests {
         HomeEnvGuard,
     ) {
         let lock = env_lock().lock().await;
+        crate::codebase::connection_manager::ConnectionManager::global().shutdown();
         let home = tempfile::tempdir().expect("temp HOME");
         let prev_home = std::env::var_os("HOME");
         std::env::set_var("HOME", home.path());

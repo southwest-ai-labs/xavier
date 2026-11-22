@@ -2,7 +2,7 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,7 +15,7 @@ pub struct Threat {
     pub description: String,
     pub affected_component: String,
     pub remediation: Option<String>,
-    pub discovered_at: DateTime<Utc>,
+    pub discovered_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ pub struct ScanResult {
     pub scanned_target: String,
     pub threats: Vec<Threat>,
     pub scan_duration_ms: u64,
-    pub completed_at: DateTime<Utc>,
+    pub completed_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

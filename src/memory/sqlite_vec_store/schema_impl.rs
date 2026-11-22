@@ -354,7 +354,7 @@ impl VecSqliteMemoryStore {
                                         "UPDATE memory_records SET embedding = ?1, updated_at = ?2, embedding_status = 'completed', embedding_attempts = 0 WHERE id = ?3",
                                         params![
                                             embedding_blob,
-                                            chrono::Utc::now().to_rfc3339(),
+                                            jiff::Timestamp::now().to_string(),
                                             record_id.as_str()
                                         ],
                                     )?;
@@ -427,7 +427,7 @@ impl VecSqliteMemoryStore {
                                     params![
                                         new_status,
                                         new_attempts,
-                                        chrono::Utc::now().to_rfc3339(),
+                                        jiff::Timestamp::now().to_string(),
                                         record_id.as_str()
                                     ],
                                 )?;
@@ -814,8 +814,8 @@ mod tests {
             content: "Hello world".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             ..Default::default()
         };
 
@@ -978,8 +978,8 @@ mod tests {
                 content: format!("Content number {}", i),
                 metadata: serde_json::json!({}),
                 embedding: vec![],
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
+                created_at: jiff::Timestamp::now(),
+                updated_at: jiff::Timestamp::now(),
                 ..Default::default()
             };
             store.put(record).await.unwrap();
@@ -1098,8 +1098,8 @@ mod tests {
                 content: format!("Stale content {}", i),
                 metadata: serde_json::json!({}),
                 embedding: vec![],
-                created_at: chrono::Utc::now(),
-                updated_at: chrono::Utc::now(),
+                created_at: jiff::Timestamp::now(),
+                updated_at: jiff::Timestamp::now(),
                 ..Default::default()
             };
             store.put(record).await.unwrap();
@@ -1221,8 +1221,8 @@ mod tests {
             content: "Hello world".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             ..Default::default()
         };
 
@@ -1323,8 +1323,8 @@ mod tests {
             content: "Dead letter content".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             ..Default::default()
         };
 
@@ -1429,11 +1429,11 @@ mod tests {
             path: "test/path".to_string(),
             content: "Initial content".to_string(),
             embedding: vec![0.1, 0.2, 0.3],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             revisions: vec![crate::memory::store::MemoryRevision {
                 revision: 1,
-                recorded_at: chrono::Utc::now(),
+                recorded_at: jiff::Timestamp::now(),
                 path: "test/path".to_string(),
                 content: "Initial content".to_string(),
                 metadata: serde_json::json!({}),
@@ -1492,8 +1492,8 @@ mod tests {
             path: "test/path".to_string(),
             content: "Initial content".to_string(),
             embedding: vec![0.1, 0.2, 0.3],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             ..Default::default()
         };
         store.put(rec).await.unwrap();
@@ -1560,8 +1560,8 @@ mod tests {
             content: "Hello world without embedding".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             ..Default::default()
         };
 

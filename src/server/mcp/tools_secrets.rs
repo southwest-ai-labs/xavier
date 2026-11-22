@@ -492,7 +492,7 @@ pub async fn handle_secrets_tool(
                 "lease_token": lease.token,
                 "secret_name": lease.secret_name,
                 "agent_id": lease.agent_id,
-                "expires_at": lease.expires_at.to_rfc3339(),
+                "expires_at": lease.expires_at.to_string(),
                 "revoked": false
             });
 
