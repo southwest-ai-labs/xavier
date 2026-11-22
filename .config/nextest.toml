@@ -10,7 +10,7 @@ retries = 1
 # Tests that mutate global ENV must run with a single thread
 [[profile.ci.overrides]]
 filter = "test(schema_impl) or test(embedding_provider_mode)"
-test-threads = "1"
+test-group = "serial"
 
 # NO override needed for codegraph_sidecar / tools_secrets secret_exec / wal_streamer
 # stress tests: their cross-test races under process-per-test parallelism are fixed
