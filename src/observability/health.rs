@@ -3,7 +3,7 @@
 //! Native runtime health loop that monitors system resources, database integrity,
 //! embedding providers, and mesh peers.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -159,7 +159,7 @@ fn tgd_consolidation_level(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthStatus {
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub status: HealthLevel,
     /// Build that produced this snapshot (`CARGO_PKG_VERSION` of this process).
     /// Without it `xavier health` printed `Version: unknown`: the payload carried
@@ -250,7 +250,7 @@ impl HealthStatus {
 impl Default for HealthStatus {
     fn default() -> Self {
         Self {
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             status: HealthLevel::Healthy,
             version: env!("CARGO_PKG_VERSION").to_string(),
             degraded_reasons: Vec::new(),
@@ -440,7 +440,7 @@ impl HealthMonitor {
         let mode = SYSTEM_ALERTS.get_mode();
 
         let mut new_status = HealthStatus {
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             status,
             version: env!("CARGO_PKG_VERSION").to_string(),
             degraded_reasons: Vec::new(),
@@ -918,7 +918,7 @@ impl HealthMonitor {
         let active_peers = peers.len();
 
         for peer in peers {
-            let now = chrono::Utc::now().timestamp();
+            let now = Timestamp::now().as_second();
             let lag = peer_lag_secs(peer, now);
 
             peer_healths.push(PeerHealth {

@@ -59,7 +59,7 @@ pub async fn export_session(memory: &QmdMemory, session_id: &str) -> Result<Sess
     Ok(SessionBundle {
         session_id: session_id.to_string(),
         documents,
-        exported_at: chrono::Utc::now().timestamp(),
+        exported_at: jiff::Timestamp::now().as_second(),
     })
 }
 

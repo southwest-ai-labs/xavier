@@ -1445,7 +1445,7 @@ fn fts_rewrite(conn: &Connection, id: &str, path: &str, plain_content: Option<&s
 }
 
 fn now_rfc3339() -> String {
-    chrono::Utc::now().to_rfc3339()
+    jiff::Timestamp::now().to_string()
 }
 
 fn update_cursor(conn: &Connection, job_id: i64, o: &BatchOutcome) -> Result<()> {
@@ -2356,7 +2356,7 @@ fn make_verified_backup(
     let path = if target.is_dir() {
         target.join(format!(
             "xavier-pre-encrypt-{}.sqlite3",
-            chrono::Utc::now().format("%Y%m%dT%H%M%SZ")
+            jiff::Timestamp::now().strftime("%Y%m%dT%H%M%SZ")
         ))
     } else {
         target.to_path_buf()

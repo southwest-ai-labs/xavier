@@ -61,7 +61,7 @@ impl Plan {
 pub struct Tenant {
     pub id: TenantId,
     pub name: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
     pub settings: HashMap<String, String>,
     pub plan: Plan,
 }
@@ -73,7 +73,7 @@ impl Tenant {
             id: Uuid::new_v4(),
             name: name.into(),
             plan,
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
             settings: HashMap::new(),
         }
     }

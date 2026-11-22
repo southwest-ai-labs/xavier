@@ -6,7 +6,7 @@
 //! Therefore, test isolation is achieved via `tempfile::tempdir()` and setting `XAVIER_DATA_DIR`
 //! to prevent touching `~/.xavier/secrets`.
 
-use chrono::Utc;
+use jiff::Timestamp;
 
 use xavier::secrets::keygen::{
     export_key, fingerprint, format_generate_output, generate_key, load_metadata, revoke_key,
@@ -97,8 +97,8 @@ impl Drop for VaultGuard {
     }
 }
 
-fn test_now() -> chrono::DateTime<Utc> {
-    chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("valid timestamp")
+fn test_now() -> Timestamp {
+    Timestamp::from_second(1_700_000_000).expect("valid timestamp")
 }
 
 #[test]

@@ -5,7 +5,7 @@
 //! and dedup 0.92 threshold placeholder.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackManifest {
     pub space_id: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub content_hash: String,
     pub vector_dim: usize,
     pub memory_count: usize,
@@ -26,7 +26,7 @@ pub struct PackMemory {
     pub id: String,
     pub path: String,
     pub content: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 /// A pack ready to export or import
@@ -55,7 +55,7 @@ impl Pack {
         let hash = Self::compute_hash(&memories);
         let manifest = PackManifest {
             space_id: space_id.clone(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             content_hash: hash,
             vector_dim,
             memory_count: memories.len(),
@@ -121,13 +121,13 @@ mod tests {
                 id: "m1".into(),
                 path: "a/b".into(),
                 content: "hello world".into(),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             },
             PackMemory {
                 id: "m2".into(),
                 path: "a/c".into(),
                 content: "foo bar".into(),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             },
         ]
     }

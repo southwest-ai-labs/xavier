@@ -151,7 +151,7 @@ impl TelemetryStore {
 
     /// Stores a sample received now and enforces the retention bounds.
     pub fn insert(&self, sample: &TelemetrySample) -> anyhow::Result<()> {
-        self.insert_at(sample, chrono::Utc::now().timestamp())
+        self.insert_at(sample, jiff::Timestamp::now().as_second())
     }
 
     fn prune_with(&self, conn: &rusqlite::Connection, now: i64) -> anyhow::Result<()> {
@@ -342,7 +342,7 @@ impl ServiceRegistry {
         limits: TelemetryLimits,
     ) -> anyhow::Result<Self> {
         let store = TelemetryStore::open(path, limits)?;
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         store.prune(now)?;
         let (received_at, telemetry) = store.load_received()?.into_iter().unzip();
         Ok(Self {
@@ -466,9 +466,9 @@ impl ServiceRegistry {
 
         sample.payload = sanitized;
         if sample.ts == 0 {
-            sample.ts = chrono::Utc::now().timestamp();
+            sample.ts = jiff::Timestamp::now().as_second();
         }
-        self.record_telemetry(&sample, chrono::Utc::now().timestamp());
+        self.record_telemetry(&sample, jiff::Timestamp::now().as_second());
         Ok(sample)
     }
 
@@ -483,7 +483,7 @@ impl ServiceRegistry {
 
     /// [`Self::publish_telemetry`], also reporting whether the sample was persisted.
     pub fn publish_telemetry_reporting(&mut self, sample: TelemetrySample) -> PublishedTelemetry {
-        self.publish_telemetry_at(sample, chrono::Utc::now().timestamp())
+        self.publish_telemetry_at(sample, jiff::Timestamp::now().as_second())
     }
 
     fn publish_telemetry_at(
@@ -528,7 +528,7 @@ impl ServiceRegistry {
             node_id,
             kind: ServiceKind::Custom("health_snapshot".to_string()),
             payload,
-            ts: health.timestamp.timestamp(),
+            ts: health.timestamp.as_second(),
             classification: ClearanceLevel::Internal.as_str().to_uppercase(),
         };
         self.publish_telemetry(sample)
@@ -775,7 +775,7 @@ mod tests {
             endpoint_url: "http://localhost:8000".to_string(),
             public_key_hex: "aabbcc".to_string(),
             added_at: 1000,
-            last_seen_at: Some(chrono::Utc::now().timestamp() - 10), // 10 seconds ago (healthy)
+            last_seen_at: Some(jiff::Timestamp::now().as_second() - 10), // 10 seconds ago (healthy)
             sync_enabled: true,
             is_cloud: false,
             iroh_addr: None,
@@ -791,7 +791,7 @@ mod tests {
             endpoint_url: "http://localhost:8001".to_string(),
             public_key_hex: "ddeeff".to_string(),
             added_at: 1000,
-            last_seen_at: Some(chrono::Utc::now().timestamp() - 200), // 200 seconds ago (unhealthy)
+            last_seen_at: Some(jiff::Timestamp::now().as_second() - 200), // 200 seconds ago (unhealthy)
             sync_enabled: true,
             is_cloud: false,
             iroh_addr: None,
@@ -950,7 +950,7 @@ mod tests {
 
         // A sample received longer ago than max_age is dropped.
         let store = TelemetryStore::open(&path, limits).unwrap();
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         store.insert_at(&numbered_sample(9), now).unwrap();
         store.prune(now + 7200).unwrap();
         assert!(
@@ -966,7 +966,7 @@ mod tests {
             max_age_secs: 3600,
         };
         let mut registry = ServiceRegistry::with_telemetry_limits(limits);
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         for i in 0..5 {
             let published = registry.publish_telemetry_at(numbered_sample(i), now);
             assert!(!published.persisted, "no store means not persisted");

@@ -917,8 +917,8 @@ pub async fn add_handler(
         content: effective_content.to_string(),
         metadata: normalized_metadata.clone(),
         embedding: vec![],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         score: 0.0,
@@ -1186,8 +1186,8 @@ pub async fn update_handler(
         content: effective_content.to_string(),
         metadata,
         embedding: vec![],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         deleted_at: None,
@@ -1315,9 +1315,9 @@ pub async fn offline_prune(
             let total_processed = records.len();
             let mut candidate_ids = Vec::new();
             let mut reclaimed_bytes = 0u64;
-            let now = chrono::Utc::now();
+            let now = jiff::Timestamp::now();
             for r in &records {
-                let age = (now - r.updated_at).num_seconds() as f32 / 86400.0;
+                let age = (now.as_second() - r.updated_at.as_second()) as f32 / 86400.0;
                 if age > 7.0 {
                     let size = r.content.len() as u64
                         + serde_json::to_string(&r.metadata)
@@ -1357,7 +1357,7 @@ pub async fn offline_prune(
 
     let records = store.list(&ws_id).await?;
     let total_processed = records.len();
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
 
     let mut candidate_ids = Vec::new();
     let mut reclaimed_bytes = 0u64;
@@ -1370,7 +1370,7 @@ pub async fn offline_prune(
         }
 
         if let Some(days) = older_than_days {
-            let age_days = (now - record.updated_at).num_seconds() as f64 / 86400.0;
+            let age_days = (now.as_second() - record.updated_at.as_second()) as f64 / 86400.0;
             if age_days < days as f64 {
                 continue;
             }
@@ -1517,11 +1517,11 @@ pub async fn export_markdown_handler(
                     );
                     yaml_obj.insert(
                         "created_at".to_string(),
-                        serde_json::json!(r.created_at.to_rfc3339()),
+                        serde_json::json!(r.created_at.to_string()),
                     );
                     yaml_obj.insert(
                         "updated_at".to_string(),
-                        serde_json::json!(r.updated_at.to_rfc3339()),
+                        serde_json::json!(r.updated_at.to_string()),
                     );
 
                     if let Some(meta) = r.metadata.as_object() {
@@ -1850,7 +1850,7 @@ pub async fn reindex_handler(State(state): State<CliState>, headers: HeaderMap) 
             if let Some(record) = missing.iter().find(|r| r.id == id) {
                 let mut updated = (*record).clone();
                 updated.embedding = vector;
-                updated.updated_at = chrono::Utc::now();
+                updated.updated_at = jiff::Timestamp::now();
                 match state.store.update(updated).await {
                     Ok(()) => reindexed += 1,
                     Err(e) => errors.push(format!("{id}: update failed: {e}")),
@@ -2380,7 +2380,7 @@ async fn offline_add_memory(
         Ok(memory) => {
             let path = path
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("cli/add/{}", chrono::Utc::now().timestamp()));
+                .unwrap_or_else(|| format!("cli/add/{}", jiff::Timestamp::now().as_second()));
             let mut metadata = serde_json::json!({});
             if let Some(t) = title {
                 metadata["title"] = serde_json::json!(t);
@@ -2728,8 +2728,8 @@ async fn index_file_by_sections(
     } else {
         state.workspace_dir.join(filename)
     };
-    let modified: chrono::DateTime<chrono::Utc> =
-        tokio::fs::metadata(&full_path).await?.modified()?.into();
+    let modified_st = tokio::fs::metadata(&full_path).await?.modified()?;
+    let modified = jiff::Timestamp::try_from(modified_st).unwrap_or(jiff::Timestamp::UNIX_EPOCH);
     let content = tokio::fs::read_to_string(&full_path).await?;
     let sections = split_markdown_by_sections(&content);
     let mut count = 0;
@@ -2757,12 +2757,12 @@ async fn index_file_by_sections(
                 "title": title,
                 "file": filename,
                 "file_path": full_path.to_string_lossy(),
-                "last_modified": modified.to_rfc3339(),
+                "last_modified": modified.to_string(),
                 "kind": "Document",
                 "namespace": "Global"
             }),
             embedding,
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
             updated_at: modified,
             revision: 1,
             deleted_at: None,

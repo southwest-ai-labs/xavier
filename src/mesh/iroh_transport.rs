@@ -328,7 +328,7 @@ impl IrohTransport {
     /// Build a signed sync request (shared by fetch/push).
     pub fn signed_sync_request(&self, wanted_hashes: Vec<String>) -> MeshSyncRequest {
         let nonce = uuid::Uuid::new_v4().to_string();
-        let timestamp = chrono::Utc::now().timestamp();
+        let timestamp = jiff::Timestamp::now().as_second();
         let message = format!("{}:{}", timestamp, nonce);
         let signature = crate::crypto::hex_encode(self.local_identity.sign(message.as_bytes()));
         MeshSyncRequest {
@@ -395,7 +395,7 @@ impl IrohTransport {
                 public_key_hex: crate::crypto::hex_encode(&self.local_identity.public_key),
                 xavier_version: env!("CARGO_PKG_VERSION").to_string(),
                 capabilities: vec!["sync-v1".to_string()],
-                timestamp: chrono::Utc::now().timestamp(),
+                timestamp: jiff::Timestamp::now().as_second(),
                 nonce,
                 signature_hex: crate::crypto::hex_encode(signature),
                 pairing_secret,
@@ -420,7 +420,7 @@ impl IrohTransport {
             .map_err(|_| anyhow!("recipient public key must be 32 bytes"))?;
         let encrypted = encrypt_session_payload(payload, &recipient)?;
         let nonce = uuid::Uuid::new_v4().to_string();
-        let timestamp = chrono::Utc::now().timestamp();
+        let timestamp = jiff::Timestamp::now().as_second();
         let signature = self
             .local_identity
             .sign(&memory_sync_message(timestamp, &nonce, &encrypted));
@@ -454,7 +454,7 @@ impl IrohTransport {
 
     /// Signed `FetchManifest` round trip over an established connection.
     async fn fetch_manifest_on(&self, conn: &Connection) -> Result<MeshManifest> {
-        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let timestamp = jiff::Timestamp::now().as_second().to_string();
         let nonce = uuid::Uuid::new_v4().to_string();
         let message = format!("{}:{}", timestamp, nonce);
         let signature = crate::crypto::hex_encode(self.local_identity.sign(message.as_bytes()));
@@ -727,7 +727,7 @@ async fn apply_memory_sync(
         Some(allowed) if allowed.allows(sender.as_str()) => allowed,
         _ => return Err("unknown peer".into()),
     };
-    if (chrono::Utc::now().timestamp() - timestamp).abs() > MEMORY_SYNC_MAX_SKEW_SECS {
+    if (jiff::Timestamp::now().as_second() - timestamp).abs() > MEMORY_SYNC_MAX_SKEW_SECS {
         return Err("stale request".into());
     }
     let seed: [u8; 32] = local_identity
@@ -763,7 +763,8 @@ async fn apply_memory_sync(
                 continue;
             }
         };
-        let at = chrono::DateTime::from_timestamp(m.created_at, 0).unwrap_or_else(chrono::Utc::now);
+        let at =
+            jiff::Timestamp::from_second(m.created_at).unwrap_or_else(|_| jiff::Timestamp::now());
         let record = crate::memory::store::MemoryRecord {
             id: uuid::Uuid::new_v4().to_string(),
             workspace_id: workspace.clone(),
@@ -892,14 +893,14 @@ async fn handle_request_with_policy(
                 .map(|entry| ChunkRef {
                     hash: entry.chunk_hash,
                     document_count: entry.size_bytes as usize,
-                    created_at: entry.updated_at.timestamp(),
+                    created_at: entry.updated_at.as_second(),
                 })
                 .collect();
 
             let resp = MeshManifest {
                 node_id: local_identity.node_id.clone(),
                 chunks,
-                generated_at: chrono::Utc::now().timestamp(),
+                generated_at: jiff::Timestamp::now().as_second(),
             };
             Ok(serde_json::to_value(resp)?)
         }
@@ -1164,8 +1165,8 @@ mod tests {
             content: content.into(),
             metadata: serde_json::Value::Null,
             embedding: Vec::new(),
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             revision,
             primary: true,
             parent_id: None,
@@ -1474,7 +1475,7 @@ mod tests {
         let recipient: [u8; 32] = receiver.public_key.as_slice().try_into().unwrap();
         let encrypted = encrypt_session_payload(&payload, &recipient).unwrap();
         let nonce = uuid::Uuid::new_v4().to_string();
-        let timestamp = chrono::Utc::now().timestamp();
+        let timestamp = jiff::Timestamp::now().as_second();
         let signature = sender.sign(&memory_sync_message(timestamp, &nonce, &encrypted));
         MeshRequest::MemorySync {
             sender_public_key_hex: crate::crypto::hex_encode(&sender.public_key),
@@ -1490,7 +1491,7 @@ mod tests {
             path: path.into(),
             content: content.into(),
             metadata,
-            created_at: chrono::Utc::now().timestamp(),
+            created_at: jiff::Timestamp::now().as_second(),
         }
     }
 
@@ -1519,7 +1520,7 @@ mod tests {
         let store = InMemoryMemoryStore::default();
         let mut victim = make_test_record("victim-id", "victim", "original", 1);
         victim.path = "notes/a".into();
-        victim.updated_at = chrono::DateTime::from_timestamp(1_577_836_800, 0).unwrap();
+        victim.updated_at = jiff::Timestamp::from_second(1_577_836_800).unwrap();
         store.put(victim.clone()).await.unwrap();
 
         let req = signed_memory_sync(

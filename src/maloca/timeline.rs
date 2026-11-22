@@ -12,7 +12,7 @@
 use axum::extract::Path;
 use axum::response::IntoResponse;
 use axum::{Extension, Json};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -228,10 +228,8 @@ async fn fetch_events(
 
 /// Parse an RFC3339 timestamp; used for validation helpers.
 #[allow(dead_code)]
-fn parse_ts(s: &str) -> Option<DateTime<Utc>> {
-    DateTime::parse_from_rfc3339(s)
-        .ok()
-        .map(|d| d.with_timezone(&Utc))
+fn parse_ts(s: &str) -> Option<Timestamp> {
+    s.parse::<Timestamp>().ok()
 }
 
 #[cfg(test)]

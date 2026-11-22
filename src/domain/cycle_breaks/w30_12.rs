@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -13,7 +13,7 @@ use crate::utils::crypto::hex_encode;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryRevision {
     pub revision: u64,
-    pub recorded_at: DateTime<Utc>,
+    pub recorded_at: Timestamp,
     pub path: String,
     pub content: String,
     pub metadata: serde_json::Value,
@@ -27,8 +27,8 @@ pub struct MemoryRecord {
     pub content: String,
     pub metadata: serde_json::Value,
     pub embedding: Vec<f32>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub revision: u64,
     pub primary: bool,
     pub parent_id: Option<String>,
@@ -51,7 +51,7 @@ pub struct MemoryRecord {
     #[serde(default)]
     pub score: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<Timestamp>,
     #[serde(default = "default_embedding_status")]
     pub embedding_status: String,
     #[serde(default)]

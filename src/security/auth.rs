@@ -2,7 +2,6 @@
 //! JWT-based authentication, RBAC, and TOTP support
 
 use anyhow::{anyhow, Result};
-use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use qrcode::render::unicode;
 use qrcode::QrCode;
@@ -20,16 +19,33 @@ pub struct Claims {
     pub iat: i64,       // Issued at
 }
 
+pub trait IntoSpan {
+    fn into_span(self) -> jiff::Span;
+}
+
+impl IntoSpan for jiff::Span {
+    fn into_span(self) -> jiff::Span {
+        self
+    }
+}
+
+impl IntoSpan for std::time::Duration {
+    fn into_span(self) -> jiff::Span {
+        jiff::Span::new().seconds(self.as_secs() as i64)
+    }
+}
+
 impl Claims {
     /// New.
-    pub fn new(user_id: String, email: String, role: UserRole, expires_in: Duration) -> Self {
-        let now = Utc::now();
+    pub fn new(user_id: String, email: String, role: UserRole, expires_in: impl IntoSpan) -> Self {
+        let span = expires_in.into_span();
+        let now = jiff::Timestamp::now();
         Self {
             sub: user_id,
             email,
             role,
-            exp: (now + expires_in).timestamp(),
-            iat: now.timestamp(),
+            exp: now.checked_add(span).unwrap_or(now).as_second(),
+            iat: now.as_second(),
         }
     }
 }
@@ -59,7 +75,7 @@ pub struct User {
 impl User {
     /// New.
     pub fn new(email: String, name: String, role: UserRole) -> Self {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         Self {
             id: ulid::Ulid::new().to_string(),
             email,
@@ -92,7 +108,7 @@ pub fn generate_jwt(user: &User, secret: &[u8]) -> Result<String> {
         user.id.clone(),
         user.email.clone(),
         user.role,
-        Duration::hours(1),
+        jiff::Span::new().hours(1),
     );
 
     encode(

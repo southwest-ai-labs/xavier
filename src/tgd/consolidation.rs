@@ -3,7 +3,6 @@
 //! Manages background execution of memory consolidation and TGD rule generation
 //! on a cron-like schedule.
 
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::path::PathBuf;
@@ -94,7 +93,7 @@ impl TgdConsolidationScheduler {
                 cron_expr
             );
 
-            let schedule: cron::Schedule = match cron::Schedule::from_str(&cron_expr) {
+            let schedule: croner::Cron = match cron_expr.parse() {
                 Ok(s) => s,
                 Err(e) => {
                     error!("❌ Invalid cron expression: {}", e);
@@ -167,7 +166,7 @@ impl TgdConsolidationScheduler {
 
         let duration = start.elapsed();
         let state = SchedulerState {
-            last_run_at: Some(Utc::now()),
+            last_run_at: Some(jiff::Timestamp::now()),
             last_duration_ms: duration.as_millis() as u64,
             items_processed: final_stats.selected,
         };
@@ -185,7 +184,7 @@ impl TgdConsolidationScheduler {
         );
 
         // Log results to chronicle (via memory document)
-        let date = Utc::now().format("%Y-%m-%d").to_string();
+        let date = jiff::Timestamp::now().strftime("%Y-%m-%d").to_string();
         let report_content = format!(
             "# Nightly TGD Consolidation Report\n\n- Date: {}\n- Duration: {}ms\n- Items Processed: {}\n- Memories Refined: {}\n- Avg Improvement: {:.4}\n- Errors: {}\n",
             date,
@@ -247,7 +246,7 @@ impl TgdConsolidationScheduler {
 ///   * `min_interval` separates two cycles, so a schedule that lands on the
 ///     current instant cannot turn this into a spin loop.
 async fn run_cycle_loop<F, Fut>(
-    schedule: cron::Schedule,
+    schedule: croner::Cron,
     cancellation_token: CancellationToken,
     progress: Arc<RwLock<ProgressReport>>,
     cycle_timeout: Duration,
@@ -257,14 +256,13 @@ async fn run_cycle_loop<F, Fut>(
     F: Fn() -> Fut,
     Fut: Future<Output = anyhow::Result<()>>,
 {
-    while let Some(next) = schedule.upcoming(Utc).next() {
-        let now = Utc::now();
-        if next > now {
-            let sleep_duration = next
-                .signed_duration_since(now)
-                .to_std()
-                .unwrap_or(Duration::from_secs(0));
-            info!("📅 Next TGD consolidation scheduled for: {}", next);
+    while let Ok(next) = schedule.find_next_occurrence(&jiff::Zoned::now(), false) {
+        let next_ts = next.timestamp();
+        let now = jiff::Timestamp::now();
+        if next_ts > now {
+            let sleep_millis = (next_ts.as_millisecond() - now.as_millisecond()).max(0) as u64;
+            let sleep_duration = Duration::from_millis(sleep_millis);
+            info!("📅 Next TGD consolidation scheduled for: {}", next_ts);
 
             tokio::select! {
                 _ = tokio::time::sleep(sleep_duration) => {},
@@ -405,7 +403,7 @@ pub async fn run_nightly_tgd() -> anyhow::Result<()> {
     }
     let report = format!(
         "# Nightly TGD Report\n\n- Time: {}\n- Memories refined: {}\n- Avg score improvement: {:.4}\n- Errors: {}\n",
-        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC"),
+        jiff::Timestamp::now().strftime("%Y-%m-%d %H:%M:%S UTC"),
         stats.memories_refined,
         stats.avg_score_improvement,
         stats.errors,
@@ -484,8 +482,8 @@ mod tests {
     const TEST_BUDGET: Duration = Duration::from_secs(20);
 
     /// The worst case a cron expression can express: a tick every second.
-    fn every_second() -> cron::Schedule {
-        cron::Schedule::from_str("* * * * * *").expect("valid cron expression")
+    fn every_second() -> croner::Cron {
+        "* * * * * *".parse().expect("valid cron expression")
     }
 
     /// Poll `ready` until it holds or [`TEST_BUDGET`] expires.

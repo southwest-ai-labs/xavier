@@ -30,7 +30,6 @@
 
 use crate::codebase::connection_manager::ConnectionManager;
 use anyhow::{Context, Result};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -161,7 +160,7 @@ impl LogEntry {
     fn new(level: LogLevel, source: LogSource, module: &str, message: &str) -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
-            timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string(),
+            timestamp: jiff::Timestamp::now().to_string(),
             level,
             source,
             module: Some(module.to_string()),

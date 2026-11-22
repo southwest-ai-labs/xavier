@@ -3,7 +3,7 @@
 //! Reconciles contradictory facts across clustered memories (e.g. configuration updates,
 //! port changes, status transitions) in favor of newer/higher-quality statements.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use tracing::{debug, info};
@@ -180,8 +180,8 @@ mod tests {
             priority: crate::memory::manager::MemoryPriority::High,
             quality: quality1,
             access_count: 10,
-            last_access: Some(Utc::now()),
-            created_at: Some(Utc::now()),
+            last_access: Some(Timestamp::now()),
+            created_at: Some(Timestamp::now()),
             size_bytes: 0,
         };
 
@@ -201,8 +201,8 @@ mod tests {
             priority: crate::memory::manager::MemoryPriority::Low,
             quality: quality2,
             access_count: 2,
-            last_access: Some(Utc::now()),
-            created_at: Some(Utc::now()),
+            last_access: Some(Timestamp::now()),
+            created_at: Some(Timestamp::now()),
             size_bytes: 0,
         };
 

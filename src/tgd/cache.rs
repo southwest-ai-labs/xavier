@@ -1,7 +1,7 @@
 use crate::agents::runtime::ConversationMessage;
 use crate::agents::system1::RetrievedDocument;
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -12,7 +12,7 @@ pub struct TgdCache {
     /// SHA256 hash of the last analyzed history and context
     pub last_hash: String,
     /// Timestamp of the last successful TGD run
-    pub last_run: DateTime<Utc>,
+    pub last_run: Timestamp,
 }
 
 impl TgdCache {
@@ -25,7 +25,7 @@ impl TgdCache {
         }
         Self {
             last_hash: String::new(),
-            last_run: DateTime::UNIX_EPOCH,
+            last_run: Timestamp::UNIX_EPOCH,
         }
     }
 
@@ -79,8 +79,8 @@ impl TgdCache {
         }
 
         // If history is the same, check if enough time has passed
-        let now = Utc::now();
-        let elapsed = now.signed_duration_since(self.last_run).num_seconds();
+        let now = Timestamp::now();
+        let elapsed = now.as_second() - self.last_run.as_second();
 
         elapsed < min_interval_seconds
     }
@@ -97,7 +97,7 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             role: MessageRole::User,
             content: content.to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         }
     }
 
@@ -143,7 +143,7 @@ mod tests {
     fn test_skip_logic() {
         let cache = TgdCache {
             last_hash: "abc".to_string(),
-            last_run: Utc::now() - chrono::Duration::minutes(30),
+            last_run: Timestamp::now() - Span::new().minutes(30),
         };
 
         // Same hash, within interval -> skip
@@ -163,7 +163,7 @@ mod tests {
 
         let cache = TgdCache {
             last_hash: "test-hash".to_string(),
-            last_run: Utc::now(),
+            last_run: Timestamp::now(),
         };
 
         cache.save(path).await.unwrap();
@@ -171,6 +171,6 @@ mod tests {
         let loaded = TgdCache::load(path).await;
         assert_eq!(loaded.last_hash, cache.last_hash);
         // Compare timestamps with some tolerance
-        assert!((loaded.last_run - cache.last_run).num_seconds().abs() < 2);
+        assert!((loaded.last_run.as_second() - cache.last_run.as_second()).abs() < 2);
     }
 }

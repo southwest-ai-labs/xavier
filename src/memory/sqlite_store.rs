@@ -6,7 +6,7 @@ use std::{any::Any, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::params;
 use tokio::fs;
 
@@ -32,8 +32,8 @@ pub(crate) const TABLE_NOTIFICATIONS: &str = "notifications";
 
 struct SessionTokenRow {
     token: String,
-    created_at: DateTime<Utc>,
-    expires_at: DateTime<Utc>,
+    created_at: Timestamp,
+    expires_at: Timestamp,
 }
 
 impl From<SessionTokenRow> for SessionTokenRecord {
@@ -168,12 +168,14 @@ impl SqliteMemoryStore {
             content: row.get(3)?,
             metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
             embedding: Self::deserialize_embedding(&embedding_blob),
-            created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
-            updated_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
+            created_at: row
+                .get::<_, String>(6)?
+                .parse::<Timestamp>()
+                .unwrap_or_else(|_| Timestamp::now()),
+            updated_at: row
+                .get::<_, String>(7)?
+                .parse::<Timestamp>()
+                .unwrap_or_else(|_| Timestamp::now()),
             revision: row.get(8)?,
             primary: row.get::<_, i32>(9)? != 0,
             parent_id: row.get(10)?,
@@ -455,7 +457,7 @@ impl MemoryStore for SqliteMemoryStore {
                             let salt_vec = new_salt.as_bytes().to_vec();
                             conn.execute(
                                 "INSERT INTO encryption_metadata (id, workspace_id, salt, created_at) VALUES (?, ?, ?, ?)",
-                                params![ulid::Ulid::new().to_string(), workspace_id, salt_vec, Utc::now().to_rfc3339()],
+                                params![ulid::Ulid::new().to_string(), workspace_id, salt_vec, Timestamp::now().to_string()],
                             )?;
                             Ok(salt_vec)
                         }
@@ -514,8 +516,8 @@ impl MemoryStore for SqliteMemoryStore {
                     record.encrypted_dek,
                     record.content_iv,
                     record.metadata_iv,
-                    record.created_at.to_rfc3339(),
-                    record.updated_at.to_rfc3339(),
+                    record.created_at.to_string(),
+                    record.updated_at.to_string(),
                     record.revision,
                     record.primary as i32,
                     record.parent_id,
@@ -818,7 +820,7 @@ impl MemoryStore for SqliteMemoryStore {
             };
 
             // Load session tokens (filter expired)
-            let now = Utc::now();
+            let now = Timestamp::now();
             let session_tokens = {
                 let mut stmt = conn.prepare(&format!(
                     "SELECT id, workspace_id, token, created_at, expires_at FROM {} WHERE workspace_id = ?",
@@ -829,12 +831,14 @@ impl MemoryStore for SqliteMemoryStore {
                 while let Some(row) = rows.next()? {
                     let token_row = SessionTokenRow {
                         token: row.get(2)?,
-                        created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                            .map(|dt| dt.with_timezone(&Utc))
-                            .unwrap_or_else(|_| Utc::now()),
-                        expires_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                            .map(|dt| dt.with_timezone(&Utc))
-                            .unwrap_or_else(|_| Utc::now()),
+                        created_at: row
+                            .get::<_, String>(3)?
+                            .parse::<Timestamp>()
+                            .unwrap_or_else(|_| Timestamp::now()),
+                        expires_at: row
+                            .get::<_, String>(4)?
+                            .parse::<Timestamp>()
+                            .unwrap_or_else(|_| Timestamp::now()),
                     };
                     if token_row.expires_at > now {
                         tokens.push(SessionTokenRecord::from(token_row));
@@ -892,7 +896,7 @@ impl MemoryStore for SqliteMemoryStore {
                     "INSERT OR REPLACE INTO {} (id, workspace_id, beliefs, updated_at) VALUES (?, ?, ?, ?)",
                     TABLE_BELIEFS
                 ),
-                params![belief_key, workspace_id, beliefs_blob, Utc::now().to_rfc3339()],
+                params![belief_key, workspace_id, beliefs_blob, Timestamp::now().to_string()],
             )?;
             Ok(())
         }).await
@@ -906,8 +910,8 @@ impl MemoryStore for SqliteMemoryStore {
         let workspace_id = workspace_id.to_string();
         let token_key = stable_key("session_token_row", &[&workspace_id, &token.token]);
         let token_val = token.token;
-        let created_at = token.created_at.to_rfc3339();
-        let expires_at = token.expires_at.to_rfc3339();
+        let created_at = token.created_at.to_string();
+        let expires_at = token.expires_at.to_string();
 
         self.conn_provider.with_conn(&self.project_id, move |conn| {
             // Delete expired tokens first
@@ -916,7 +920,7 @@ impl MemoryStore for SqliteMemoryStore {
                     "DELETE FROM {} WHERE workspace_id = ? AND expires_at <= ?",
                     TABLE_SESSION_TOKENS
                 ),
-                params![workspace_id, Utc::now().to_rfc3339()],
+                params![workspace_id, Timestamp::now().to_string()],
             )?;
 
             // Insert new token
@@ -944,7 +948,7 @@ impl MemoryStore for SqliteMemoryStore {
         self.conn_provider
             .with_conn(&self.project_id, move |conn| {
                 let token_key = stable_key("session_token_row", &[&workspace_id, &token]);
-                let now = Utc::now().to_rfc3339();
+                let now = Timestamp::now().to_string();
 
                 let count: i32 = conn.query_row(
                     &format!(
@@ -1095,7 +1099,7 @@ impl MemoryStore for SqliteMemoryStore {
     async fn save_entity_graph_snapshot(&self, workspace_id: &str, data: &str) -> Result<()> {
         let workspace_id = workspace_id.to_string();
         let data = data.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         self.conn_provider
             .with_conn(&self.project_id, move |conn| {
                 conn.execute(
@@ -1299,7 +1303,7 @@ mod tests {
         let config = SqliteStoreConfig { path: db_path };
         let store = SqliteMemoryStore::new_in_memory(config).await.unwrap();
 
-        let base_time = Utc::now();
+        let base_time = Timestamp::now();
         // Insert 10 records with incremental created_at timestamps
         for i in 0..10 {
             let rec = MemoryRecord {
@@ -1307,7 +1311,9 @@ mod tests {
                 workspace_id: "ws_limit_test".to_string(),
                 path: format!("item_{}.rs", i),
                 content: format!("content {}", i),
-                created_at: base_time + chrono::Duration::seconds(i as i64 * 10),
+                created_at: base_time
+                    .checked_add(jiff::Span::new().seconds(i as i64 * 10))
+                    .unwrap(),
                 level: if i % 2 == 0 {
                     MemoryLevel::Raw
                 } else {

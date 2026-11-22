@@ -5,7 +5,6 @@
 //! loaded on node startup.
 
 use anyhow::{bail, Context, Result};
-use chrono::Utc;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use serde::{Deserialize, Serialize};
@@ -61,7 +60,7 @@ impl EphemeralSessionKey {
             nonce: challenge.nonce.clone(),
             public_key_bytes: self.public_key_bytes(),
             signature_bytes: sig.to_bytes(),
-            timestamp: Utc::now().timestamp() as u64,
+            timestamp: jiff::Timestamp::now().as_second() as u64,
         }
     }
 }
@@ -84,7 +83,7 @@ pub struct EphemeralSessionChallenge {
 impl EphemeralSessionChallenge {
     /// Create a new ephemeral challenge for a target peer node and session.
     pub fn new(peer_node_id: NodeId, session_id: &str, ttl_secs: u64) -> Self {
-        let now = Utc::now().timestamp() as u64;
+        let now = jiff::Timestamp::now().as_second() as u64;
         let nonce = Uuid::new_v4().to_string();
         Self {
             session_id: session_id.to_string(),
@@ -110,7 +109,7 @@ impl EphemeralSessionChallenge {
 
     /// Check whether the challenge has expired.
     pub fn is_expired(&self) -> bool {
-        let now = Utc::now().timestamp() as u64;
+        let now = jiff::Timestamp::now().as_second() as u64;
         now > self.expires_at
     }
 }
@@ -365,7 +364,7 @@ pub struct Wallet {
 impl Wallet {
     /// Create a new empty wallet for the given node.
     pub fn new(node_id: NodeId) -> Self {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         Wallet {
             node_id,
             balance: WalletBalance::default(),
@@ -380,7 +379,7 @@ impl Wallet {
     pub fn credit(&mut self, amount: u64, kind: TransactionKind, description: &str) {
         self.balance.xp_balance += amount;
         self.balance.lifetime_earned += amount;
-        self.last_updated = Utc::now().timestamp();
+        self.last_updated = jiff::Timestamp::now().as_second();
         self.transactions.push(Transaction {
             id: Uuid::new_v4(),
             kind,
@@ -401,7 +400,7 @@ impl Wallet {
             );
         }
         self.balance.xp_balance -= amount;
-        self.last_updated = Utc::now().timestamp();
+        self.last_updated = jiff::Timestamp::now().as_second();
         self.transactions.push(Transaction {
             id: Uuid::new_v4(),
             kind,
@@ -424,7 +423,7 @@ impl Wallet {
         }
         self.balance.xp_balance -= amount;
         self.balance.staked_xp += amount;
-        self.last_updated = Utc::now().timestamp();
+        self.last_updated = jiff::Timestamp::now().as_second();
         self.transactions.push(Transaction {
             id: Uuid::new_v4(),
             kind: TransactionKind::Stake {
@@ -455,7 +454,7 @@ impl Wallet {
 
         self.balance.staked_xp -= amount;
         self.balance.xp_balance += net;
-        self.last_updated = Utc::now().timestamp();
+        self.last_updated = jiff::Timestamp::now().as_second();
 
         self.transactions.push(Transaction {
             id: Uuid::new_v4(),

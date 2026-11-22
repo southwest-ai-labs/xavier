@@ -195,7 +195,7 @@ impl MigrationRunner {
         let tx = conn
             .unchecked_transaction()
             .context("Failed to begin backfill transaction")?;
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
         for v in 1..=target {
             tx.execute(
                 "INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (?, 'legacy-backfill', ?)",
@@ -261,7 +261,7 @@ impl MigrationRunner {
                 )
             })?;
 
-            let now = chrono::Utc::now().to_rfc3339();
+            let now = jiff::Timestamp::now().to_string();
             // `OR IGNORE`: a second runner may have recorded this version after
             // we computed `current_version` (e.g. two concurrent
             // `MultiDbManager::create_database` calls initialising the same new
@@ -388,7 +388,7 @@ impl MigrationManager {
                 rusqlite::params![
                     m.version() as i64,
                     m.description(),
-                    chrono::Utc::now().to_rfc3339()
+                    jiff::Timestamp::now().to_string()
                 ],
             )
             .context("Failed to update schema version")?;

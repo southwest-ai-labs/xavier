@@ -85,7 +85,11 @@ for f in "${FILES[@]}"; do
         tests/*.rs)
             # A file inside a directory module (tests/<dir>/mod.rs) belongs to <dir>.
             sub="${f#tests/}"; top="${sub%%/*}"
-            if [ "$sub" != "$top" ] && [ -f "tests/$top/mod.rs" ]; then
+            if [ "$top" = "common" ] || [ "$top" = "fixtures" ] || [ "$top" = "bounded_cli_support" ] || [ "$top" = "router_harness" ]; then
+                : # Helper module, not an executable target
+            elif [ "$sub" != "$top" ] && [ -f "tests/$top.rs" ]; then
+                TEST_TARGETS["$top"]=1
+            elif [ "$sub" != "$top" ] && [ -f "tests/$top/mod.rs" ]; then
                 TEST_TARGETS["$top"]=1
             else
                 TEST_TARGETS["$(basename "$f" .rs)"]=1

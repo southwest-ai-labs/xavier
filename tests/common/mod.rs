@@ -1,6 +1,6 @@
 //! Shared integration test utilities for memory sync, manifests, and record management.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tempfile::TempDir;
@@ -37,7 +37,7 @@ pub fn compute_manifest_hash(manifest: &Manifest) -> String {
         hasher.update(entry.chunk_hash.as_bytes());
         hasher.update(entry.namespace.as_bytes());
         hasher.update(entry.revision.to_le_bytes());
-        hasher.update(entry.updated_at.timestamp().to_le_bytes());
+        hasher.update(entry.updated_at.as_second().to_le_bytes());
         hasher.update(entry.size_bytes.to_le_bytes());
         if let Some(ref path) = entry.record_path {
             hasher.update(path.as_bytes());
@@ -59,10 +59,10 @@ pub fn make_record(
     workspace_id: &str,
     path: &str,
     content: &str,
-    updated_at: DateTime<Utc>,
+    updated_at: Timestamp,
     revision: u64,
     node_id: &str,
-    deleted_at: Option<DateTime<Utc>>,
+    deleted_at: Option<Timestamp>,
 ) -> MemoryRecord {
     let mut metadata = serde_json::Map::new();
     metadata.insert(

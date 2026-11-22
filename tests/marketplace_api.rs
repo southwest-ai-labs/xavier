@@ -14,7 +14,7 @@ async fn test_list_datasets_returns_available_datasets() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     let list_payload = json!({
@@ -72,7 +72,7 @@ async fn test_query_dataset_valid_and_invalid_id() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     let list_payload = json!({
@@ -149,7 +149,7 @@ async fn test_revoke_dataset_removes_access() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     let list_payload = json!({
@@ -216,7 +216,7 @@ async fn test_list_dataset_with_invalid_signature_rejected() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     let invalid_sig_payload = json!({
@@ -255,7 +255,7 @@ async fn test_pricing_metadata_responses() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     let pricing_req = Request::builder()
@@ -284,7 +284,7 @@ async fn test_marketplace_full_lifecycle() {
         "marketplace-test-admin".into(),
         String::new(),
         xavier::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )));
 
     // 1. GET /v1/marketplace/pricing preview

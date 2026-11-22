@@ -4,7 +4,7 @@
 //! ensuring private mesh security.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -32,7 +32,24 @@ pub struct WalletNode {
     /// The connection address for Iroh.
     pub iroh_addr: String,
     /// The last time this node was seen/active.
-    pub last_seen: DateTime<Utc>,
+    pub last_seen: Timestamp,
+}
+
+/// Helper trait to accept either `Option<jiff::Timestamp>` or `jiff::Timestamp`.
+pub trait IntoGrantExpiry {
+    fn into_grant_expiry(self) -> Option<Timestamp>;
+}
+
+impl IntoGrantExpiry for Option<Timestamp> {
+    fn into_grant_expiry(self) -> Option<Timestamp> {
+        self
+    }
+}
+
+impl IntoGrantExpiry for Timestamp {
+    fn into_grant_expiry(self) -> Option<Timestamp> {
+        Some(self)
+    }
 }
 
 /// Derives the wallet ID from an Ed25519 public key bytes using SHA-256.
@@ -460,13 +477,18 @@ impl PrivateMeshRegistry {
         resource_id: String,
         target_node: String,
         permission: Permission,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: impl IntoGrantExpiry,
     ) -> Result<CrossGrant> {
         let net = self
             .networks
             .get_mut(network_id)
             .ok_or_else(|| anyhow!("Network '{}' not found", network_id))?;
-        let grant = net.grant_cross(resource_id, target_node, permission, expires_at);
+        let grant = net.grant_cross(
+            resource_id,
+            target_node,
+            permission,
+            expires_at.into_grant_expiry(),
+        );
         self.save()?;
         Ok(grant)
     }
@@ -635,7 +657,7 @@ mod tests {
             wallet_id: wallet_id.to_string(),
             name: name.to_string(),
             iroh_addr: "/ip4/127.0.0.1/tcp/1234".to_string(),
-            last_seen: Utc::now(),
+            last_seen: jiff::Timestamp::now(),
         }
     }
 
@@ -735,7 +757,7 @@ mod tests {
                 path: "fact/secret_1".to_string(),
                 content: "Secret content".to_string(),
                 metadata: serde_json::json!({}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec![],
@@ -823,7 +845,7 @@ mod tests {
                 path: "fact/secret_1".to_string(),
                 content: "Alice's secret memory".to_string(),
                 metadata: serde_json::json!({"level": "confidential"}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec!["repo_alice_v1".to_string()],
@@ -857,7 +879,7 @@ mod tests {
             path: "fact/swal_node_1".to_string(),
             content: "Shared wallet state delta".to_string(),
             metadata: serde_json::json!({"synced": true}),
-            created_at: Utc::now().timestamp(),
+            created_at: Timestamp::now().as_second(),
         };
 
         let payload = PrivateSyncPayload {
@@ -916,7 +938,7 @@ mod tests {
                 path: "fact/isolated_memory".to_string(),
                 content: "Cross-wallet payload".to_string(),
                 metadata: serde_json::json!({"isolated": true}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec![],
@@ -994,7 +1016,7 @@ mod tests {
                 path: "secrets/confidential_memo".to_string(),
                 content: "ECDH forward-secret payload".to_string(),
                 metadata: serde_json::json!({"level": "top_secret"}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec!["snap-1".to_string()],
@@ -1058,7 +1080,7 @@ mod tests {
                 path: "secrets/classified".to_string(),
                 content: "Top secret content".to_string(),
                 metadata: serde_json::json!({}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec![],
@@ -1133,7 +1155,7 @@ mod tests {
                 path: "notes/private".to_string(),
                 content: "only for the target node".to_string(),
                 metadata: serde_json::json!({}),
-                created_at: Utc::now().timestamp(),
+                created_at: Timestamp::now().as_second(),
             }],
             vectors: vec![],
             snapshots: vec![],

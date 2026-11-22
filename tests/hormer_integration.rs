@@ -122,13 +122,13 @@ async fn test_tgd_generation() {
             id: "msg1".to_string(),
             role: MessageRole::User,
             content: "How do I configure the retriever?".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: jiff::Timestamp::now(),
         },
         ConversationMessage {
             id: "msg2".to_string(),
             role: MessageRole::Assistant,
             content: "You can use GatingConfig to set weights.".to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: jiff::Timestamp::now(),
         },
     ];
 

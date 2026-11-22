@@ -8,7 +8,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tracing::{debug, info, warn};
@@ -24,7 +24,7 @@ pub struct CheckpointState {
     pub messages: Vec<ConversationMessage>,
     pub task_queue: Vec<String>,
     pub tools_state: HashMap<String, serde_json::Value>,
-    pub checkpoint_timestamp: DateTime<Utc>,
+    pub checkpoint_timestamp: Timestamp,
 }
 
 impl CheckpointState {
@@ -40,7 +40,7 @@ impl CheckpointState {
             messages,
             task_queue,
             tools_state,
-            checkpoint_timestamp: Utc::now(),
+            checkpoint_timestamp: Timestamp::now(),
         }
     }
 }
@@ -203,8 +203,8 @@ fn validate_session_id(session_id: &str) -> Result<()> {
     Ok(())
 }
 
-fn format_timestamp(timestamp: &DateTime<Utc>) -> String {
-    timestamp.format("%Y%m%dT%H%M%S%.3fZ").to_string()
+fn format_timestamp(timestamp: &Timestamp) -> String {
+    timestamp.strftime("%Y%m%dT%H%M%S%.3fZ").to_string()
 }
 
 #[cfg(test)]
@@ -227,14 +227,14 @@ mod tests {
                 id: "msg-1".to_string(),
                 role: MessageRole::User,
                 content: "restore me".to_string(),
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
             }],
             task_queue: vec!["task-a".to_string(), "task-b".to_string()],
             tools_state: HashMap::from([(
                 "search".to_string(),
                 serde_json::json!({ "cursor": 2 }),
             )]),
-            checkpoint_timestamp: Utc::now(),
+            checkpoint_timestamp: Timestamp::now(),
         }
     }
 
@@ -242,7 +242,7 @@ mod tests {
     async fn saves_and_loads_latest_checkpoint() {
         let root = temp_checkpoint_root().await;
         let mut first = sample_state("session_a");
-        first.checkpoint_timestamp = Utc::now() - chrono::Duration::seconds(1);
+        first.checkpoint_timestamp = Timestamp::now() - Span::new().seconds(1);
         save_checkpoint_in_dir(&root, &first)
             .await
             .expect("test assertion");
@@ -266,7 +266,7 @@ mod tests {
 
         for offset in 0..4 {
             let mut state = sample_state("session_b");
-            state.checkpoint_timestamp = Utc::now() + chrono::Duration::milliseconds(offset);
+            state.checkpoint_timestamp = Timestamp::now() + Span::new().milliseconds(offset);
             save_checkpoint_in_dir(&root, &state)
                 .await
                 .expect("test assertion");

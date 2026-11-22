@@ -25,7 +25,9 @@ pub fn wal_path_for_db(db_path: &Path) -> PathBuf {
 
 /// Convert a `SystemTime` instance into an RFC3339 string.
 fn system_time_to_rfc3339(time: SystemTime) -> String {
-    chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339()
+    jiff::Timestamp::try_from(time)
+        .unwrap_or(jiff::Timestamp::UNIX_EPOCH)
+        .to_string()
 }
 
 /// Get current UNIX timestamp in seconds.
@@ -215,7 +217,7 @@ impl WalStreamer {
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
                 .unwrap_or_else(|| "database".to_string());
-            let now = chrono::Utc::now().to_rfc3339();
+            let now = jiff::Timestamp::now().to_string();
             let m = BackupManifest {
                 database_name: db_name,
                 created_at: now.clone(),
@@ -315,7 +317,7 @@ impl WalStreamer {
 
         self.manifest.current_snapshot_seq = seq;
         self.manifest.snapshots.push(snapshot_metadata.clone());
-        self.manifest.last_updated_at = chrono::Utc::now().to_rfc3339();
+        self.manifest.last_updated_at = jiff::Timestamp::now().to_string();
 
         let wal_path = wal_path_for_db(&self.config.db_path);
         self.last_wal_offset = if wal_path.exists() {
@@ -417,7 +419,7 @@ impl WalStreamer {
 
         self.manifest.current_wal_seq = seq;
         self.manifest.wal_segments.push(segment_metadata.clone());
-        self.manifest.last_updated_at = chrono::Utc::now().to_rfc3339();
+        self.manifest.last_updated_at = jiff::Timestamp::now().to_string();
 
         let manifest_path = self.config.backup_dir.join("manifest.json");
         self.manifest.save_to_file(&manifest_path)?;
@@ -589,7 +591,7 @@ impl WalStreamer {
         drop(conn);
 
         let pit_req_str = point_in_time.map(system_time_to_rfc3339);
-        let recovered_at = chrono::Utc::now().to_rfc3339();
+        let recovered_at = jiff::Timestamp::now().to_string();
 
         info!(
             "Recovered database to {:?} using snapshot {} with {} WAL segments. Integrity: {}",

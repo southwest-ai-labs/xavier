@@ -26,7 +26,7 @@ fn claims(sub: &str, email: &str, role: UserRole) -> Claims {
         sub.to_string(),
         email.to_string(),
         role,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )
 }
 

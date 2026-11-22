@@ -1,5 +1,4 @@
 use axum::{extract::State, http::StatusCode, response::Response, Json};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 

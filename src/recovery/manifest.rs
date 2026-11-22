@@ -117,7 +117,7 @@ impl RecoveryManifest {
             version: RECOVERY_FORMAT_VERSION,
             record_key_kcv: encode_kcv(record_key),
             master_key_kcv: master_key.map_or_else(String::new, encode_kcv),
-            created_at: chrono::Utc::now().to_rfc3339(),
+            created_at: jiff::Timestamp::now().to_string(),
             note: None,
         }
     }

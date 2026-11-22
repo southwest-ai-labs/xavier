@@ -26,7 +26,7 @@ pub mod token_estimate;
 #[cfg(test)]
 mod tests_query_router;
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 pub use builder::{
@@ -70,7 +70,7 @@ pub struct ContextDocument {
     pub tool_calls: Vec<String>,
     #[serde(default)]
     pub metadata: serde_json::Value,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub token_count: usize,
 }
 
@@ -93,7 +93,7 @@ impl ContextDocument {
             path: String::new(),
             tool_calls: Vec::new(),
             metadata: serde_json::Value::Null,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         }
     }
 
@@ -121,7 +121,7 @@ impl ContextDocument {
     }
 
     /// With created at.
-    pub fn with_created_at(mut self, created_at: DateTime<Utc>) -> Self {
+    pub fn with_created_at(mut self, created_at: Timestamp) -> Self {
         self.created_at = created_at;
         self
     }

@@ -11,7 +11,7 @@
 //! [`TelemetryWriter::prune`] return `Result` and never panic, and both take
 //! `dry_run` so the default call reports the plan without applying it.
 
-use chrono::{DateTime, TimeDelta, Utc};
+use jiff::{Span, Timestamp};
 use rusqlite::{Connection, ErrorCode};
 use thiserror::Error;
 
@@ -98,14 +98,14 @@ impl RetentionPolicy {
     }
 
     /// Oldest stamp the policy keeps, or `None` when retention is disabled.
-    fn cutoff(self, now: DateTime<Utc>) -> Result<Option<String>, TelemetryError> {
+    fn cutoff(self, now: Timestamp) -> Result<Option<String>, TelemetryError> {
         let Self::Expire { max_age_days } = self else {
             return Ok(None);
         };
         let out_of_range = || TelemetryError::RetentionOutOfRange { days: max_age_days };
-        let age = TimeDelta::try_days(i64::from(max_age_days)).ok_or_else(out_of_range)?;
-        let cutoff = now.checked_sub_signed(age).ok_or_else(out_of_range)?;
-        Ok(Some(cutoff.format(TIMESTAMP_FORMAT).to_string()))
+        let age = Span::new().hours(i64::from(max_age_days) * 24);
+        let cutoff = now.checked_sub(age).map_err(|_| out_of_range())?;
+        Ok(Some(cutoff.strftime(TIMESTAMP_FORMAT).to_string()))
     }
 }
 
@@ -133,7 +133,7 @@ pub struct UsageEvent {
     /// Token estimate, when the harness reported one.
     pub token_estimate: Option<i64>,
     /// When the observation happened.
-    pub observed_at: DateTime<Utc>,
+    pub observed_at: Timestamp,
 }
 
 impl UsageEvent {
@@ -157,7 +157,7 @@ impl UsageEvent {
             outcome: "ok".to_string(),
             latency_ms: None,
             token_estimate: None,
-            observed_at: Utc::now(),
+            observed_at: Timestamp::now(),
         }
     }
 
@@ -313,7 +313,7 @@ impl<'a> TelemetryWriter<'a> {
                 affected: 0,
             });
         }
-        let observed_at = event.observed_at.format(TIMESTAMP_FORMAT).to_string();
+        let observed_at = event.observed_at.strftime(TIMESTAMP_FORMAT).to_string();
         let mut backoff = RETRY_BACKOFF_MS.into_iter();
         let affected = loop {
             match self.insert_event(event, &observed_at) {
@@ -371,7 +371,7 @@ impl<'a> TelemetryWriter<'a> {
     }
 
     /// Delete events observed before the retention cutoff, and only those.
-    pub fn prune(&self, now: DateTime<Utc>, dry_run: bool) -> Result<Outcome, TelemetryError> {
+    pub fn prune(&self, now: Timestamp, dry_run: bool) -> Result<Outcome, TelemetryError> {
         let Some(cutoff) = self.retention.cutoff(now)? else {
             return Ok(Outcome {
                 applied: !dry_run,
@@ -423,14 +423,15 @@ mod tests {
     const SKILL: &str = "xavier-cognitive-memory";
     const NOW: &str = "2026-02-01T00:00:00.000Z";
 
-    fn now() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339(NOW)
+    fn now() -> Timestamp {
+        NOW.parse::<Timestamp>()
             .expect("fixture timestamp is valid")
-            .with_timezone(&Utc)
     }
 
-    fn days_ago(days: i64) -> DateTime<Utc> {
-        now() - TimeDelta::try_days(days).expect("day count is in range")
+    fn days_ago(days: i64) -> Timestamp {
+        now()
+            .checked_sub(Span::new().hours(days * 24))
+            .expect("day count is in range")
     }
 
     fn event(event_id: &str, stage: SkillStage) -> UsageEvent {

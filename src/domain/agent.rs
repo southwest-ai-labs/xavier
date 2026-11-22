@@ -2,7 +2,6 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Active agent entry tracked by the lifecycle registry.
@@ -10,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct AgentEntry {
     pub agent_id: String,
     pub session_id: String,
-    pub last_heartbeat: DateTime<Utc>,
+    pub last_heartbeat: jiff::Timestamp,
     pub metadata: AgentMetadata,
 }
 

@@ -719,21 +719,19 @@ impl MemoryStore for VecSqliteMemoryStore {
                     is_inferred: is_inferred != 0,
                     source_language,
                     target_language,
-                    created_at: chrono::DateTime::parse_from_rfc3339(
-                        &row.get::<_, String>(11)?,
-                    )
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now()),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(
-                        &row.get::<_, String>(12)?,
-                    )
-                    .map(|dt| dt.with_timezone(&chrono::Utc))
-                    .unwrap_or_else(|_| chrono::Utc::now()),
+                    created_at: row
+                        .get::<_, String>(11)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
+                    updated_at: row
+                        .get::<_, String>(12)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now()),
                 });
             }
 
             // Load session tokens (filter expired)
-            let now = chrono::Utc::now();
+            let now = jiff::Timestamp::now();
             let session_tokens = {
                 let mut stmt = conn.prepare("SELECT id, workspace_id, token, created_at, expires_at FROM session_tokens WHERE workspace_id = ?")?;
                 let mut rows = stmt.query([&workspace_id_c])?;
@@ -744,16 +742,18 @@ impl MemoryStore for VecSqliteMemoryStore {
                     if crypto.is_some() {
                         continue;
                     }
-                    let expires_at = chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(4)?)
-                            .map(|dt| dt.with_timezone(&chrono::Utc))
-                            .unwrap_or_else(|_| chrono::Utc::now());
+                    let expires_at = row
+                        .get::<_, String>(4)?
+                        .parse::<jiff::Timestamp>()
+                        .unwrap_or_else(|_| jiff::Timestamp::now());
 
                     if expires_at > now {
                         tokens.push(SessionTokenRecord {
                             token: row.get(2)?,
-                            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(3)?)
-                                .map(|dt| dt.with_timezone(&chrono::Utc))
-                                .unwrap_or_else(|_| chrono::Utc::now()),
+                            created_at: row
+                                .get::<_, String>(3)?
+                                .parse::<jiff::Timestamp>()
+                                .unwrap_or_else(|_| jiff::Timestamp::now()),
                             expires_at,
                         });
                     }
@@ -853,8 +853,8 @@ impl MemoryStore for VecSqliteMemoryStore {
                         belief.is_inferred as i32,
                         belief.source_language,
                         belief.target_language,
-                        belief.created_at.to_rfc3339(),
-                        belief.updated_at.to_rfc3339(),
+                        belief.created_at.to_string(),
+                        belief.updated_at.to_string(),
                         workspace_id,
                     ],
                 )?;
@@ -877,8 +877,8 @@ impl MemoryStore for VecSqliteMemoryStore {
         } else {
             token.token
         };
-        let created_at = token.created_at.to_rfc3339();
-        let expires_at = token.expires_at.to_rfc3339();
+        let created_at = token.created_at.to_string();
+        let expires_at = token.expires_at.to_string();
 
         self.conn_provider.with_conn(&self.project_id, move |conn| {
             conn.execute(
@@ -903,7 +903,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             .with_conn(&self.project_id, move |conn| {
                 let token_key =
                     crate::memory::store::stable_key("session_token_row", &[&workspace_id, &token]);
-                let now = chrono::Utc::now().to_rfc3339();
+                let now = jiff::Timestamp::now().to_string();
 
                 let count: i32 = conn.query_row(
                     "SELECT COUNT(*) FROM session_tokens WHERE id = ? AND expires_at > ?",
@@ -943,7 +943,7 @@ impl MemoryStore for VecSqliteMemoryStore {
                     task_id,
                     name,
                     data_json,
-                    chrono::Utc::now().to_rfc3339(),
+                    jiff::Timestamp::now().to_string(),
                 ],
             )?;
             Ok(())
@@ -1116,7 +1116,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             None => data.to_string(),
         };
         let workspace_id = workspace_id.to_string();
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
         self.conn_provider
             .with_conn(&self.project_id, move |conn| {
                 conn.execute(
@@ -1197,7 +1197,10 @@ impl MemoryStore for VecSqliteMemoryStore {
         let project_id = self.project_id.clone();
         self.conn_provider
             .with_conn(&project_id, move |conn| {
-                VecSqliteMemoryStore::ensure_access_instrumentation_conn(conn, chrono::Utc::now())
+                VecSqliteMemoryStore::ensure_access_instrumentation_conn(
+                    conn,
+                    jiff::Timestamp::now(),
+                )
             })
             .await
     }
@@ -1230,10 +1233,7 @@ impl MemoryStore for VecSqliteMemoryStore {
             .await
     }
 
-    async fn read_maintenance_meta(
-        &self,
-        key: &str,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
+    async fn read_maintenance_meta(&self, key: &str) -> Result<Option<jiff::Timestamp>> {
         let project_id = self.project_id.clone();
         let key = key.to_string();
         self.conn_provider
@@ -1631,7 +1631,7 @@ impl VecSqliteMemoryStore {
 
                         record.id = existing_record.id.clone();
                         record.created_at = existing_record.created_at;
-                        record.updated_at = chrono::Utc::now();
+                        record.updated_at = jiff::Timestamp::now();
                         record.revision = existing_revision_num + 1;
                         record.revisions = existing_revisions;
                     } else {
@@ -1731,8 +1731,8 @@ impl VecSqliteMemoryStore {
                 record.encrypted_dek,
                 record.content_iv,
                 record.metadata_iv,
-                record.created_at.to_rfc3339(),
-                record.updated_at.to_rfc3339(),
+                record.created_at.to_string(),
+                record.updated_at.to_string(),
                 record.revision,
                 record.primary as i32,
                 record.parent_id,

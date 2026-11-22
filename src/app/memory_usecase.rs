@@ -149,7 +149,6 @@ impl MemoryQueryPort for MemoryUseCase {
 mod tests {
     use super::*;
     use crate::memory::schema::MemoryLevel;
-    use chrono::Utc;
 
     struct MockMemoryPort;
 
@@ -249,8 +248,8 @@ mod tests {
             content: "clean content".to_string(),
             path: "test.txt".to_string(),
             workspace_id: "default".to_string(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
+            updated_at: jiff::Timestamp::now(),
             metadata: serde_json::json!({}),
             embedding: vec![],
             revision: 1,

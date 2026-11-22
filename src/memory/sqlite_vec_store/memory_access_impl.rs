@@ -15,7 +15,7 @@
 //! could ever mature.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::params;
 
 use super::VecSqliteMemoryStore;
@@ -49,7 +49,7 @@ impl VecSqliteMemoryStore {
     /// Create the access tables and seed the observation clock if unset.
     pub fn ensure_access_instrumentation_conn(
         conn: &rusqlite::Connection,
-        observation_started_at: DateTime<Utc>,
+        observation_started_at: Timestamp,
     ) -> Result<()> {
         conn.execute_batch(CREATE_MEMORY_ACCESS)
             .context("failed to create memory_access table")?;
@@ -62,8 +62,8 @@ impl VecSqliteMemoryStore {
             "INSERT OR IGNORE INTO maintenance_meta (key, value, updated_at) VALUES (?1, ?2, ?3)",
             params![
                 crate::memory::access::OBSERVATION_STARTED_AT_KEY,
-                observation_started_at.to_rfc3339(),
-                observation_started_at.to_rfc3339(),
+                observation_started_at.to_string(),
+                observation_started_at.to_string(),
             ],
         )
         .context("failed to seed observation_started_at")?;
@@ -87,7 +87,7 @@ impl VecSqliteMemoryStore {
         if entries.is_empty() {
             return Ok(0);
         }
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         let tx = conn
             .unchecked_transaction()
             .context("failed to begin access transaction")?;
@@ -129,14 +129,8 @@ impl VecSqliteMemoryStore {
                 row.get::<_, String>(0)?,
                 AccessStats {
                     access_count: row.get::<_, i64>(1)?.max(0) as u64,
-                    first_accessed_at: first
-                        .as_deref()
-                        .and_then(|v| DateTime::parse_from_rfc3339(v).ok())
-                        .map(|dt| dt.with_timezone(&Utc)),
-                    last_accessed_at: last
-                        .as_deref()
-                        .and_then(|v| DateTime::parse_from_rfc3339(v).ok())
-                        .map(|dt| dt.with_timezone(&Utc)),
+                    first_accessed_at: first.as_deref().and_then(|v| v.parse::<Timestamp>().ok()),
+                    last_accessed_at: last.as_deref().and_then(|v| v.parse::<Timestamp>().ok()),
                 },
             ))
         })?;
@@ -152,16 +146,14 @@ impl VecSqliteMemoryStore {
     pub fn read_maintenance_meta_conn(
         conn: &rusqlite::Connection,
         key: &str,
-    ) -> Result<Option<DateTime<Utc>>> {
+    ) -> Result<Option<jiff::Timestamp>> {
         let mut stmt = conn.prepare("SELECT value FROM maintenance_meta WHERE key = ?1 LIMIT 1")?;
         let mut rows = stmt.query(params![key])?;
         let Some(row) = rows.next()? else {
             return Ok(None);
         };
         let value: String = row.get(0)?;
-        Ok(DateTime::parse_from_rfc3339(&value)
-            .ok()
-            .map(|dt| dt.with_timezone(&Utc)))
+        Ok(value.parse::<jiff::Timestamp>().ok())
     }
 }
 

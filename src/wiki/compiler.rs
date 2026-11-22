@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
 use code_graph::types::{CodeEdge, Symbol, SymbolKind};
+use jiff::Timestamp;
 use tracing::{debug, info};
 
 use crate::wiki::schema::WikiEntity;
@@ -174,7 +174,7 @@ impl EntityCompiler {
             entity.calls = calls;
             entity.called_by = called_by;
             entity.wikilinks = wikilinks;
-            entity.updated_at = Utc::now();
+            entity.updated_at = Timestamp::now();
 
             let markdown_content = entity.to_markdown_with_frontmatter();
             std::fs::write(&target_path, markdown_content).with_context(|| {

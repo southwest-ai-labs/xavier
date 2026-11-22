@@ -84,7 +84,7 @@ fn perform_dump_blocking(
     let dump = CodeGraphDump {
         _meta: CodeGraphMeta {
             repo: repo_name,
-            scanned_at: chrono::Utc::now().to_rfc3339(),
+            scanned_at: jiff::Timestamp::now().to_string(),
             total_files: stats.total_files,
             total_symbols: stats.total_symbols,
             total_edges: edges.len() as u64,

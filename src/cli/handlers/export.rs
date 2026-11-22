@@ -5,7 +5,7 @@
 //! back into structured markdown files with YAML frontmatter.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde_json::json;
 use std::collections::HashMap;
 use std::fs::File;
@@ -123,15 +123,13 @@ fn build_memory_record_from_file(
     let created_at = metadata_map
         .get("created_at")
         .and_then(|v| v.as_str())
-        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-        .map(|dt| dt.with_timezone(&Utc))
-        .unwrap_or_else(Utc::now);
+        .and_then(|s| s.parse::<Timestamp>().ok())
+        .unwrap_or_else(Timestamp::now);
 
     let updated_at = metadata_map
         .get("updated_at")
         .and_then(|v| v.as_str())
-        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-        .map(|dt| dt.with_timezone(&Utc))
+        .and_then(|s| s.parse::<Timestamp>().ok())
         .unwrap_or(created_at);
 
     Some(MemoryRecord {
@@ -182,11 +180,11 @@ pub fn export_markdown_vault(records: &[MemoryRecord], target_dir: &Path) -> Res
         yaml_obj.insert("workspace_id".to_string(), json!(record.workspace_id));
         yaml_obj.insert(
             "created_at".to_string(),
-            json!(record.created_at.to_rfc3339()),
+            json!(record.created_at.to_string()),
         );
         yaml_obj.insert(
             "updated_at".to_string(),
-            json!(record.updated_at.to_rfc3339()),
+            json!(record.updated_at.to_string()),
         );
 
         if let Some(meta) = record.metadata.as_object() {

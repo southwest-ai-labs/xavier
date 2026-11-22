@@ -1,7 +1,7 @@
 use crate::cli::commands::BackupCommand;
 use crate::settings::XavierSettings;
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -23,7 +23,7 @@ async fn handle_backup_create(out: Option<PathBuf>, json_output: bool) -> Result
     let (dest_dir, out_explicit) = if let Some(out_dir) = out {
         (out_dir, true)
     } else {
-        let timestamp = Utc::now().format("%Y%m%dT%H%M%SZ").to_string();
+        let timestamp = Timestamp::now().strftime("%Y%m%dT%H%M%SZ").to_string();
         (data_dir.join("backups").join(timestamp), false)
     };
 
@@ -336,7 +336,7 @@ async fn handle_backup_create(out: Option<PathBuf>, json_output: bool) -> Result
     }
 
     let manifest = json!({
-        "created_at": Utc::now().to_rfc3339(),
+        "created_at": Timestamp::now().to_string(),
         "xavier_version": env!("CARGO_PKG_VERSION"),
         "files": files_copied
     });

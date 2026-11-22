@@ -62,7 +62,7 @@ reqwest = { version = "0.13", default-features = false, features = ["json", "rus
 codegraph-types = { path = "../codegraph-types" }
 dirs = "6"
 which = "8"
-chrono = { version = "0.4", default-features = false, features = ["serde", "clock"] }
+jiff = { version = "0.2", features = ["serde"] }
 
 # Database
 rusqlite = { version = "0.32.0", features = ["bundled"] }

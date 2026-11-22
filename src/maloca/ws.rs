@@ -64,10 +64,9 @@ pub fn get_feed_status() -> FeedStatus {
     let backoff_ms = calculate_reconnect_backoff_ms(reconnects);
 
     let last_heartbeat_at = if last_hb > 0 {
-        use chrono::{TimeZone, Utc};
-        Utc.timestamp_opt(last_hb, 0)
-            .single()
-            .map(|dt| dt.to_rfc3339())
+        jiff::Timestamp::from_second(last_hb)
+            .ok()
+            .map(|dt| dt.to_string())
     } else {
         None
     };

@@ -103,7 +103,7 @@ async fn request(
             "fixture-caller".into(),
             "fixture@example.invalid".into(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
     }
     let response = app.clone().oneshot(req).await.unwrap();

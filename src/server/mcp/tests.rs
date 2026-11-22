@@ -3043,7 +3043,7 @@ async fn telecom_tools_round_trip_through_boot_built_registry() {
         "stdio_local".into(),
         "local@xavier".into(),
         crate::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     );
     let call = |name: &'static str, args: Value| {
         super::server::handle_tool_call(state.clone(), workspace.clone(), Some(&claims), name, args)
@@ -3115,7 +3115,7 @@ async fn auth_defaults_require_explicit_identity() {
         "stdio_local".into(),
         "local@xavier".into(),
         crate::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     );
     super::server::handle_tool_call(
         state.clone(),
@@ -3151,7 +3151,7 @@ async fn recovery_status_requires_admin() {
             "caller".into(),
             "caller@xavier".into(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         let err = super::server::handle_tool_call(
             state.clone(),
@@ -3183,7 +3183,7 @@ async fn recovery_status_uses_configured_directory() {
         "operator".into(),
         "local@xavier".into(),
         crate::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     );
     let result = super::server::handle_tool_call(
         state,
@@ -3238,7 +3238,7 @@ fn stdio_claims() -> crate::security::auth::Claims {
         crate::server::mcp_stdio::STDIO_LOCAL_SUBJECT.into(),
         "local@xavier".into(),
         crate::security::auth::UserRole::Admin,
-        chrono::Duration::hours(1),
+        jiff::Span::new().hours(1),
     )
 }
 
@@ -3387,7 +3387,7 @@ fn memory_write_claims(
         subject.to_string(),
         format!("{subject}@example.invalid"),
         role,
-        chrono::Duration::minutes(5),
+        jiff::Span::new().minutes(5),
     )
 }
 

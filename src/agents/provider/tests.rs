@@ -3,7 +3,7 @@ use super::rate_limit::*;
 use super::types::*;
 
 use crate::domain::proxy::types::{ApiTier, ProviderKind as DomainProviderKind, ProviderQuota};
-use chrono::{Duration, Utc};
+use jiff::{Span, Timestamp};
 use std::sync::{Mutex, OnceLock};
 
 fn env_lock() -> &'static Mutex<()> {
@@ -82,8 +82,8 @@ async fn test_update_quota() {
         tokens_remaining: Some(10000),
         requests_limit: Some(1000),
         tokens_limit: Some(100000),
-        resets_at: Some(Utc::now() + Duration::hours(1)),
-        last_checked: Utc::now(),
+        resets_at: Some(Timestamp::now() + Span::new().hours(1)),
+        last_checked: Timestamp::now(),
     };
 
     manager.update_quota(quota).await.unwrap();

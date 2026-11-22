@@ -157,7 +157,7 @@ impl BenchmarkRunner {
     /// Run all configured benchmark suites and produce a aggregated `BenchmarkReport`.
     pub fn run_all(&self) -> BenchmarkReport {
         let start_time = Instant::now();
-        let timestamp = chrono::Utc::now().to_rfc3339();
+        let timestamp = jiff::Timestamp::now().to_string();
         let mut results = Vec::new();
         let mut passed_suites = 0;
         let mut failed_suites = 0;
@@ -291,7 +291,7 @@ impl BenchmarkSuite for RrfRecallBenchmark {
                 success: false,
                 iterations: 0,
                 metrics: BenchmarkMetrics::default(),
-                timestamp: chrono::Utc::now().to_rfc3339(),
+                timestamp: jiff::Timestamp::now().to_string(),
                 error_message: Some(
                     "No test cases configured for RRF recall benchmark".to_string(),
                 ),
@@ -345,7 +345,7 @@ impl BenchmarkSuite for RrfRecallBenchmark {
             success: true,
             iterations: self.test_cases.len(),
             metrics,
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             error_message: None,
         }
     }
@@ -431,7 +431,7 @@ impl BenchmarkSuite for LatencyBenchmark {
                 success: false,
                 iterations: config.iterations,
                 metrics: BenchmarkMetrics::default(),
-                timestamp: chrono::Utc::now().to_rfc3339(),
+                timestamp: jiff::Timestamp::now().to_string(),
                 error_message: Some(format!("All {} workload runs failed", config.iterations)),
             };
         }
@@ -468,7 +468,7 @@ impl BenchmarkSuite for LatencyBenchmark {
             success: errors == 0,
             iterations: config.iterations,
             metrics,
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             error_message: if errors > 0 {
                 Some(format!("Encountered {} errors during execution", errors))
             } else {
@@ -565,7 +565,7 @@ impl BenchmarkSuite for ThroughputBenchmark {
             success: errors == 0,
             iterations: config.iterations,
             metrics,
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             error_message: if errors > 0 {
                 Some(format!(
                     "Encountered {} errors during throughput run",
@@ -606,7 +606,7 @@ pub async fn handle_benchmark_command(
 
             BenchmarkReport {
                 runner_name: runner.config().name.clone(),
-                timestamp: chrono::Utc::now().to_rfc3339(),
+                timestamp: jiff::Timestamp::now().to_string(),
                 total_suites: 1,
                 passed_suites: passed,
                 failed_suites: failed,
@@ -811,7 +811,7 @@ mod tests {
                     success: false,
                     iterations: 1,
                     metrics: BenchmarkMetrics::default(),
-                    timestamp: chrono::Utc::now().to_rfc3339(),
+                    timestamp: jiff::Timestamp::now().to_string(),
                     error_message: Some("Simulated failure".to_string()),
                 }
             }

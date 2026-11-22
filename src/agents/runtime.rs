@@ -30,7 +30,7 @@ pub const DEFAULT_CONTEXT_BUDGET: usize = 4000;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub id: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
     pub messages: Vec<ConversationMessage>,
 }
 
@@ -643,7 +643,7 @@ impl AgentRuntime {
                     id: ulid::Ulid::new().to_string(),
                     role: MessageRole::User,
                     content: query.to_string(),
-                    timestamp: chrono::Utc::now(),
+                    timestamp: jiff::Timestamp::now(),
                 }];
                 if let Err(e) = tgd
                     .generate_rules(&messages, &retrieval_result.documents)

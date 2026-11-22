@@ -224,7 +224,7 @@ impl GroupRegistry {
     pub fn check_access_audited(&mut self, group_id: &str, member_id: &str, action: &str) -> bool {
         let allowed = self.check_access(group_id, member_id, action);
         self.audit_log.push(GroupAuditEntry {
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             group_id: group_id.to_string(),
             member_id: member_id.to_string(),
             action: action.to_string(),

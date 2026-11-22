@@ -92,7 +92,12 @@ async fn test_on_task_start_renews_lease() -> Result<()> {
 
     // 5. Verify lease was renewed (expires_at should be roughly now + 3600s)
     let updated_lease = secrets_engine.get_lease(&token).await.unwrap();
-    assert!(updated_lease.expires_at > initial_expires + chrono::Duration::seconds(3500));
+    assert!(
+        updated_lease.expires_at
+            > initial_expires
+                .checked_add(jiff::Span::new().seconds(3500))
+                .unwrap()
+    );
 
     Ok(())
 }

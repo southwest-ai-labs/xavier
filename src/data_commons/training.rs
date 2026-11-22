@@ -7,7 +7,7 @@ pub use super::sources::{
     ChallengeSource, MemorySource, SourceBatch, SourceContext, TelemetrySource, TrainingSource,
 };
 use crate::security::clearance::ClearanceLevel;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -90,7 +90,7 @@ impl TrainingExporter {
         grant: &EgressGrant,
         seed: u64,
         eval_ratio: f32,
-        _generated_at: Option<DateTime<Utc>>,
+        _generated_at: Option<Timestamp>,
     ) -> Result<TrainingBundle, String> {
         self.check_params(eval_ratio)?;
         self.check_grant(grant)?;
@@ -225,7 +225,7 @@ impl TrainingExporter {
             excluded_other: counts.excluded_other.clone(),
         };
 
-        let generated_at = Utc::now().to_rfc3339();
+        let generated_at = Timestamp::now().to_string();
         let audit = AnonymizationAudit::evaluate(AuditInput {
             level: self.privacy_level,
             config: self.privacy_config,
@@ -554,7 +554,7 @@ mod tests {
 
         let exporter = TrainingExporter::new(db_file.path());
         let seed = 42;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let bundle = exporter
             .generate_bundle_with_grant(
                 &EgressGrant::local_training(exporter.privacy_level),
@@ -597,7 +597,7 @@ mod tests {
 
         let exporter = TrainingExporter::new(db_file.path());
         let seed = 99;
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         let bundle1 = exporter
             .generate_bundle_with_grant(

@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use rusqlite::{params, Connection};
 use tracing::{debug, info};
 
@@ -142,7 +142,7 @@ impl WikiStorageEngine {
             .with_context(|| "Failed to compress wiki markdown content with ZSTD")?;
 
         let token_count = markdown_content.split_whitespace().count();
-        let now = Utc::now().timestamp();
+        let now = Timestamp::now().as_second();
 
         let mut conn = self
             .conn

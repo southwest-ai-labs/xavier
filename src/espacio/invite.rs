@@ -6,8 +6,8 @@
 //! invites remain accepted by plain `validate`. Invites expire after 24h.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Duration, Utc};
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -50,9 +50,9 @@ pub struct SpaceInvite {
     /// Role to grant on acceptance
     pub role: SpaceRole,
     /// Creation time
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// Expiry (default 24h after creation)
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: Timestamp,
     /// Optional Ed25519 signature (hex) over canonical payload. None = unsigned (dev).
     pub signature: Option<String>,
     /// Revoked flag
@@ -95,7 +95,7 @@ impl SpaceInvite {
 
     /// Check if invite is expired
     pub fn is_expired(&self) -> bool {
-        Utc::now() > self.expires_at
+        Timestamp::now() > self.expires_at
     }
 
     /// Check if invite is still valid (not revoked and not expired)
@@ -183,13 +183,13 @@ impl InviteManager {
         target_node: String,
         role: SpaceRole,
     ) -> Result<SpaceInvite> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         self.create_with_expiry(
             space_id,
             inviter_node,
             target_node,
             role,
-            now + Duration::hours(24),
+            now.checked_add(Span::new().hours(24)).unwrap(),
         )
         .await
     }
@@ -201,7 +201,7 @@ impl InviteManager {
         inviter_node: String,
         target_node: String,
         role: SpaceRole,
-        expires_at: DateTime<Utc>,
+        expires_at: Timestamp,
     ) -> Result<SpaceInvite> {
         let invite = SpaceInvite {
             id: ulid::Ulid::new().to_string(),
@@ -209,7 +209,7 @@ impl InviteManager {
             inviter_node,
             target_node,
             role,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             expires_at,
             signature: None,
             revoked: false,
@@ -350,7 +350,6 @@ impl InviteManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Duration as ChronoDuration;
 
     #[tokio::test]
     async fn create_and_validate() {
@@ -373,7 +372,7 @@ mod tests {
     #[tokio::test]
     async fn expired_is_rejected() {
         let mgr = InviteManager::new();
-        let past = Utc::now() - ChronoDuration::hours(1);
+        let past = Timestamp::now() - Span::new().hours(1);
         let inv = mgr
             .create_with_expiry(
                 "esp_a".into(),
@@ -429,8 +428,8 @@ mod tests {
             inviter_node: "xv1_admin".into(),
             target_node: "xv1_bob".into(),
             role: SpaceRole::Admin,
-            created_at: Utc::now(),
-            expires_at: Utc::now() + ChronoDuration::hours(24),
+            created_at: Timestamp::now(),
+            expires_at: Timestamp::now() + Span::new().hours(24),
             signature: None,
             revoked: false,
         };
@@ -624,7 +623,7 @@ mod tests {
                 "adm".into(),
                 "bob".into(),
                 SpaceRole::Member,
-                Utc::now() - Duration::seconds(1),
+                Timestamp::now() - Span::new().seconds(1),
             )
             .await
             .unwrap();

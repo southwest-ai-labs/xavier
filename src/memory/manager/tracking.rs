@@ -1,7 +1,7 @@
 //! Memory tracking — access counts, creation times, and relevance scores.
 
 use crate::memory::qmd_memory::MemoryDocument;
-use chrono::Utc;
+use jiff::Timestamp;
 
 use super::core::MemoryManager;
 
@@ -18,7 +18,7 @@ impl MemoryManager {
             .last_access_times
             .lock()
             .expect("manager: last_access_times lock poisoned");
-        times.insert(doc_id.to_string(), Utc::now());
+        times.insert(doc_id.to_string(), Timestamp::now());
     }
 
     /// Initialize tracking for a new document
@@ -29,7 +29,7 @@ impl MemoryManager {
                     .created_times
                     .lock()
                     .expect("manager: created_times lock poisoned");
-                times.insert(id.clone(), Utc::now());
+                times.insert(id.clone(), Timestamp::now());
             }
 
             let mut relevance = self

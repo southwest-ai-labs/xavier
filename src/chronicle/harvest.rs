@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
 use git2::{Delta, Repository, Sort};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -100,8 +100,8 @@ impl Harvester {
     }
 
     /// Run.
-    pub async fn run(&self, since: DateTime<Utc>) -> Result<PathBuf> {
-        let date = Utc::now().format("%Y-%m-%d").to_string();
+    pub async fn run(&self, since: Timestamp) -> Result<PathBuf> {
+        let date = Timestamp::now().strftime("%Y-%m-%d").to_string();
 
         let (commits, file_changes) = self.harvest_commits(since)?;
         let decisions = self.harvest_memories("decisions/*").await?;
@@ -135,7 +135,7 @@ impl Harvester {
     /// Returns both the commit list and an aggregated map of file-level changes.
     fn harvest_commits(
         &self,
-        since: DateTime<Utc>,
+        since: Timestamp,
     ) -> Result<(Vec<CommitInfo>, HashMap<String, FileChange>)> {
         let repo = Repository::open(&self.workspace_path)
             .map_err(|e| anyhow!("Failed to open repo at {:?}: {}", self.workspace_path, e))?;
@@ -152,8 +152,8 @@ impl Harvester {
         for id in revwalk {
             let id = id?;
             let commit = repo.find_commit(id)?;
-            let commit_time = DateTime::<Utc>::from_timestamp(commit.time().seconds(), 0)
-                .ok_or_else(|| anyhow!("Invalid commit timestamp"))?;
+            let commit_time = Timestamp::from_second(commit.time().seconds())
+                .map_err(|e| anyhow!("Invalid commit timestamp: {e}"))?;
 
             if commit_time >= since {
                 let mut files = Vec::new();

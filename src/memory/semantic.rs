@@ -9,7 +9,7 @@
 //! Based on Jia et al. LOCOMO consistency model for >98% accuracy.
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use tokio::sync::RwLock;
@@ -78,7 +78,7 @@ impl SemanticMemory {
         if let Some(existing_id) = entity_id {
             // Update existing entity
             if let Some(existing) = entities.get_mut(&existing_id) {
-                existing.last_updated = Utc::now();
+                existing.last_updated = Timestamp::now();
                 existing.confirmation_count += 1;
 
                 // Update type if different
@@ -244,7 +244,7 @@ impl SemanticMemory {
 
             // Update confirmation count
             primary.confirmation_count += secondary.confirmation_count;
-            primary.last_updated = Utc::now();
+            primary.last_updated = Timestamp::now();
 
             // Recalculate trust
             drop(entities);
@@ -304,7 +304,7 @@ impl SemanticMemory {
         }) {
             // Update existing
             existing.confirmation_count += 1;
-            existing.updated_at = Utc::now();
+            existing.updated_at = Timestamp::now();
             existing.weight = (existing.weight + request.weight) / 2.0;
 
             if let Some(memory_id) = request.source_memory {

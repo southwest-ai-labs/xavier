@@ -6,7 +6,7 @@
 //! Sessions are stored locally (Privacy P4 — never leaves the node) and
 //! high-quality insights become training data when human marks them eligible.
 
-use chrono::Utc;
+use jiff::Timestamp;
 use std::sync::Arc;
 use tracing::{info, warn};
 
@@ -175,7 +175,7 @@ impl IntrospectionEngine {
         session.turns.push(IntrospectionTurn {
             role: TurnRole::LlmGuide,
             content: opening,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         });
 
         self.store
@@ -212,7 +212,7 @@ impl IntrospectionEngine {
         session.turns.push(IntrospectionTurn {
             role: TurnRole::Human,
             content: human_input.to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         });
 
         // Count human turns to determine depth
@@ -232,7 +232,7 @@ impl IntrospectionEngine {
         session.turns.push(IntrospectionTurn {
             role: TurnRole::LlmGuide,
             content: llm_response,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         });
 
         // Update depth score
@@ -241,7 +241,7 @@ impl IntrospectionEngine {
         // Auto-complete at depth 5 for 5 Whys
         if session.technique == IntrospectionTechnique::FiveWhys && human_turns >= 5 {
             session.status = IntrospectionStatus::Completed;
-            session.completed_at = Some(Utc::now());
+            session.completed_at = Some(Timestamp::now());
             session.insights = self.extract_insights(&session);
         }
 
@@ -276,7 +276,7 @@ impl IntrospectionEngine {
             .ok_or_else(|| format!("Session {} not found", session_id))?;
 
         session.status = IntrospectionStatus::Completed;
-        session.completed_at = Some(Utc::now());
+        session.completed_at = Some(Timestamp::now());
         session.depth_score = session.compute_depth_score();
         session.insights = self.extract_insights(&session);
         session.training_consent = training_consent;

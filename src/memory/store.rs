@@ -10,7 +10,7 @@ use std::{any::Any as StdAny, collections::HashMap, fmt, path::PathBuf, sync::Ar
 
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tokio::{fs, sync::RwLock};
 
@@ -84,8 +84,8 @@ impl Default for MemoryRecord {
             content: String::new(),
             metadata: serde_json::Value::Null,
             embedding: Vec::new(),
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
             revision: 0,
             primary: false,
             parent_id: None,
@@ -298,8 +298,8 @@ pub struct GraphHopResult {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SessionTokenRecord {
     pub token: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
 }
 
 impl fmt::Debug for SessionTokenRecord {
@@ -344,7 +344,7 @@ impl MemoryRecord {
         primary: bool,
         parent_id: Option<String>,
     ) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let revision = document
             .metadata
             .get("revision")
@@ -354,15 +354,13 @@ impl MemoryRecord {
             .metadata
             .get("created_at")
             .and_then(|value| value.as_str())
-            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
-            .map(|value| value.with_timezone(&Utc))
+            .and_then(|value| value.parse::<Timestamp>().ok())
             .unwrap_or(now);
         let updated_at = document
             .metadata
             .get("updated_at")
             .and_then(|value| value.as_str())
-            .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
-            .map(|value| value.with_timezone(&Utc))
+            .and_then(|value| value.parse::<Timestamp>().ok())
             .unwrap_or(now);
 
         let id = document
@@ -429,11 +427,11 @@ impl MemoryRecord {
             object.insert("revision".to_string(), serde_json::json!(self.revision));
             object.insert(
                 "created_at".to_string(),
-                serde_json::json!(self.created_at.to_rfc3339()),
+                serde_json::json!(self.created_at.to_string()),
             );
             object.insert(
                 "updated_at".to_string(),
-                serde_json::json!(self.updated_at.to_rfc3339()),
+                serde_json::json!(self.updated_at.to_string()),
             );
             if self.score > 0.0 {
                 object.insert("score".to_string(), serde_json::json!(self.score));
@@ -546,31 +544,31 @@ impl MemoryRecord {
     }
 
     /// Returns the last accessed time, falling back to `updated_at`.
-    pub fn last_accessed(&self) -> DateTime<Utc> {
+    pub fn last_accessed(&self) -> Timestamp {
         if let Some(last_accessed_val) = self
             .metadata
             .get("last_accessed_at")
             .and_then(|v| v.as_str())
         {
-            if let Ok(parsed) = DateTime::parse_from_rfc3339(last_accessed_val) {
-                return parsed.with_timezone(&Utc);
+            if let Ok(parsed) = last_accessed_val.parse::<Timestamp>() {
+                return parsed;
             }
         }
         self.updated_at
     }
 
     /// Update/touch the last accessed time in metadata.
-    pub fn touch(&mut self, now: DateTime<Utc>) {
+    pub fn touch(&mut self, now: Timestamp) {
         if let serde_json::Value::Object(ref mut map) = self.metadata {
             map.insert(
                 "last_accessed_at".to_string(),
-                serde_json::json!(now.to_rfc3339()),
+                serde_json::json!(now.to_string()),
             );
         } else {
             let mut map = serde_json::Map::new();
             map.insert(
                 "last_accessed_at".to_string(),
-                serde_json::json!(now.to_rfc3339()),
+                serde_json::json!(now.to_string()),
             );
             self.metadata = serde_json::Value::Object(map);
         }
@@ -868,10 +866,7 @@ pub trait MemoryStore: crate::domain::cycle_breaks::w30_12::MemoryConsumerStore 
         clippy::unused_async,
         reason = "MemoryStore trait requirement for async backends"
     )]
-    async fn read_maintenance_meta(
-        &self,
-        _key: &str,
-    ) -> Result<Option<chrono::DateTime<chrono::Utc>>> {
+    async fn read_maintenance_meta(&self, _key: &str) -> Result<Option<jiff::Timestamp>> {
         Ok(None)
     }
 }
@@ -1058,7 +1053,7 @@ impl MemoryStore for FileMemoryStore {
             let workspace = Self::workspace_mut(&mut state, workspace_id);
             workspace
                 .session_tokens
-                .retain(|item| item.expires_at > Utc::now() && item.token != token.token);
+                .retain(|item| item.expires_at > Timestamp::now() && item.token != token.token);
             workspace.session_tokens.push(token);
         }
         self.persist().await
@@ -1072,7 +1067,7 @@ impl MemoryStore for FileMemoryStore {
             .map(|workspace| {
                 workspace.session_tokens.iter().any(|item| {
                     xavier::server::http::api::constant_time_compare(&item.token, token)
-                        && item.expires_at > Utc::now()
+                        && item.expires_at > Timestamp::now()
                 })
             })
             .unwrap_or(false))
@@ -1289,7 +1284,7 @@ impl MemoryStore for InMemoryMemoryStore {
     }
 
     async fn is_session_token_valid(&self, workspace_id: &str, token: &str) -> Result<bool> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let state = self.state.read().await;
         Ok(state
             .workspaces
@@ -1390,7 +1385,7 @@ impl MemoryStore for InMemoryMemoryStore {
 pub(crate) fn revisioned_record(existing: MemoryRecord, mut next: MemoryRecord) -> MemoryRecord {
     next.id = existing.id;
     next.created_at = existing.created_at;
-    next.updated_at = Utc::now();
+    next.updated_at = Timestamp::now();
     next.revision = existing.revision + 1;
     next.revisions = existing.revisions.clone();
     next.revisions.push(MemoryRevision {

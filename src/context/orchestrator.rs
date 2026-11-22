@@ -569,7 +569,6 @@ impl crate::domain::cycle_breaks::w30_03::ContextOrchestratorPort for Orchestrat
 
 #[cfg(test)]
 mod tests {
-    use chrono::{TimeZone, Utc};
     use serde_json::json;
 
     use super::*;
@@ -586,11 +585,7 @@ mod tests {
             .with_token_count(token_count)
             .with_tool_calls(vec!["cargo_test".to_string()])
             .with_metadata(json!({"topic": "build", "kind": "summary"}))
-            .with_created_at(
-                Utc.timestamp_opt(seconds, 0)
-                    .single()
-                    .expect("test assertion"),
-            )
+            .with_created_at(jiff::Timestamp::from_second(seconds).expect("test assertion"))
     }
 
     #[tokio::test]

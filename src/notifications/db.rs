@@ -143,7 +143,7 @@ pub fn load_notifications(conn: &Connection, dek: Option<&KeyHandle>) -> Result<
             island_id: IslandId::from_str(&island_str),
             title,
             body,
-            timestamp: ts_str.parse().unwrap_or_else(|_| chrono::Utc::now()),
+            timestamp: ts_str.parse().unwrap_or_else(|_| jiff::Timestamp::now()),
             read: read != 0,
             severity,
         });

@@ -331,10 +331,10 @@ impl EvolveModule {
                 level: LogLevel::Info,
                 frequency: 1,
                 sample_message: format!("Autonomous improvement: {}", hypothesis.description),
-                first_seen: chrono::Utc::now().to_rfc3339(),
-                last_seen: chrono::Utc::now().to_rfc3339(),
+                first_seen: jiff::Timestamp::now().to_string(),
+                last_seen: jiff::Timestamp::now().to_string(),
             },
-            analyzed_at: chrono::Utc::now().to_rfc3339(),
+            analyzed_at: jiff::Timestamp::now().to_string(),
             root_cause: format!("Identified optimization: {}", hypothesis.description),
             source_location: Some(hypothesis.files.join(", ")),
             suggested_fix: hypothesis.patch.clone(),
@@ -390,11 +390,11 @@ impl EvolveModule {
 
 /// Get current date-based tag (e.g., "mar24")
 fn current_date_tag() -> String {
-    let now = chrono::Local::now();
+    let now = jiff::Zoned::now();
     format!(
         "{}{}",
-        now.format("%b").to_string().to_lowercase(),
-        now.format("%d")
+        now.strftime("%b").to_string().to_lowercase(),
+        now.strftime("%d")
     )
 }
 

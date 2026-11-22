@@ -87,7 +87,7 @@ impl PairingSecretRegistry {
             key,
             PairingSecretMetadata {
                 expires_at,
-                created_at: chrono::Utc::now().timestamp(),
+                created_at: jiff::Timestamp::now().as_second(),
             },
         );
         self.save()

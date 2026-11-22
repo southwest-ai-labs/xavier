@@ -87,7 +87,7 @@ impl MeshNodeScanner {
                         "mesh_node_scan".to_string(),
                     ),
                     payload,
-                    ts: chrono::Utc::now().timestamp(),
+                    ts: jiff::Timestamp::now().as_second(),
                     classification: ClearanceLevel::Internal.as_str().to_uppercase(),
                 };
                 service_registry.publish_telemetry(sample);
@@ -127,7 +127,7 @@ pub async fn discover_mdns_peers(registry: Arc<RwLock<PeerRegistry>>) -> Result<
                         node_id: node_id.clone(),
                         alias: Some(info.get_fullname().to_string()),
                         endpoint_url,
-                        last_seen_at: Some(chrono::Utc::now().timestamp()),
+                        last_seen_at: Some(jiff::Timestamp::now().as_second()),
                         ..Default::default()
                     };
                     peers.push(peer.clone());
@@ -207,7 +207,7 @@ mod tests {
             endpoint_url: "http://localhost:8006".to_string(),
             public_key_hex: "11223344".to_string(),
             added_at: 1000,
-            last_seen_at: Some(chrono::Utc::now().timestamp()),
+            last_seen_at: Some(jiff::Timestamp::now().as_second()),
             sync_enabled: true,
             is_cloud: false,
             iroh_addr: None,
@@ -223,7 +223,7 @@ mod tests {
             endpoint_url: "http://localhost:8007".to_string(),
             public_key_hex: "55667788".to_string(),
             added_at: 1000,
-            last_seen_at: Some(chrono::Utc::now().timestamp() - 300), // 300s ago
+            last_seen_at: Some(jiff::Timestamp::now().as_second() - 300), // 300s ago
             sync_enabled: true,
             is_cloud: false,
             iroh_addr: None,

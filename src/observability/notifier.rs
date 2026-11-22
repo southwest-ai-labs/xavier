@@ -280,7 +280,7 @@ impl Notifier {
             title: "🚀 Xavier Observability Active".to_string(),
             message: format!(
                 "File logging enabled\nError detection active\nAuto-fixer ready\nUptime monitor active\n\n_System started at {}_",
-                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+                jiff::Timestamp::now().strftime("%Y-%m-%d %H:%M:%S UTC")
             ),
             metadata: None,
         };

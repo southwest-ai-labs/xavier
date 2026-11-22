@@ -10,7 +10,7 @@ use crate::codebase::connection_manager::ConnectionManager;
 use crate::codebase::validate_project_id;
 use crate::espacio::keys::{self, KeyHandle, DEFAULT_SPACE_ID, RECORD_PREFIX};
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use tokio::sync::OnceCell;
@@ -43,8 +43,8 @@ pub struct Thread {
     pub id: String,
     pub project_id: Option<String>,
     pub title: Option<String>,
-    pub started_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub started_at: Timestamp,
+    pub updated_at: Timestamp,
     pub last_preview: Option<String>,
     pub model: Option<String>,
     pub source: Option<String>,
@@ -56,8 +56,8 @@ pub use crate::domain::cycle_breaks::w30_10::Message;
 pub struct ThreadSummary {
     pub id: String,
     pub title: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
     pub last_preview: String,
     pub message_count: usize,
 }
@@ -89,8 +89,8 @@ pub struct Deduction {
     pub source_thread: Option<String>,
     pub deduction: String,
     pub confidence: f64,
-    pub created_at: DateTime<Utc>,
-    pub last_accessed: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub last_accessed: Option<Timestamp>,
     pub category: Option<String>,
 }
 
@@ -108,8 +108,8 @@ pub struct Belief {
     pub source: Option<String>,
     pub provenance_id: Option<String>,
     pub contradicts_id: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 /// A session checkpoint for resuming interrupted work.
@@ -122,8 +122,8 @@ pub struct Checkpoint {
     pub task_id: Option<String>,
     pub name: Option<String>,
     pub state: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub expires_at: Option<Timestamp>,
     pub kind: Option<String>,
 }
 
@@ -480,7 +480,7 @@ impl ConversationsDb {
     ) -> Result<Thread> {
         self.ensure_schema().await?;
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         let pid = self.project_id.clone();
         let sealer = self.ready_sealer().await?;
         let title_c = sealer.seal_opt(
@@ -514,8 +514,8 @@ impl ConversationsDb {
             id: id_for_return,
             project_id: Some(pid_for_return),
             title: title_for_return,
-            started_at: Utc::now(),
-            updated_at: Utc::now(),
+            started_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
             last_preview: None,
             model: model_for_return,
             source: source_for_return,
@@ -669,7 +669,7 @@ impl ConversationsDb {
     ) -> Result<Message> {
         self.ensure_schema().await?;
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
 
         let thread_id_c = thread_id.to_string();
         let role_c = role.to_string();
@@ -733,7 +733,7 @@ impl ConversationsDb {
             openui_lang: openui_lang.map(|s| s.to_string()),
             xui_json: xui_json.map(|s| s.to_string()),
             metadata: metadata.map(|s| s.to_string()),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             tokens,
         })
     }
@@ -752,7 +752,7 @@ impl ConversationsDb {
             },
             preview,
         )?;
-        let now_c = Utc::now().to_rfc3339();
+        let now_c = Timestamp::now().to_string();
         let pid = self.project_id.clone();
 
         ConnectionManager::global()
@@ -871,7 +871,7 @@ impl ConversationsDb {
     ) -> Result<Deduction> {
         self.ensure_schema().await?;
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
 
         let pid = self.project_id.clone();
         let sealer = self.ready_sealer().await?;
@@ -905,8 +905,8 @@ impl ConversationsDb {
             source_thread: source_thread.map(|s| s.to_string()),
             deduction: deduction_text.to_string(),
             confidence,
-            created_at: Utc::now(),
-            last_accessed: Some(Utc::now()),
+            created_at: Timestamp::now(),
+            last_accessed: Some(Timestamp::now()),
             category: category.map(|s| s.to_string()),
         })
     }
@@ -968,7 +968,7 @@ impl ConversationsDb {
         contradicts_id: Option<&str>,
     ) -> Result<Belief> {
         self.ensure_schema().await?;
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
 
         let pid = self.project_id.clone();
         let sealer = self.ready_sealer().await?;
@@ -1138,7 +1138,7 @@ impl ConversationsDb {
     ) -> Result<Checkpoint> {
         self.ensure_schema().await?;
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
 
         let pid = self.project_id.clone();
         let workspace_id_c = workspace_id.map(|s| s.to_string());
@@ -1167,7 +1167,7 @@ impl ConversationsDb {
             task_id: task_id.map(|s| s.to_string()),
             name: name.map(|s| s.to_string()),
             state: "active".to_string(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             expires_at: None,
             kind: kind.map(|s| s.to_string()),
         })
@@ -2112,7 +2112,7 @@ fn capture_snapshot_in_tx(
             scope.workspace_id,
             scope.session_id,
             name,
-            Utc::now().to_rfc3339()
+            Timestamp::now().to_string()
         ],
     )?;
     // Plain INSERT: a duplicate id fails and rolls back, never overwrites.
@@ -2491,8 +2491,8 @@ fn queue_legacy_reseals(
 }
 
 /// Parse an RFC 3339 datetime string.
-fn parse_datetime(s: &str) -> DateTime<Utc> {
-    s.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now())
+fn parse_datetime(s: &str) -> Timestamp {
+    s.parse::<Timestamp>().unwrap_or_else(|_| Timestamp::now())
 }
 
 #[cfg(test)]

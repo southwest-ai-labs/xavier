@@ -1,7 +1,7 @@
 use crate::coordination::message_bus::{
     AgentInfo, AgentMessage, AgentStatus, MessageBus, MessageBusError,
 };
-use chrono::Utc;
+use jiff::{Span, Timestamp};
 use tokio::sync::mpsc;
 
 impl MessageBus {
@@ -32,8 +32,8 @@ impl MessageBus {
                     id: agent_id.to_string(),
                     name: name.to_string(),
                     capabilities,
-                    registered_at: Utc::now(),
-                    last_heartbeat: Utc::now(),
+                    registered_at: Timestamp::now(),
+                    last_heartbeat: Timestamp::now(),
                     status: AgentStatus::Active,
                 },
             );
@@ -86,7 +86,7 @@ impl MessageBus {
         let mut agents = self.agents.write().await;
 
         if let Some(agent) = agents.get_mut(agent_id) {
-            agent.last_heartbeat = Utc::now();
+            agent.last_heartbeat = Timestamp::now();
             agent.status = AgentStatus::Active;
 
             // Update metrics
@@ -104,12 +104,12 @@ impl MessageBus {
     /// Get agents that have stale heartbeats ( haven't sent heartbeat within timeout )
     pub async fn get_stale_agents(&self) -> Vec<AgentInfo> {
         let agents = self.agents.read().await;
-        let timeout = chrono::Duration::seconds(self.heartbeat_config.timeout_secs as i64);
-        let now = Utc::now();
+        let timeout = Span::new().seconds(self.heartbeat_config.timeout_secs as i64);
+        let cutoff = Timestamp::now().checked_sub(timeout).unwrap();
 
         agents
             .values()
-            .filter(|a| now.signed_duration_since(a.last_heartbeat) > timeout)
+            .filter(|a| a.last_heartbeat < cutoff)
             .cloned()
             .collect()
     }
@@ -144,8 +144,9 @@ impl MessageBus {
         let agents = self.agents.read().await;
 
         if let Some(agent) = agents.get(agent_id) {
-            let timeout = chrono::Duration::seconds(self.heartbeat_config.timeout_secs as i64);
-            return Utc::now().signed_duration_since(agent.last_heartbeat) > timeout;
+            let timeout = Span::new().seconds(self.heartbeat_config.timeout_secs as i64);
+            let cutoff = Timestamp::now().checked_sub(timeout).unwrap();
+            return agent.last_heartbeat < cutoff;
         }
 
         false

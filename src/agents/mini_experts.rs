@@ -564,7 +564,7 @@ impl ExpertStore {
                     ollama_model,
                     metrics,
                     i64::from(new.clearance),
-                    chrono::Utc::now().to_rfc3339(),
+                    jiff::Timestamp::now().to_string(),
                     new.language,
                     new.source_dataset,
                     provider,
@@ -790,7 +790,7 @@ impl ExpertStore {
             "INSERT INTO mini_expert_invocations (ts, expert, version, query_sha256, latency_ms, ok) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![
-                chrono::Utc::now().to_rfc3339(),
+                jiff::Timestamp::now().to_string(),
                 expert,
                 version,
                 sha256_hex(query),

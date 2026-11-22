@@ -3,7 +3,7 @@
 //! Provides strict schema definitions for Entities and Relationships
 //! to ensure determinism and prevent entity drift.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -122,14 +122,14 @@ pub struct GraphEntity {
     pub trust_score: f32,
     pub confirmation_count: u32,
     pub metadata: HashMap<String, serde_json::Value>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl GraphEntity {
     /// New.
     pub fn new(name: String, entity_type: GraphEntityType) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let normalized_name = Self::normalize(&name);
         Self {
             id: ulid::Ulid::new().to_string(),
@@ -156,7 +156,7 @@ impl GraphEntity {
         let normalized = Self::normalize(&alias);
         if normalized != self.normalized_name && !self.aliases.contains(&normalized) {
             self.aliases.push(normalized);
-            self.updated_at = Utc::now();
+            self.updated_at = Timestamp::now();
         }
     }
 
@@ -165,7 +165,7 @@ impl GraphEntity {
         self.confirmation_count += 1;
         // Simple trust score update: 0.5 -> 0.7 -> 0.83 -> 0.9 -> ...
         self.trust_score = (self.trust_score + 0.2 * (1.0 - self.trust_score)).min(1.0);
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
     }
 }
 
@@ -179,14 +179,14 @@ pub struct GraphRelationship {
     pub weight: f32,
     pub confirmation_count: u32,
     pub metadata: HashMap<String, serde_json::Value>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl GraphRelationship {
     /// New.
     pub fn new(source_id: String, target_id: String, relation_type: GraphRelationshipType) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: ulid::Ulid::new().to_string(),
             source_id,
@@ -204,6 +204,6 @@ impl GraphRelationship {
     pub fn confirm(&mut self) {
         self.confirmation_count += 1;
         self.weight = (self.weight + 0.2 * (1.0 - self.weight)).min(1.0);
-        self.updated_at = Utc::now();
+        self.updated_at = Timestamp::now();
     }
 }

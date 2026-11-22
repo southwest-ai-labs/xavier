@@ -5,7 +5,7 @@
 //! restart. Publishers are unchanged. Retention is bounded by age and rows.
 use crate::coordination::events::{XavierEvent, XavierEventBus};
 use crate::espacio::keys::{KeyHandle, DEFAULT_SPACE_ID};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -169,7 +169,7 @@ impl EventLog {
     ) -> rusqlite::Result<i64> {
         let mut conn = self.conn();
         let tx = conn.transaction()?;
-        let now_ms = Utc::now().timestamp_millis();
+        let now_ms = Timestamp::now().as_millisecond();
         let payload_str = payload.to_string();
 
         let id = match key {
@@ -320,8 +320,8 @@ impl EventLog {
 
     /// Enforce retention (age, then row cap). Returns rows deleted.
     pub fn prune(&self) -> rusqlite::Result<usize> {
-        let cutoff =
-            (Utc::now() - chrono::Duration::days(self.retention.max_age_days)).timestamp_millis();
+        let cutoff = (Timestamp::now() - jiff::Span::new().hours(self.retention.max_age_days * 24))
+            .as_millisecond();
         self.prune_with(cutoff)
     }
 
@@ -368,13 +368,13 @@ pub fn replay_with_key(
                         .map_err(|e| e.to_string()),
                     None => log.since_id(id, limit).map_err(|e| e.to_string()),
                 }
-            } else if let Ok(ts) = DateTime::parse_from_rfc3339(raw) {
+            } else if let Ok(ts) = raw.parse::<Timestamp>() {
                 match key {
                     Some(k) => log
-                        .since_ts_with_key(ts.timestamp_millis(), limit, Some(k))
+                        .since_ts_with_key(ts.as_millisecond(), limit, Some(k))
                         .map_err(|e| e.to_string()),
                     None => log
-                        .since_ts(ts.timestamp_millis(), limit)
+                        .since_ts(ts.as_millisecond(), limit)
                         .map_err(|e| e.to_string()),
                 }
             } else {
@@ -581,7 +581,7 @@ mod tests {
             .execute(
                 "INSERT INTO bus_events (ts, kind, session_id, payload_json) VALUES (?1, ?2, ?3, ?4)",
                 params![
-                    Utc::now().timestamp_millis(),
+                    Timestamp::now().as_millisecond(),
                     "LegacyEvent",
                     Some("sess-legacy"),
                     legacy_json
@@ -706,7 +706,7 @@ mod tests {
         assert_eq!(left[0].session_id.as_deref(), Some("agent-3"));
 
         // Everything is older than a cutoff in the future.
-        log.prune_with(Utc::now().timestamp_millis() + 60_000)
+        log.prune_with(Timestamp::now().as_millisecond() + 60_000)
             .expect("prune");
         assert_eq!(log.count().expect("count"), 0);
     }
@@ -744,7 +744,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "sess-persist-test".into(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             // Multi-byte char straddling byte 200 must not panic the preview.
             content: Some(format!("{}{}", "a".repeat(199), "ñ".repeat(10))),
             metadata: None,

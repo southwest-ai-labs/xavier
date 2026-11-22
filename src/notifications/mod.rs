@@ -14,8 +14,8 @@ use crate::memory::sqlite_store::TABLE_NOTIFICATIONS;
 use anyhow::Result;
 use async_trait::async_trait;
 use axum::response::sse::Event;
-use chrono::{DateTime, Utc};
 use futures_util::stream::Stream;
+use jiff::Timestamp;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
@@ -61,7 +61,7 @@ pub struct Notification {
     pub island_id: IslandId,
     pub title: String,
     pub body: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub read: bool,
     pub severity: String, // info, warning, error, success
 }
@@ -111,7 +111,7 @@ impl NotificationProvider for InAppProvider {
         let id = notification.id.clone();
         let title = notification.title.clone();
         let body = notification.body.clone();
-        let timestamp = notification.timestamp.to_rfc3339();
+        let timestamp = notification.timestamp.to_string();
         let read = if notification.read { 1 } else { 0 };
         let severity = notification.severity.clone();
 
@@ -166,7 +166,7 @@ pub struct WebhookSubscription {
     pub url: String,
     pub event_types: Vec<String>,
     pub active: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 pub struct WebhookProvider;
@@ -394,7 +394,7 @@ impl NotificationManager {
             island_id,
             title: title.to_string(),
             body: body.to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             read: false,
             severity: severity.to_string(),
         };
@@ -448,13 +448,13 @@ impl NotificationManager {
             url: url.to_string(),
             event_types,
             active: true,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let id = sub.id.clone();
         let url = sub.url.clone();
         let event_types_str = sub.event_types.join(",");
         let active = if sub.active { 1 } else { 0 };
-        let created_at = sub.created_at.to_rfc3339();
+        let created_at = sub.created_at.to_string();
 
         ConnectionManager::global().with_conn("memory", move |conn| {
             conn.execute(
@@ -489,7 +489,7 @@ impl NotificationManager {
                         url: row.get(1)?,
                         event_types,
                         active: row.get::<_, i32>(3)? != 0,
-                        created_at: created_at_str.parse().unwrap_or_else(|_| Utc::now()),
+                        created_at: created_at_str.parse().unwrap_or_else(|_| Timestamp::now()),
                     });
                 }
                 Ok(result)
@@ -745,7 +745,7 @@ mod tests {
             island_id: IslandId::System,
             title: "Test Title".to_string(),
             body: "Test Body".to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             read: false,
             severity: "info".to_string(),
         };
@@ -794,7 +794,7 @@ mod tests {
             island_id: IslandId::Agents,
             title: "Email Title".to_string(),
             body: "Email Body".to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             read: false,
             severity: "warning".to_string(),
         };
@@ -855,7 +855,7 @@ mod tests {
             island_id: IslandId::System,
             title: title.clone(),
             body: "Testing dedup window".to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             read: false,
             severity: "error".to_string(),
         };
@@ -907,7 +907,7 @@ mod tests {
             island_id: IslandId::System,
             title: format!("Alert {}", CANARY),
             body: format!("Payload details {}", CANARY),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             read: false,
             severity: "error".to_string(),
         };

@@ -146,7 +146,7 @@ mod tests {
             endpoint_url: "http://localhost:9001".to_string(),
             public_key_hex: "1234".to_string(),
             added_at: 100,
-            last_seen_at: Some(chrono::Utc::now().timestamp()),
+            last_seen_at: Some(jiff::Timestamp::now().as_second()),
             sync_enabled: true,
             is_cloud: false,
             iroh_addr: None,

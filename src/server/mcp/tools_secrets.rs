@@ -492,7 +492,7 @@ pub async fn handle_secrets_tool(
                 "lease_token": lease.token,
                 "secret_name": lease.secret_name,
                 "agent_id": lease.agent_id,
-                "expires_at": lease.expires_at.to_rfc3339(),
+                "expires_at": lease.expires_at.to_string(),
                 "revoked": false
             });
 
@@ -1060,7 +1060,7 @@ pub mod tests {
             "user1".to_string(),
             "user@swal.dev".to_string(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
 
         let res_user = crate::server::mcp::server::handle_tool_call(

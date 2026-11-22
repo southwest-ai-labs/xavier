@@ -756,7 +756,7 @@ fn check_local_git_head(repo: &str) -> Option<MainCommitInfo> {
         improvements,
         commit_url: format!("https://github.com/{}/commit/{}", repo, sha),
         author: "SWAL Team".to_string(),
-        date: chrono::Utc::now().to_rfc3339(),
+        date: jiff::Timestamp::now().to_string(),
     })
 }
 

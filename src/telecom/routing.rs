@@ -3,7 +3,7 @@
 //! Maintains peer endpoints, calculates direct vs relay hops, and authorizes multi-hop
 //! message relaying using cryptographic tickets.
 
-use chrono::{DateTime, Utc};
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -37,7 +37,7 @@ pub struct PeerEndpoint {
     pub node_id: String,
     pub socket_addr: Option<SocketAddr>,
     pub iroh_peer_id: Option<String>,
-    pub last_seen: DateTime<Utc>,
+    pub last_seen: Timestamp,
     pub is_relay_node: bool,
 }
 
@@ -143,9 +143,9 @@ impl TelecomRoutingTable {
     /// Prune endpoints inactive for longer than max_age_seconds.
     pub async fn prune_stale_routes(&self, max_age_seconds: i64) -> usize {
         let mut map = self.peers.write().await;
-        let now = Utc::now();
+        let now = Timestamp::now();
         let before_len = map.len();
-        map.retain(|_, ep| (now - ep.last_seen).num_seconds() <= max_age_seconds);
+        map.retain(|_, ep| (now.as_second() - ep.last_seen.as_second()) <= max_age_seconds);
         before_len - map.len()
     }
 }
@@ -163,7 +163,7 @@ mod tests {
                 8080,
             )),
             iroh_peer_id: None,
-            last_seen: Utc::now(),
+            last_seen: Timestamp::now(),
             is_relay_node: is_relay,
         }
     }
@@ -210,7 +210,9 @@ mod tests {
     async fn test_route_pruning() {
         let table = TelecomRoutingTable::new();
         let mut stale = make_test_endpoint("stale-node", false);
-        stale.last_seen = Utc::now() - chrono::Duration::seconds(400);
+        stale.last_seen = Timestamp::now()
+            .checked_sub(Span::new().seconds(400))
+            .unwrap();
         table.register_peer(stale).await;
 
         let pruned = table.prune_stale_routes(300).await;

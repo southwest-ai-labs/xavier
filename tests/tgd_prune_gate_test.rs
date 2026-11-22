@@ -81,7 +81,7 @@ async fn null_the_embedding(
 ///
 /// The store's own seeding uses `INSERT OR IGNORE`, so this row is what survives.
 fn seed_aged_clock(path: &std::path::Path, days: i64) {
-    let started = chrono::Utc::now() - chrono::Duration::days(days);
+    let started = jiff::Timestamp::now() - jiff::Span::new().hours(days * 24);
     let conn = rusqlite::Connection::open(path).expect("open new db");
     conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS maintenance_meta (
@@ -95,8 +95,8 @@ fn seed_aged_clock(path: &std::path::Path, days: i64) {
         "INSERT OR IGNORE INTO maintenance_meta (key, value, updated_at) VALUES (?1, ?2, ?3)",
         rusqlite::params![
             access::OBSERVATION_STARTED_AT_KEY,
-            started.to_rfc3339(),
-            started.to_rfc3339()
+            started.to_string(),
+            started.to_string()
         ],
     )
     .expect("seed clock");
@@ -110,7 +110,7 @@ fn seed_aged_clock(path: &std::path::Path, days: i64) {
 /// Path `session/cron_*` keeps the heuristic utility at 0.15, below the 0.3
 /// threshold, without relying on a metadata score.
 fn low_utility_old(id: &str, workspace_id: &str) -> MemoryRecord {
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     MemoryRecord {
         id: id.to_string(),
         workspace_id: workspace_id.to_string(),
@@ -118,8 +118,8 @@ fn low_utility_old(id: &str, workspace_id: &str) -> MemoryRecord {
         content: format!("transient low utility artifact {id}"),
         embedding: vec![0.1; 8],
         embedding_status: "completed".to_string(),
-        created_at: now - chrono::Duration::days(60),
-        updated_at: now - chrono::Duration::days(60),
+        created_at: now - jiff::Span::new().hours(60 * 24),
+        updated_at: now - jiff::Span::new().hours(60 * 24),
         ..Default::default()
     }
 }
@@ -291,7 +291,7 @@ async fn unflushed_buffered_access_shields_the_record() {
     store.put(low_utility_old("stale", ws)).await.expect("put");
 
     // Buffer-only: deliberately NOT flushed.
-    RECORDER.record(ws, &["just-read".to_string()], chrono::Utc::now());
+    RECORDER.record(ws, &["just-read".to_string()], jiff::Timestamp::now());
     assert_eq!(
         store.load_access_stats(ws).await.expect("load").len(),
         0,
@@ -421,19 +421,19 @@ async fn threshold_matrix_behind_an_open_gate() {
     RECORDER.reset();
     let (_dir, store) = store_named("gate_matrix", Some(45)).await;
     let ws = "ws-gate-matrix";
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
 
     let mut pinned = low_utility_old("r1_critical", ws);
     pinned.metadata = serde_json::json!({
         "pinned": true,
-        "last_accessed_at": (now - chrono::Duration::days(30)).to_rfc3339(),
+        "last_accessed_at": (now - jiff::Span::new().hours(30 * 24)).to_string(),
     });
     store.put(pinned).await.expect("put");
 
     for i in 2..=6 {
         let mut rec = low_utility_old(&format!("r{i}"), ws);
         rec.metadata = serde_json::json!({
-            "last_accessed_at": (now - chrono::Duration::days(15)).to_rfc3339(),
+            "last_accessed_at": (now - jiff::Span::new().hours(15 * 24)).to_string(),
         });
         store.put(rec).await.expect("put");
     }
@@ -442,14 +442,14 @@ async fn threshold_matrix_behind_an_open_gate() {
     let mut high = low_utility_old("r7_high_utility", ws);
     high.path = "docs/manual.md".to_string();
     high.metadata = serde_json::json!({
-        "last_accessed_at": (now - chrono::Duration::days(20)).to_rfc3339(),
+        "last_accessed_at": (now - jiff::Span::new().hours(20 * 24)).to_string(),
     });
     store.put(high).await.expect("put");
 
     // Low utility but fresh: below min_age_days.
     let mut fresh = low_utility_old("r8_fresh", ws);
     fresh.metadata = serde_json::json!({
-        "last_accessed_at": (now - chrono::Duration::days(1)).to_rfc3339(),
+        "last_accessed_at": (now - jiff::Span::new().hours(24)).to_string(),
     });
     store.put(fresh).await.expect("put");
 

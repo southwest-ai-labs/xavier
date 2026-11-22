@@ -37,7 +37,7 @@ async fn test_add_handler(
         .get("metadata")
         .cloned()
         .unwrap_or(serde_json::json!({}));
-    let path = format!("memory/{}", chrono::Utc::now().timestamp());
+    let path = format!("memory/{}", jiff::Timestamp::now().as_second());
 
     let event = RealtimeEvent {
         workspace_id: state.workspace_id.clone(),
@@ -55,7 +55,7 @@ async fn test_add_handler(
             .and_then(|v| v.as_str())
             .unwrap_or("memory.add")
             .to_string(),
-        timestamp: chrono::Utc::now().to_rfc3339(),
+        timestamp: jiff::Timestamp::now().to_string(),
         payload: serde_json::json!({ "path": path, "content": content }),
     };
 

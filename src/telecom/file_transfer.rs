@@ -1,6 +1,6 @@
 //! Zero-knowledge chunked file & document stream transfer (Issue #2370 / WAVE-26.08)
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -52,7 +52,7 @@ pub struct ChunkManifest {
     pub chunk_size: usize,
     pub total_chunks: usize,
     pub file_sha256: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -243,7 +243,7 @@ mod tests {
             chunk_size,
             total_chunks,
             file_sha256: full_hash.clone(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         manager.init_transfer(manifest).await;
@@ -279,7 +279,7 @@ mod tests {
             chunk_size: 10,
             total_chunks: 1,
             file_sha256: "somehash".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         manager.init_transfer(manifest).await;
 
@@ -305,7 +305,7 @@ mod tests {
             chunk_size: 10,
             total_chunks: 3,
             file_sha256: "placeholder".into(),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         manager.init_transfer(manifest).await;
 

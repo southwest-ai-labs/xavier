@@ -10,7 +10,6 @@
 //! (`cli::handlers::auth::list_sessions_handler` / `revoke_session_handler`), which operate
 //! purely on the `refresh_tokens` table and never touch `users`.
 use anyhow::{anyhow, Result};
-use chrono::Utc;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -64,7 +63,7 @@ impl AuthStore {
         let mut stmt = conn.prepare(
             "SELECT token, user_id, expires_at, revoked FROM refresh_tokens WHERE revoked = 0 AND expires_at > ? AND user_id = ?"
         )?;
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         let mut rows = stmt.query(params![now, user_id])?;
         let mut sessions = Vec::new();
         while let Some(row) = rows.next()? {

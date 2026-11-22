@@ -1,12 +1,12 @@
 use crate::coordination::message_bus::{AgentMessage, MessageBus};
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 /// Dead Letter Queue entry with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DLQEntry {
     pub message: AgentMessage,
-    pub failed_at: chrono::DateTime<Utc>,
+    pub failed_at: Timestamp,
     pub failure_reason: String,
     pub retry_count: u32,
 }
@@ -16,7 +16,7 @@ impl DLQEntry {
     pub fn new(message: AgentMessage, reason: &str) -> Self {
         Self {
             message,
-            failed_at: Utc::now(),
+            failed_at: Timestamp::now(),
             failure_reason: reason.to_string(),
             retry_count: 0,
         }

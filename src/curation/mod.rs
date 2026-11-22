@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -17,7 +17,7 @@ pub struct CurationItem {
     pub proposed_clearance: String,
     pub status: CurationStatus,
     pub curated_by: Option<String>,
-    pub curated_at: Option<DateTime<Utc>>,
+    pub curated_at: Option<Timestamp>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -38,7 +38,7 @@ impl CurationItem {
 pub struct CurationHistoryEntry {
     pub who: String,
     pub what: String,
-    pub when: DateTime<Utc>,
+    pub when: Timestamp,
     pub classification: Option<String>,
 }
 
@@ -188,7 +188,7 @@ impl CurationQueue {
             .unwrap_or_else(|| PathBuf::from("data/curation/history.json"));
 
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
-            let now = Utc::now();
+            let now = Timestamp::now();
             item.status = CurationStatus::Approved;
             item.curated_by = Some(curator.clone());
             item.curated_at = Some(now);
@@ -226,7 +226,7 @@ impl CurationQueue {
             .unwrap_or_else(|| PathBuf::from("data/curation/history.json"));
 
         if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
-            let now = Utc::now();
+            let now = Timestamp::now();
             item.status = CurationStatus::Rejected {
                 reason: reason.clone(),
             };

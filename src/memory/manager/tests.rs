@@ -34,7 +34,7 @@ fn test_quality_calculation() {
         &doc,
         MemoryPriority::Medium,
         5,
-        Some(chrono::Utc::now()),
+        Some(jiff::Timestamp::now()),
         true,
     );
 

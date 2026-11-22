@@ -786,6 +786,8 @@ impl ConnectionManager {
     /// Shutdown the connection manager and flush all SQLite WAL checkpoints cleanly.
     pub fn shutdown(&self) {
         self.pools.write().clear();
+        self.known_paths.write().clear();
+        self.known_profiles.write().clear();
         code_graph::db::flush_and_close_cache();
     }
 

@@ -4,6 +4,7 @@
 //! promoting/demoting priorities, and executing legacy action types.
 
 use anyhow::Result;
+use jiff::Timestamp;
 use std::collections::HashMap;
 use tracing::info;
 
@@ -76,8 +77,7 @@ impl MemoryManager {
                     .metadata
                     .get("last_accessed_at")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&chrono::Utc));
+                    .and_then(|s| s.parse::<Timestamp>().ok());
                 (
                     counts.get(id).copied().unwrap_or(0),
                     times.get(id).copied().or(meta_last_access),
@@ -139,15 +139,13 @@ impl MemoryManager {
                 .metadata
                 .get("created_at")
                 .and_then(|v| v.as_str())
-                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                .map(|dt| dt.with_timezone(&chrono::Utc));
+                .and_then(|s| s.parse::<Timestamp>().ok());
 
             let meta_last_access = doc
                 .metadata
                 .get("last_accessed_at")
                 .and_then(|v| v.as_str())
-                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                .map(|dt| dt.with_timezone(&chrono::Utc));
+                .and_then(|s| s.parse::<Timestamp>().ok());
 
             let (access_count, last_access, created_at) = if let Some(id) = &doc.id {
                 let counts = self

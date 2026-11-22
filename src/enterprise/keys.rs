@@ -2,7 +2,6 @@
 //!
 //! Handles creation, validation, and revocation of API keys for tenant authentication.
 
-use chrono::{DateTime, Utc};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -34,11 +33,11 @@ pub struct ApiKey {
     /// Custom rate limit override (0 = use plan default)
     pub rate_limit: u32,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
     /// Last used timestamp
-    pub last_used: Option<DateTime<Utc>>,
+    pub last_used: Option<jiff::Timestamp>,
     /// Expiration (None = never)
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<jiff::Timestamp>,
     /// Revoked flag
     pub revoked: bool,
     /// Optional metadata
@@ -67,7 +66,7 @@ impl ApiKey {
             name: name.into(),
             key_type,
             rate_limit: 0, // Use plan default
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
             last_used: None,
             expires_at: None,
             revoked: false,
@@ -83,7 +82,7 @@ impl ApiKey {
             return false;
         }
         if let Some(expires) = self.expires_at {
-            if Utc::now() > expires {
+            if jiff::Timestamp::now() > expires {
                 return false;
             }
         }
@@ -97,12 +96,12 @@ impl ApiKey {
 
     /// Update last used timestamp
     pub fn mark_used(&mut self) {
-        self.last_used = Some(Utc::now());
+        self.last_used = Some(jiff::Timestamp::now());
     }
 
     /// Check if key is active
     pub fn is_active(&self) -> bool {
-        !self.revoked && self.expires_at.is_none_or(|e| Utc::now() <= e)
+        !self.revoked && self.expires_at.is_none_or(|e| jiff::Timestamp::now() <= e)
     }
 }
 

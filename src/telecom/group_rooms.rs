@@ -1,6 +1,6 @@
 //! Multi-node encrypted mesh rooms & conference broadcast (Issue #2371 / WAVE-26.09)
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -37,14 +37,14 @@ pub struct GroupMember {
     pub node_id: String,
     pub wallet_id: String,
     pub role: MemberRole,
-    pub joined_at: DateTime<Utc>,
+    pub joined_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoomEpoch {
     pub epoch_id: u64,
     pub epoch_secret_fingerprint: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,7 +61,7 @@ pub struct GroupRoom {
     pub name: String,
     pub current_epoch: RoomEpoch,
     pub members: HashMap<String, GroupMember>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 impl GroupRoom {
@@ -73,7 +73,7 @@ impl GroupRoom {
                 node_id: creator_node.to_string(),
                 wallet_id: creator_wallet.to_string(),
                 role: MemberRole::Admin,
-                joined_at: Utc::now(),
+                joined_at: Timestamp::now(),
             },
         );
 
@@ -83,10 +83,10 @@ impl GroupRoom {
             current_epoch: RoomEpoch {
                 epoch_id: 1,
                 epoch_secret_fingerprint: format!("epoch_1_{}", room_id),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             },
             members,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         }
     }
 
@@ -123,9 +123,9 @@ impl GroupRoom {
             "epoch_{}_{}_{}",
             self.current_epoch.epoch_id,
             self.room_id,
-            Utc::now().timestamp_millis()
+            Timestamp::now().as_millisecond()
         );
-        self.current_epoch.created_at = Utc::now();
+        self.current_epoch.created_at = Timestamp::now();
         self.current_epoch.epoch_id
     }
 }
@@ -236,7 +236,7 @@ mod tests {
             node_id: "bob".into(),
             wallet_id: "wallet-2".into(),
             role: MemberRole::Participant,
-            joined_at: Utc::now(),
+            joined_at: Timestamp::now(),
         };
 
         manager.join_group("grp-1", bob).await.unwrap();
@@ -259,7 +259,7 @@ mod tests {
             node_id: "charlie".into(),
             wallet_id: "wallet-3".into(),
             role: MemberRole::Participant,
-            joined_at: Utc::now(),
+            joined_at: Timestamp::now(),
         };
         manager.join_group("grp-2", charlie).await.unwrap();
 

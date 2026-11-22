@@ -5,7 +5,7 @@
 //! for real-time inter-node communication.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -98,7 +98,7 @@ pub struct DirectChatRoom {
     pub room_id: String,
     pub participant_a: String,
     pub participant_b: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub status: RoomStatus,
 }
 
@@ -127,7 +127,7 @@ pub struct ChatMessage {
     pub content_ciphertext_hex: String,
     pub nonce_hex: String,
     pub ephemeral: bool,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub clearance_level: ClearanceLevel,
     pub delivered: bool,
     pub read: bool,
@@ -141,7 +141,7 @@ pub struct MessageReceipt {
     pub room_id: String,
     pub recipient_id: String,
     pub status: ReceiptStatus,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// Real-time chat engine managing persistent SQLite store and Tokio async channels.
@@ -253,9 +253,9 @@ pub fn create_room(
                     room_id: row.get(0)?,
                     participant_a: row.get(1)?,
                     participant_b: row.get(2)?,
-                    created_at: DateTime::parse_from_rfc3339(&created_str)
-                        .map(|dt| dt.with_timezone(&Utc))
-                        .unwrap_or_else(|_| Utc::now()),
+                    created_at: created_str
+                        .parse::<Timestamp>()
+                        .unwrap_or_else(|_| Timestamp::now()),
                     status: RoomStatus::from_str(&status_str),
                 })
             },
@@ -267,7 +267,7 @@ pub fn create_room(
     }
 
     let room_id = format!("room-{}", Uuid::new_v4());
-    let now = Utc::now();
+    let now = Timestamp::now();
     let room = DirectChatRoom {
         room_id: room_id.clone(),
         participant_a: participant_a.to_string(),
@@ -283,7 +283,7 @@ pub fn create_room(
             room.room_id,
             room.participant_a,
             room.participant_b,
-            room.created_at.to_rfc3339(),
+            room.created_at.to_string(),
             room.status.as_str(),
         ],
     )?;
@@ -315,7 +315,7 @@ pub fn send_direct_message(
         .map_err(|e| anyhow!("Failed to encrypt message: {:?}", e))?;
 
     let message_id = format!("msg-{}", Uuid::new_v4());
-    let now = Utc::now();
+    let now = Timestamp::now();
 
     let message = ChatMessage {
         message_id: message_id.clone(),
@@ -343,7 +343,7 @@ pub fn send_direct_message(
                 message.content_ciphertext_hex,
                 message.nonce_hex,
                 if message.ephemeral { 1 } else { 0 },
-                message.timestamp.to_rfc3339(),
+                message.timestamp.to_string(),
                 message.clearance_level.as_str(),
                 0,
                 0,
@@ -404,7 +404,7 @@ pub fn acknowledge_receipt(
     )?;
 
     let receipt_id = format!("rcpt-{}", Uuid::new_v4());
-    let now = Utc::now();
+    let now = Timestamp::now();
     let receipt = MessageReceipt {
         receipt_id: receipt_id.clone(),
         message_id: message_id.to_string(),
@@ -423,7 +423,7 @@ pub fn acknowledge_receipt(
             receipt.room_id,
             receipt.recipient_id,
             receipt.status.as_str(),
-            receipt.timestamp.to_rfc3339(),
+            receipt.timestamp.to_string(),
         ],
     )?;
 
@@ -445,7 +445,7 @@ pub fn mark_read(
     )?;
 
     let receipt_id = format!("read-{}", Uuid::new_v4());
-    let now = Utc::now();
+    let now = Timestamp::now();
     let receipt = MessageReceipt {
         receipt_id: receipt_id.clone(),
         message_id: message_id.to_string(),
@@ -464,7 +464,7 @@ pub fn mark_read(
             receipt.room_id,
             receipt.recipient_id,
             receipt.status.as_str(),
-            receipt.timestamp.to_rfc3339(),
+            receipt.timestamp.to_string(),
         ],
     )?;
 

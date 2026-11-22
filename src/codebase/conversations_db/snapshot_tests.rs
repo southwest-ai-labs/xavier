@@ -8,7 +8,7 @@
 use super::*;
 use crate::espacio::keys::{self, DEFAULT_SPACE_ID};
 use crate::memory::sqlite_vec_store::at_rest;
-use chrono::Utc;
+use jiff::Timestamp;
 use rusqlite::{params, Connection, ErrorCode};
 use std::ffi::OsString;
 use std::path::Path;
@@ -120,7 +120,7 @@ async fn insert_thread(db: &ConversationsDb, id: &str, project: Option<&str>) {
             conn.execute(
                 "INSERT INTO conversation_threads (id, project_id, started_at, updated_at)
                  VALUES (?1, ?2, ?3, ?3)",
-                params![id, project, Utc::now().to_rfc3339()],
+                params![id, project, Timestamp::now().to_string()],
             )?;
             Ok(())
         })
@@ -194,7 +194,7 @@ async fn plant(db: &ConversationsDb, path: &Path, cid: &str, session: &str, seal
         .execute(
             "INSERT INTO checkpoints (id, project_id, workspace_id, session_id, state, created_at, kind)
              VALUES (?1, ?2, ?2, ?3, 'active', ?4, 'context_save')",
-            params![cid, db.project_id(), session, Utc::now().to_rfc3339()],
+            params![cid, db.project_id(), session, Timestamp::now().to_string()],
         )
         .unwrap();
     raw(path)
@@ -1026,7 +1026,7 @@ async fn snapshot_capture_migrates_legacy_rows_first() {
         .execute(
             "INSERT INTO conversation_messages (id, thread_id, role, content, created_at)
              VALUES ('legacy-1', ?1, 'user', 'legacy canary', ?2)",
-            params![SESSION_A, Utc::now().to_rfc3339()],
+            params![SESSION_A, Timestamp::now().to_string()],
         )
         .unwrap();
 

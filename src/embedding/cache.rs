@@ -317,17 +317,21 @@ impl EmbeddingCache {
         let (blob, created_at) = row.ok()?;
 
         // Check TTL expiry.
-        if let Ok(parsed) = chrono::NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S")
-        {
-            let now = chrono::Utc::now().naive_utc();
+        if let Ok(parsed) = jiff::civil::DateTime::strptime("%Y-%m-%d %H:%M:%S", &created_at) {
+            let now = jiff::Timestamp::now();
             let ttl_secs = (self.config.ttl_hours as i64) * 3600;
-            if (now - parsed).num_seconds() > ttl_secs {
-                // Expired — delete and treat as miss.
-                let _ = conn.execute(
-                    "DELETE FROM embedding_cache WHERE content_hash = ?1",
-                    rusqlite::params![key],
-                );
-                return None;
+            if let Ok(parsed_ts) = parsed
+                .to_zoned(jiff::tz::TimeZone::UTC)
+                .map(|z| z.timestamp())
+            {
+                if now.duration_since(parsed_ts).as_secs() > ttl_secs {
+                    // Expired — delete and treat as miss.
+                    let _ = conn.execute(
+                        "DELETE FROM embedding_cache WHERE content_hash = ?1",
+                        rusqlite::params![key],
+                    );
+                    return None;
+                }
             }
         }
 

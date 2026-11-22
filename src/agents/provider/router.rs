@@ -4,7 +4,7 @@
 //! managing fallback chains, and automatic strategy-based provider selection.
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -120,7 +120,7 @@ pub struct ProviderSwitchEvent {
     pub from: Option<ProviderKind>,
     pub to: ProviderKind,
     pub reason: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 /// Manages LLM provider selection and hot-switching.
@@ -197,7 +197,7 @@ impl ProviderRouter {
                 from: None,
                 to: initial,
                 reason: "Initialization".to_string(),
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
             }],
             local_endpoints: Vec::new(),
             current_local_endpoint_idx: 0,
@@ -238,7 +238,7 @@ impl ProviderRouter {
             from: Some(self.current_provider),
             to: provider,
             reason: "Manual switch".to_string(),
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         };
         self.current_provider = provider;
         self.active = ActiveProvider::Manual(provider);
@@ -329,7 +329,7 @@ impl ProviderRouter {
             from: Some(self.current_provider),
             to,
             reason,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         };
         self.current_provider = to;
         self.switch_history.push(event);

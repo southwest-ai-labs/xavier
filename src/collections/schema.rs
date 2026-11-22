@@ -3,7 +3,7 @@
 //! Defines the data model for document management: collections (folders),
 //! document entries with versioning, tags, and access control.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -41,14 +41,14 @@ pub struct DocCollection {
     pub access: CollectionAccess,
     /// Preferred language for RAG prompts (e.g. "es", "en").
     pub language: String,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl DocCollection {
     /// Create a new collection with sensible defaults.
     pub fn new(name: impl Into<String>) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: Ulid::new().to_string(),
             name: name.into(),
@@ -134,8 +134,8 @@ pub struct DocEntry {
     pub sha256: Option<String>,
     /// Arbitrary metadata (author, department, year, etc.).
     pub metadata: serde_json::Value,
-    pub ingested_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub ingested_at: Timestamp,
+    pub updated_at: Timestamp,
 }
 
 impl DocEntry {
@@ -145,7 +145,7 @@ impl DocEntry {
         title: impl Into<String>,
         mime_type: impl Into<String>,
     ) -> Self {
-        let now = Utc::now();
+        let now = Timestamp::now();
         Self {
             id: Ulid::new().to_string(),
             collection_id: collection_id.into(),

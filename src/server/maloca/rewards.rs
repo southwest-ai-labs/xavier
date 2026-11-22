@@ -12,7 +12,7 @@
 //! See issue #1467.
 
 use anyhow::{bail, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -98,7 +98,7 @@ impl ContributionRecord {
             record_id: format!("contrib_{}", uuid::Uuid::new_v4().simple()),
             node_id: node_id.into(),
             contribution_type,
-            timestamp: Utc::now().to_rfc3339(),
+            timestamp: Timestamp::now().to_string(),
             points,
         }
     }

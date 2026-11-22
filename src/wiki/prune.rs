@@ -4,7 +4,7 @@
 //! archives unreferenced orphan pages to `.xavier/wiki/archive/`.
 
 use anyhow::{Context, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use std::path::{Path, PathBuf};
 use tracing::info;
 
@@ -37,7 +37,7 @@ impl WikiPruner {
         }
 
         let hash_label = commit_hash.unwrap_or("HEAD");
-        let date_str = Utc::now().format("%Y-%m-%d").to_string();
+        let date_str = Timestamp::now().strftime("%Y-%m-%d").to_string();
 
         // 1. Mark code-doc drift with soft deprecation banner
         for drift in &lint_report.drift_warnings {

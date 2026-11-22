@@ -1,6 +1,6 @@
 xavier::isolate_test_process!();
 
-use chrono::Utc;
+use jiff::Timestamp;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -31,8 +31,8 @@ fn test_xcb1_pack_encryption_roundtrip() {
         metadata_iv: None,
         encrypted_dek: None,
         score: 0.99,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        created_at: Timestamp::now(),
+        updated_at: Timestamp::now(),
         revision: 1,
         primary: false,
         parent_id: None,
@@ -175,8 +175,8 @@ async fn test_cross_node_restore_verification() {
         metadata_iv: None,
         encrypted_dek: None,
         score: 1.0,
-        created_at: Utc::now(),
-        updated_at: Utc::now(),
+        created_at: Timestamp::now(),
+        updated_at: Timestamp::now(),
         revision: 1,
         primary: false,
         parent_id: None,

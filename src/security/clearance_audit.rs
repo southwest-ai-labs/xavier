@@ -65,7 +65,7 @@ impl ClearanceReadAudit {
         allowed: bool,
     ) -> Self {
         Self {
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             subject: subject.into(),
             role: role.into(),
             requester_level: requester_level.as_str().to_uppercase(),
@@ -248,7 +248,7 @@ mod tests {
             "nodo-7".into(),
             "nodo7@swal.dev".into(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         let (subject, role) = subject_and_role(Some(&claims));
         assert_eq!(subject, "nodo-7");

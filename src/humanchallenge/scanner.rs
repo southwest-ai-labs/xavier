@@ -196,7 +196,7 @@ impl SessionScanner {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     #[test]
     fn test_scan_all_5_challenge_types() {
@@ -205,35 +205,35 @@ mod tests {
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Sin embargo esto contradice lo anterior".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Decidimos usar la arquitectura hexagonal".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::ToolCall,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("sudo systemctl restart xavier".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Asumiendo que el puerto 8006 está libre".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Por favor aclara la configuración de la base de datos".into()),
                 metadata: None,
             },

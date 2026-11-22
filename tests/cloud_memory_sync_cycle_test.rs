@@ -6,8 +6,8 @@
 
 mod common;
 
-use chrono::{TimeDelta, Utc};
 use common::{compute_store_manifest_hash, create_cloud_sync, make_record};
+use jiff::{Span, Timestamp};
 use std::sync::Arc;
 use xavier::memory::store::{InMemoryMemoryStore, MemoryStore};
 
@@ -21,14 +21,14 @@ async fn test_full_cloud_memory_sync_cycle_and_manifest_hash_convergence() {
     let (sync, _tmp_dir) = create_cloud_sync(cloud_store.clone(), "local-node-1", None).await;
 
     // 1. Local Write: Write 5 records to local store
-    let now = Utc::now();
+    let now = Timestamp::now();
     for i in 0..5 {
         let rec = make_record(
             &format!("local-rec-{}", i),
             WORKSPACE,
             &format!("memories/local-rec-{}", i),
             &format!("Local memory content {}", i),
-            now + TimeDelta::seconds(i as i64),
+            now.checked_add(Span::new().seconds(i as i64)).unwrap(),
             1,
             "local-node-1",
             None,
@@ -43,7 +43,7 @@ async fn test_full_cloud_memory_sync_cycle_and_manifest_hash_convergence() {
             WORKSPACE,
             &format!("memories/cloud-rec-{}", i),
             &format!("Cloud memory content {}", i),
-            now + TimeDelta::seconds(i as i64 + 10),
+            now.checked_add(Span::new().seconds(i as i64 + 10)).unwrap(),
             1,
             "cloud-node-1",
             None,
@@ -131,7 +131,7 @@ async fn test_cloud_memory_sync_lww_conflict_resolution() {
 
     let (sync, _tmp_dir) = create_cloud_sync(cloud_store.clone(), "local-node-lww", None).await;
 
-    let now = Utc::now();
+    let now = Timestamp::now();
 
     // Conflict 1: Cloud has newer timestamp -> Cloud wins
     let rec1_local = make_record(
@@ -139,7 +139,7 @@ async fn test_cloud_memory_sync_lww_conflict_resolution() {
         WORKSPACE,
         "memories/rec-1",
         "Old local content",
-        now - TimeDelta::seconds(20),
+        now.checked_sub(Span::new().seconds(20)).unwrap(),
         1,
         "node-a",
         None,
@@ -171,7 +171,7 @@ async fn test_cloud_memory_sync_lww_conflict_resolution() {
         WORKSPACE,
         "memories/rec-2",
         "Old cloud content",
-        now - TimeDelta::seconds(20),
+        now.checked_sub(Span::new().seconds(20)).unwrap(),
         1,
         "node-b",
         None,
@@ -252,7 +252,7 @@ async fn test_cloud_memory_sync_deletions_and_tombstones() {
 
     let (sync, _tmp_dir) = create_cloud_sync(cloud_store.clone(), "local-node-del", None).await;
 
-    let now = Utc::now();
+    let now = Timestamp::now();
 
     // 1. Initial sync of active records
     let rec1 = make_record(
@@ -286,7 +286,7 @@ async fn test_cloud_memory_sync_deletions_and_tombstones() {
     assert_eq!(initial_local_hash, initial_cloud_hash);
 
     // 2. Mark record 1 as deleted (tombstone) locally with newer timestamp
-    let tombstone_time = now + TimeDelta::seconds(10);
+    let tombstone_time = now.checked_add(Span::new().seconds(10)).unwrap();
     let rec1_tombstone = make_record(
         "del-1",
         WORKSPACE,
@@ -349,14 +349,14 @@ async fn test_cloud_memory_sync_pagination_over_batch_size_limit() {
     let (sync, _tmp_dir) =
         create_cloud_sync(cloud_store.clone(), "local-node-batch", Some(batch_size)).await;
 
-    let now = Utc::now();
+    let now = Timestamp::now();
     for i in 0..total_records {
         let rec = make_record(
             &format!("batch-rec-{}", i),
             WORKSPACE,
             &format!("memories/batch-rec-{}", i),
             &format!("Batch item content {}", i),
-            now + TimeDelta::milliseconds(i as i64),
+            now.checked_add(Span::new().milliseconds(i as i64)).unwrap(),
             1,
             "node-a",
             None,

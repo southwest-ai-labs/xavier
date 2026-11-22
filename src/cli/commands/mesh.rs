@@ -44,7 +44,7 @@ pub async fn handle_mesh_command(cmd: MeshCommand) -> Result<()> {
                 alias: alias.clone(),
                 endpoint_url: endpoint.clone(),
                 public_key_hex: String::new(), // Will be filled on first handshake
-                added_at: chrono::Utc::now().timestamp(),
+                added_at: jiff::Timestamp::now().as_second(),
                 last_seen_at: None,
                 sync_enabled: true,
                 is_cloud: cloud,
@@ -110,7 +110,7 @@ pub async fn handle_mesh_command(cmd: MeshCommand) -> Result<()> {
                     if let Some(p) = registry.get_peer(&node_id) {
                         let mut updated_peer = p.clone();
                         updated_peer.public_key_hex = resp.public_key_hex;
-                        updated_peer.last_seen_at = Some(chrono::Utc::now().timestamp());
+                        updated_peer.last_seen_at = Some(jiff::Timestamp::now().as_second());
                         registry.add_peer(updated_peer)?;
                     }
                 }
@@ -313,7 +313,7 @@ pub async fn handle_mesh_command(cmd: MeshCommand) -> Result<()> {
                                 created_at: c.created_at,
                             })
                             .collect(),
-                        generated_at: chrono::Utc::now().timestamp(),
+                        generated_at: jiff::Timestamp::now().as_second(),
                     };
                     transport.publish_manifest(&mesh_manifest).await?;
 
@@ -402,7 +402,7 @@ pub async fn handle_mesh_command(cmd: MeshCommand) -> Result<()> {
                 alias: None,
                 endpoint_url: data.endpoint.clone(),
                 public_key_hex: data.public_key_hex.clone(),
-                added_at: chrono::Utc::now().timestamp(),
+                added_at: jiff::Timestamp::now().as_second(),
                 last_seen_at: None,
                 sync_enabled: true,
                 is_cloud: false,
@@ -431,7 +431,7 @@ pub async fn handle_mesh_command(cmd: MeshCommand) -> Result<()> {
                     // un lag absurdo (now - 0) marcando el mesh como "degraded".
                     if let Ok(mut reg) = PeerRegistry::load() {
                         if let Some(existing) = reg.get_peer_mut(&data.node_id) {
-                            existing.last_seen_at = Some(chrono::Utc::now().timestamp());
+                            existing.last_seen_at = Some(jiff::Timestamp::now().as_second());
                         }
                         let _ = reg.save();
                     }

@@ -132,7 +132,7 @@ impl JobsState {
             &self.repo,
             &self.jobs_root,
             &self.retention,
-            chrono::Utc::now(),
+            jiff::Timestamp::now(),
         ) {
             tracing::warn!(error = %e, "training retention pass failed");
         }

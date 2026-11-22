@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -58,7 +58,7 @@ pub struct RoomInfo {
     pub title: String,
     pub creator_node: String,
     pub message_count: usize,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +67,7 @@ pub struct WsSessionMessage {
     pub room_id: String,
     pub sender: String,
     pub payload: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Clone)]
@@ -122,7 +122,7 @@ pub async fn handle_create_room(
         title: req.title,
         creator_node: req.creator_node,
         message_count: 0,
-        created_at: Utc::now(),
+        created_at: Timestamp::now(),
     };
 
     lock.insert(req.room_id, room.clone());
@@ -151,7 +151,7 @@ pub async fn handle_send_message(
         room_id: req.room_id.clone(),
         sender: req.sender_node,
         payload: req.content,
-        timestamp: Utc::now(),
+        timestamp: Timestamp::now(),
     };
 
     let mut msgs = state.messages.write().await;

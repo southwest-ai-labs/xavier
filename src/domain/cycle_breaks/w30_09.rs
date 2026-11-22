@@ -11,7 +11,7 @@
 //! module that carries the behaviour.
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use xavier_core_logic::ScoredResult;
 
@@ -36,7 +36,7 @@ pub enum SessionEventType {
 pub struct SessionEvent {
     pub session_id: String,
     pub event_type: SessionEventType,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub content: Option<String>,
     pub metadata: Option<serde_json::Value>,
 }

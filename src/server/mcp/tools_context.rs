@@ -344,7 +344,7 @@ async fn restore_snapshot(
             .map(|c| json!({
                 "id": c.id,
                 "name": c.name,
-                "created_at": c.created_at.to_rfc3339(),
+                "created_at": c.created_at.to_string(),
             }))
             .collect::<Vec<_>>(),
         "token_usage": {
@@ -765,7 +765,7 @@ pub async fn handle_context_tool(
                     .map(|c| json!({
                         "id": c.id,
                         "name": c.name,
-                        "created_at": c.created_at.to_rfc3339(),
+                        "created_at": c.created_at.to_string(),
                     }))
                     .collect::<Vec<_>>(),
                 "token_usage": {
@@ -848,7 +848,7 @@ pub async fn handle_context_tool(
                     c.id,
                     c.name.as_deref().unwrap_or(""),
                     c.session_id.as_deref().unwrap_or(""),
-                    c.created_at.to_rfc3339()
+                    c.created_at
                 ));
             }
             for (i, doc) in results.iter().enumerate() {
@@ -1224,7 +1224,7 @@ mod tests {
             "fixture-reader".into(),
             "fixture@example.invalid".into(),
             crate::security::auth::UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         let listing = super::super::session::dispatch_mcp_value(
             state.clone(),
@@ -1320,7 +1320,7 @@ mod tests {
             "skill-fixture".into(),
             "skill-fixture@example.invalid".into(),
             role,
-            chrono::Duration::minutes(5),
+            jiff::Span::new().minutes(5),
         );
         // HTTP establishes this identity before entering the JSON-RPC dispatcher.
         let output = super::super::tools_memory::with_mcp_caller(
@@ -1815,6 +1815,7 @@ mod tests {
     #[serial_test::serial]
     async fn context_session_semantics_handler_level() {
         crate::isolate_test_process!();
+        crate::codebase::connection_manager::ConnectionManager::global().shutdown();
         let (state, workspace, _work) = workspace_with_documents(Vec::new()).await;
         let call = |name: &'static str, args: Value| {
             let (s, w) = (state.clone(), workspace.clone());

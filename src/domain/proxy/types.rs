@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -49,8 +49,8 @@ pub struct ProviderQuota {
     pub tokens_remaining: Option<u64>,
     pub requests_limit: Option<u64>,
     pub tokens_limit: Option<u64>,
-    pub resets_at: Option<DateTime<Utc>>,
-    pub last_checked: DateTime<Utc>,
+    pub resets_at: Option<Timestamp>,
+    pub last_checked: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

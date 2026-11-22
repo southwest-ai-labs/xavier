@@ -749,7 +749,7 @@ pub async fn handle_core_tool(
                     snippet: crate::memory::snippet::clip_chars(&record.content, 200).to_string(),
                     provenance: MCPProvenance {
                         source: "memory_store".to_string(),
-                        retrieved_at: chrono::Utc::now().to_rfc3339(),
+                        retrieved_at: jiff::Timestamp::now().to_string(),
                         retrieval_method: "exact".to_string(),
                         embedding_model: None,
                         version: Some(
@@ -833,7 +833,7 @@ pub async fn handle_core_tool(
                     snippet: crate::memory::snippet::clip_chars(&first.content, 200).to_string(),
                     provenance: MCPProvenance {
                         source: "memory_store".to_string(),
-                        retrieved_at: chrono::Utc::now().to_rfc3339(),
+                        retrieved_at: jiff::Timestamp::now().to_string(),
                         retrieval_method: "exact".to_string(),
                         embedding_model: None,
                         version: Some(
@@ -914,7 +914,7 @@ pub async fn handle_core_tool(
                             .to_string(),
                         provenance: MCPProvenance {
                             source: "memory_store".to_string(),
-                            retrieved_at: chrono::Utc::now().to_rfc3339(),
+                            retrieved_at: jiff::Timestamp::now().to_string(),
                             retrieval_method: "depth_expansion".to_string(),
                             embedding_model: None,
                             version: Some(
@@ -1109,7 +1109,7 @@ pub async fn handle_core_tool(
             //   from treating 0.0 as measured degraded performance.
             // - Unmeasured counter (0): test_iterations (no synthetic benchmarks executed).
             let benchmark = crate::auto_improvement::benchmark::BenchmarkSnapshot {
-                timestamp_secs: chrono::Utc::now().timestamp() as u64,
+                timestamp_secs: jiff::Timestamp::now().as_second() as u64,
                 recall_at_k: -1.0,    // unmeasured sentinel
                 precision: -1.0,      // unmeasured sentinel
                 avg_latency_ms: -1.0, // unmeasured sentinel
@@ -1152,7 +1152,7 @@ pub async fn handle_core_tool(
             let parsed = (|| -> Result<crate::self_manage::LogScanArgs, String> {
                 let since = optional_str_arg(&arguments, "since")?;
                 if let Some(since) = since {
-                    chrono::DateTime::parse_from_rfc3339(since).map_err(|e| {
+                    since.parse::<jiff::Timestamp>().map_err(|e| {
                         format!("Invalid argument 'since': expected RFC3339 timestamp ({e})")
                     })?;
                 }
@@ -2737,7 +2737,7 @@ pub(crate) mod tests {
             "root".to_string(),
             "admin@swal.dev".to_string(),
             crate::security::auth::UserRole::Admin,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         )
     }
 
@@ -2771,7 +2771,7 @@ pub(crate) mod tests {
             "operator".to_string(),
             "local@xavier".to_string(),
             crate::security::auth::UserRole::Admin,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         )
     }
 
@@ -2889,14 +2889,14 @@ pub(crate) mod tests {
             "u".into(),
             "u@swal.dev".into(),
             crate::security::auth::UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         // An Admin JWT is not root: role claims alone never open the tools.
         let admin_jwt = crate::security::auth::Claims::new(
             "jwt-admin".into(),
             "a@swal.dev".into(),
             crate::security::auth::UserRole::Admin,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         for c in [None, Some(&ro), Some(&admin_jwt)] {
             let err = call(
@@ -3353,7 +3353,7 @@ pub(crate) mod tests {
             "u".into(),
             "u@swal.dev".into(),
             crate::security::auth::UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
 
         for name in [

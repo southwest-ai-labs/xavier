@@ -1,6 +1,6 @@
 //! MCP tool suite for AI agent interaction with telecom mesh (Issue #2373 / WAVE-26.11)
 
-use chrono::Utc;
+use jiff::Timestamp;
 use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -159,7 +159,7 @@ impl TelecomMcpRegistry {
                 conn.execute(
                     "INSERT OR IGNORE INTO telecom_rooms (room_id, name, clearance, is_group, created_at)
                      VALUES (?1, ?1, 'Public', 0, ?2)",
-                    params![room, Utc::now().to_rfc3339()],
+                    params![room, Timestamp::now().to_string()],
                 )?;
             }
             let mut stmt = conn.prepare("SELECT room_id FROM telecom_rooms ORDER BY rowid")?;
@@ -339,7 +339,7 @@ impl TelecomMcpRegistry {
                             room_id,
                             local_node_id,
                             payload.as_bytes(),
-                            Utc::now().to_rfc3339()
+                            Timestamp::now().to_string()
                         ],
                     )
                     .map_err(exec_err)?;
@@ -443,15 +443,15 @@ impl TelecomMcpRegistry {
                             .query_map(params![room_id, limit as i64], |row| {
                                 let payload: Vec<u8> = row.get(3)?;
                                 let sent_at_str: String = row.get(5)?;
-                                let sent_at = chrono::DateTime::parse_from_rfc3339(&sent_at_str)
-                                    .map(|dt| dt.with_timezone(&Utc))
-                                    .unwrap_or_else(|_| Utc::now());
+                                let sent_at = sent_at_str
+                                    .parse::<Timestamp>()
+                                    .unwrap_or_else(|_| Timestamp::now());
                                 Ok(serde_json::json!({
                                     "message_id": row.get::<_, String>(0)?,
                                     "room_id": row.get::<_, String>(1)?,
                                     "sender": row.get::<_, String>(2)?,
                                     "sequence": row.get::<_, i64>(4)?,
-                                    "sent_at": sent_at.to_rfc3339(),
+                                    "sent_at": sent_at.to_string(),
                                     "payload": String::from_utf8_lossy(&payload)
                                 }))
                             })
@@ -511,7 +511,7 @@ impl TelecomMcpRegistry {
                             conn.execute(
                                 "INSERT INTO telecom_rooms (room_id, name, clearance, is_group, created_at)
                                  VALUES (?1, ?1, ?2, 1, ?3)",
-                                params![room, requested_clearance, Utc::now().to_rfc3339()],
+                                params![room, requested_clearance, Timestamp::now().to_string()],
                             )
                             .map_err(exec_err)?;
                             Ok((true, requested_clearance))

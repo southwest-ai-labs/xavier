@@ -307,7 +307,7 @@ async fn test_bidirectional_memory_replication() {
                 "path": "doc/node1_entry",
                 "content": "delivered to node B",
                 "metadata": {},
-                "created_at": chrono::Utc::now().timestamp(),
+                "created_at": jiff::Timestamp::now().as_second(),
             }],
             "snapshots": [],
         }))
@@ -342,7 +342,7 @@ async fn test_bidirectional_memory_replication() {
                 "path": "doc/node2_entry",
                 "content": "delivered to node A",
                 "metadata": {},
-                "created_at": chrono::Utc::now().timestamp(),
+                "created_at": jiff::Timestamp::now().as_second(),
             }],
             "snapshots": [],
         }))
@@ -623,7 +623,7 @@ async fn test_offline_disconnect_replay_queue() {
                 "path": "doc/queued_entry",
                 "content": "offline queued",
                 "metadata": {},
-                "created_at": chrono::Utc::now().timestamp(),
+                "created_at": jiff::Timestamp::now().as_second(),
             }],
             "snapshots": [],
         }))

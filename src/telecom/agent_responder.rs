@@ -1,6 +1,6 @@
 //! Autonomous agent participant in node chat rooms (Issue #2368 / WAVE-26.06)
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -45,7 +45,7 @@ pub struct AgentParticipant {
     pub model: String,
     pub dispatch_policy: DispatchPolicy,
     pub bound_rooms: Vec<String>,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +56,7 @@ pub struct AgentResponsePayload {
     pub replying_to_message_id: Option<String>,
     pub content: String,
     pub token_usage: u32,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
 }
 
 pub struct AgentResponderRegistry {
@@ -139,13 +139,13 @@ pub fn generate_agent_reply(
     );
 
     Ok(AgentResponsePayload {
-        response_id: format!("resp_{}", Utc::now().timestamp_millis()),
+        response_id: format!("resp_{}", Timestamp::now().as_millisecond()),
         agent_id: agent.agent_id.clone(),
         room_id: room_id.to_string(),
         replying_to_message_id: incoming_message_id.map(|s| s.to_string()),
         content: reply_content,
         token_usage: prompt.split_whitespace().count() as u32 * 2 + 15,
-        timestamp: Utc::now(),
+        timestamp: Timestamp::now(),
     })
 }
 
@@ -196,7 +196,7 @@ mod tests {
             model: "claude-3-5".into(),
             dispatch_policy: DispatchPolicy::AlwaysRespond,
             bound_rooms: vec!["room-1".into()],
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         registry.register_agent(agent).await;
@@ -220,7 +220,7 @@ mod tests {
             model: "gemini-pro".into(),
             dispatch_policy: DispatchPolicy::MentionOnly,
             bound_rooms: vec!["legal-room".into()],
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         let res = generate_agent_reply(&agent, "legal-room", Some("msg-101"), "Review clause 4");

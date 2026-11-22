@@ -244,7 +244,7 @@ pub fn chunk_hash(record: &MemoryRecord) -> String {
     let mut hasher = Sha256::new();
     hasher.update(record.path.as_bytes());
     hasher.update(record.revision.to_le_bytes());
-    hasher.update(record.updated_at.timestamp().to_le_bytes());
+    hasher.update(record.updated_at.as_second().to_le_bytes());
     crate::crypto::hex_encode(hasher.finalize())
 }
 
@@ -252,7 +252,7 @@ pub fn chunk_hash(record: &MemoryRecord) -> String {
 mod tests {
     use super::*;
     use crate::memory::store::MemoryRecord;
-    use chrono::{TimeDelta, Utc};
+    use jiff::Timestamp;
     use std::sync::Arc;
 
     // Reuse TestStore from manifest.rs
@@ -262,7 +262,7 @@ mod tests {
         id: &str,
         workspace_id: &str,
         content: &str,
-        updated_at: chrono::DateTime<Utc>,
+        updated_at: Timestamp,
         revision: u64,
         node_id: &str,
     ) -> MemoryRecord {
@@ -315,7 +315,14 @@ mod tests {
             records: std::sync::Mutex::new(Vec::new()),
         });
         // Put a record with old timestamp
-        let old = make_record("r1", "episodic", "old content", Utc::now(), 1, "node_a");
+        let old = make_record(
+            "r1",
+            "episodic",
+            "old content",
+            Timestamp::now(),
+            1,
+            "node_a",
+        );
         store.put(old).await.unwrap();
 
         // Incoming record has newer timestamp
@@ -323,7 +330,9 @@ mod tests {
             "r1",
             "episodic",
             "new content",
-            Utc::now() + TimeDelta::seconds(10),
+            Timestamp::now()
+                .checked_add(jiff::Span::new().seconds(10))
+                .unwrap(),
             2,
             "node_b",
         );
@@ -356,7 +365,7 @@ mod tests {
         let store = Arc::new(manifest_tests::TestStore {
             records: std::sync::Mutex::new(Vec::new()),
         });
-        let now = Utc::now();
+        let now = Timestamp::now();
         let local = make_record("r2", "semantic", "from node_a", now, 1, "A");
         store.put(local).await.unwrap();
 
@@ -393,7 +402,14 @@ mod tests {
         let store = Arc::new(manifest_tests::TestStore {
             records: std::sync::Mutex::new(Vec::new()),
         });
-        let rec = make_record("del1", "working", "to delete", Utc::now(), 1, "node_a");
+        let rec = make_record(
+            "del1",
+            "working",
+            "to delete",
+            Timestamp::now(),
+            1,
+            "node_a",
+        );
         store.put(rec).await.unwrap();
 
         let diff = ChunkDiff {
@@ -419,7 +435,14 @@ mod tests {
         let store = Arc::new(manifest_tests::TestStore {
             records: std::sync::Mutex::new(Vec::new()),
         });
-        let rec = make_record("del2", "working", "should survive", Utc::now(), 1, "node_a");
+        let rec = make_record(
+            "del2",
+            "working",
+            "should survive",
+            Timestamp::now(),
+            1,
+            "node_a",
+        );
         store.put(rec).await.unwrap();
 
         // Delete diff WITHOUT record_path — should be skipped, not crash
@@ -451,12 +474,19 @@ mod tests {
             records: std::sync::Mutex::new(Vec::new()),
         });
         // Put two records in the same workspace
-        let rec1 = make_record("keep", "workspace1", "keep this", Utc::now(), 1, "node_a");
+        let rec1 = make_record(
+            "keep",
+            "workspace1",
+            "keep this",
+            Timestamp::now(),
+            1,
+            "node_a",
+        );
         let rec2 = make_record(
             "remove",
             "workspace1",
             "remove this",
-            Utc::now(),
+            Timestamp::now(),
             1,
             "node_a",
         );
@@ -516,7 +546,7 @@ mod tests {
             records: std::sync::Mutex::new(Vec::new()),
         });
         // Put a record to delete
-        let old = make_record("gone", "ws", "delete me", Utc::now(), 1, "node_a");
+        let old = make_record("gone", "ws", "delete me", Timestamp::now(), 1, "node_a");
         store.put(old).await.unwrap();
 
         // Create an Add diff for a new record
@@ -524,7 +554,9 @@ mod tests {
             "new_one",
             "ws",
             "brand new",
-            Utc::now() + TimeDelta::seconds(5),
+            Timestamp::now()
+                .checked_add(jiff::Span::new().seconds(5))
+                .unwrap(),
             1,
             "node_b",
         );
@@ -708,7 +740,14 @@ mod tests {
         );
 
         // 2. Delete diff with attached record data having Secret clearance
-        let mut rec = make_record("sec1", "workspace1", "content", Utc::now(), 1, "node_a");
+        let mut rec = make_record(
+            "sec1",
+            "workspace1",
+            "content",
+            Timestamp::now(),
+            1,
+            "node_a",
+        );
         rec.clearance = ClearanceLevel::Secret;
         let serialized = serialise_chunk(&rec).expect("serialise_chunk");
         let diff_secret = ChunkDiff {

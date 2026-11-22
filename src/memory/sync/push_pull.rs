@@ -23,14 +23,14 @@ pub async fn collect_changes_since(
     since: SystemTime,
 ) -> Result<Vec<ChunkDiff>> {
     let records = store.list(workspace_id).await?;
-    let since_dt: chrono::DateTime<chrono::Utc> = since.into();
+    let since_ts = jiff::Timestamp::try_from(since).unwrap_or(jiff::Timestamp::UNIX_EPOCH);
 
     let mut diffs = Vec::new();
     for rec in &records {
-        if rec.updated_at > since_dt {
+        if rec.updated_at > since_ts {
             let hash = chunk_hash(rec);
             let data = serialise_chunk(rec)?;
-            let timestamp = rec.updated_at.into();
+            let timestamp = std::time::SystemTime::from(rec.updated_at);
             diffs.push(ChunkDiff {
                 chunk_hash: hash,
                 namespace: workspace_id.to_string(),
@@ -67,7 +67,7 @@ pub async fn entries_as_push_diffs(
                 namespace: entry.namespace.clone(),
                 action: DiffAction::Update,
                 data: Some(data),
-                timestamp: rec.updated_at.into(),
+                timestamp: std::time::SystemTime::from(rec.updated_at),
                 record_path: Some(rec.path.clone()),
             });
         } else {
@@ -97,7 +97,7 @@ pub async fn collect_all_chunks(
     for rec in &records {
         let hash = chunk_hash(rec);
         let data = serialise_chunk(rec)?;
-        let timestamp = rec.updated_at.into();
+        let timestamp = std::time::SystemTime::from(rec.updated_at);
         diffs.push(ChunkDiff {
             chunk_hash: hash,
             namespace: workspace_id.to_string(),
@@ -115,14 +115,14 @@ mod tests {
     use super::*;
     use crate::memory::store::MemoryRecord;
     use crate::memory::sync::manifest::tests::TestStore;
-    use chrono::{TimeDelta, Utc};
+    use jiff::Timestamp;
     use std::sync::Arc;
 
     fn make_record(
         id: &str,
         workspace: &str,
         content: &str,
-        updated_at: chrono::DateTime<Utc>,
+        updated_at: Timestamp,
         revision: u64,
     ) -> MemoryRecord {
         MemoryRecord {
@@ -168,15 +168,15 @@ mod tests {
         let store = Arc::new(TestStore {
             records: std::sync::Mutex::new(Vec::new()),
         });
-        let now = Utc::now();
+        let now = Timestamp::now();
         let rec = make_record("c1", "episodic", "some content", now, 1);
 
         // Must use `store.put()` to make it available via `list()`
         store.put(rec).await.unwrap();
 
-        let hour_ago = now - TimeDelta::hours(1);
+        let hour_ago = now.checked_sub(jiff::Span::new().hours(1)).unwrap();
         let since = std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_secs(hour_ago.timestamp() as u64);
+            + std::time::Duration::from_secs(hour_ago.as_second() as u64);
         let diffs = collect_changes_since(&*store, "episodic", since)
             .await
             .unwrap();

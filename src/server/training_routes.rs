@@ -481,7 +481,7 @@ pub async fn generate_bundle_handler(
             let id = format!(
                 "dataset_{}_{}",
                 payload.seed,
-                chrono::Utc::now().timestamp()
+                jiff::Timestamp::now().as_second()
             );
             match write_bundle_to_dir(
                 &state.data_dir,

@@ -27,7 +27,7 @@ pub mod push_pull;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::domain::cycle_breaks::w30_09::{MemoryIsland, SyncNotifier};
@@ -131,7 +131,7 @@ pub struct ManifestEntry {
     pub chunk_hash: String,
     pub namespace: String,
     pub revision: u64,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: Timestamp,
     pub size_bytes: u64,
     /// The record's logical path (needed so peers can delete by path).
     #[serde(default)]
@@ -157,7 +157,7 @@ pub struct PeerMemorySync {
     /// Peers in the same SWAL mesh authenticate with the same token.
     peer_token: Option<String>,
     /// Last successful sync timestamp per peer URL.
-    last_sync_map: tokio::sync::RwLock<std::collections::HashMap<String, DateTime<Utc>>>,
+    last_sync_map: tokio::sync::RwLock<std::collections::HashMap<String, Timestamp>>,
     /// Endpoint adapter — controls whether this sync client talks to peers
     /// via the old `/v1/memory/*` data-plane or the new `/api/v1/memory/sync/*`
     /// control-plane endpoints.
@@ -279,7 +279,7 @@ impl PeerMemorySync {
     }
 
     /// Retrieve the last successful sync timestamp for a given peer URL.
-    pub async fn last_sync_at(&self, peer_url: &str) -> Option<DateTime<Utc>> {
+    pub async fn last_sync_at(&self, peer_url: &str) -> Option<Timestamp> {
         let map = self.last_sync_map.read().await;
         map.get(peer_url).cloned()
     }
@@ -347,7 +347,7 @@ impl PeerMemorySync {
         self.last_sync_map
             .write()
             .await
-            .insert(peer_url.to_string(), Utc::now());
+            .insert(peer_url.to_string(), Timestamp::now());
 
         let _ = MemoryIsland
             .notify_memory(

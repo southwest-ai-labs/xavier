@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use rusqlite::{Connection, OpenFlags};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -94,8 +94,8 @@ pub fn probe(db_path: &Path, stale_after: Duration) -> CodeIndexFreshness {
     let mut last_indexed: Option<SystemTime> = None;
     if let Ok(mut stmt) = conn.prepare("SELECT value FROM metadata WHERE key = 'last_indexed_at'") {
         if let Ok(val) = stmt.query_row([], |row| row.get::<_, String>(0)) {
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&val) {
-                last_indexed = Some(dt.into());
+            if let Ok(ts) = val.parse::<Timestamp>() {
+                last_indexed = Some(SystemTime::from(ts));
             }
         }
     }
@@ -118,8 +118,8 @@ pub fn probe(db_path: &Path, stale_after: Duration) -> CodeIndexFreshness {
     }
 
     if let Some(t) = last_indexed {
-        let dt: DateTime<Utc> = t.into();
-        freshness.last_indexed_at = Some(dt.to_rfc3339());
+        let ts = Timestamp::try_from(t).unwrap_or(Timestamp::UNIX_EPOCH);
+        freshness.last_indexed_at = Some(ts.to_string());
 
         if let Ok(elapsed) = t.elapsed() {
             freshness.stale = elapsed > stale_after;

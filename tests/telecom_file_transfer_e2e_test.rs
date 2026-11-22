@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
 use tokio::sync::mpsc;
@@ -57,7 +57,7 @@ async fn test_e2e_10mb_file_transfer_with_dropped_chunks_recovery() -> Result<()
                 chunk_size,
                 total_chunks,
                 file_sha256: full_hash_clone,
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             };
 
             // Send Manifest

@@ -42,7 +42,7 @@ mod tests {
         routing::{get, post},
         Extension, Router,
     };
-    use chrono::Utc;
+    use jiff::Timestamp;
     use std::sync::Arc;
     use tower::util::ServiceExt;
     use ulid::Ulid;
@@ -265,7 +265,7 @@ mod tests {
             title: "Test Bookmark".to_string(),
             url: "https://example.com".to_string(),
             metadata: serde_json::json!({}),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         let create_request = Request::builder()
@@ -310,7 +310,7 @@ mod tests {
             y: 0,
             w: 4,
             h: 3,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         let create_request = Request::builder()
@@ -378,7 +378,7 @@ mod tests {
             id: "graph-1".to_string(),
             name: "Workspace roadmap".to_string(),
             data: serde_json::json!({"nodes": [], "links": []}),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         let create_request = Request::builder()
@@ -400,7 +400,7 @@ mod tests {
             id: "graph-bad".to_string(),
             name: "bad".to_string(),
             data: serde_json::json!({"nodes": [], "edges": []}),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let bad_request = Request::builder()
             .method("POST")
@@ -450,7 +450,7 @@ mod tests {
                     { "source": "node-kg-1", "target": "node-code-1", "type": "implements" }
                 ]
             }),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
 
         // Save multi-layer graph
@@ -494,7 +494,7 @@ mod tests {
             id: "multi-layer-graph-1".to_string(),
             name: "Valid view".to_string(),
             data: serde_json::json!({ "nodes": [], "links": [] }),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let valid_req = Request::builder()
             .method("POST")
@@ -514,7 +514,7 @@ mod tests {
             id: "invalid-edges".to_string(),
             name: "Invalid legacy edges".to_string(),
             data: serde_json::json!({ "nodes": [], "edges": [] }),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let invalid_edges_req = Request::builder()
             .method("POST")
@@ -536,7 +536,7 @@ mod tests {
             id: "invalid-nodes".to_string(),
             name: "Invalid non-array nodes".to_string(),
             data: serde_json::json!({ "nodes": "not-an-array", "links": [] }),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let invalid_nodes_req = Request::builder()
             .method("POST")
@@ -569,7 +569,7 @@ mod tests {
                         workspace_id,
                         "Corrupted Graph",
                         "INVALID_JSON_{{corrupt",
-                        Utc::now().to_rfc3339(),
+                        Timestamp::now().to_string(),
                     ],
                 )?;
                 Ok(())
@@ -611,7 +611,7 @@ mod tests {
                 "nodes": [{ "id": "rec-1", "label": "Recovered Node" }],
                 "links": []
             }),
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
         };
         let recovery_save_req = Request::builder()
             .method("POST")

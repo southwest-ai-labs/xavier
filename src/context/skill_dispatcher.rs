@@ -289,17 +289,16 @@ pub fn record_ack(db_path: &Path, event: &UsageEvent) -> Result<Outcome, SkillUs
 }
 
 /// Last prune per telemetry DB in this process; retention runs at most daily.
-static LAST_PRUNE: std::sync::Mutex<
-    Option<std::collections::HashMap<PathBuf, chrono::DateTime<chrono::Utc>>>,
-> = std::sync::Mutex::new(None);
+static LAST_PRUNE: std::sync::Mutex<Option<std::collections::HashMap<PathBuf, jiff::Timestamp>>> =
+    std::sync::Mutex::new(None);
 
-fn prune_due(db: &Path, now: chrono::DateTime<chrono::Utc>) -> bool {
+fn prune_due(db: &Path, now: jiff::Timestamp) -> bool {
     let Ok(mut guard) = LAST_PRUNE.lock() else {
         return false;
     };
     let map = guard.get_or_insert_with(Default::default);
     match map.get(db) {
-        Some(last) if now.signed_duration_since(*last) < chrono::TimeDelta::days(1) => false,
+        Some(last) if now.duration_since(*last).as_secs() < 86_400 => false,
         _ => {
             map.insert(db.to_path_buf(), now);
             true
@@ -333,8 +332,9 @@ fn emit_events(db: PathBuf, events: Vec<UsageEvent>) -> tokio::task::JoinHandle<
                     }
                 }
             }
-            if prune_due(&db, chrono::Utc::now()) {
-                if let Err(error) = writer.prune(chrono::Utc::now(), false) {
+            let now = jiff::Timestamp::now();
+            if prune_due(&db, now) {
+                if let Err(error) = writer.prune(now, false) {
                     tracing::debug!(%error, "skill dispatch: telemetry prune failed");
                 }
             }
@@ -916,7 +916,9 @@ mod tests {
         let old = |id: &str| {
             let mut event =
                 UsageEvent::new(id, "ws", "task", "harness", "demo", SkillStage::Invoked);
-            event.observed_at = chrono::Utc::now() - chrono::TimeDelta::days(45);
+            event.observed_at = jiff::Timestamp::now()
+                .checked_sub(jiff::Span::new().hours(45 * 24))
+                .unwrap();
             event
         };
         let fresh =
@@ -935,10 +937,12 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(count(), 2);
-        assert!(!prune_due(&db, chrono::Utc::now()));
+        assert!(!prune_due(&db, jiff::Timestamp::now()));
         assert!(prune_due(
             &db,
-            chrono::Utc::now() + chrono::TimeDelta::days(2)
+            jiff::Timestamp::now()
+                .checked_add(jiff::Span::new().hours(2 * 24))
+                .unwrap()
         ));
     }
 

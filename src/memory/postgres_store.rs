@@ -2,10 +2,19 @@
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::Timestamp;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Pool, Postgres, Row};
 use std::any::Any;
+
+fn ts_to_sqlx(ts: Timestamp) -> time::OffsetDateTime {
+    time::OffsetDateTime::from_unix_timestamp_nanos(ts.as_nanosecond())
+        .unwrap_or(time::OffsetDateTime::UNIX_EPOCH)
+}
+
+fn sqlx_to_ts(dt: time::OffsetDateTime) -> Timestamp {
+    Timestamp::from_nanosecond(dt.unix_timestamp_nanos()).unwrap_or(Timestamp::UNIX_EPOCH)
+}
 
 use crate::checkpoint::Checkpoint;
 use crate::domain::memory::belief::BeliefEdge;
@@ -261,8 +270,8 @@ impl PostgresMemoryStore {
             content: row.try_get("content")?,
             metadata,
             embedding,
-            created_at: row.try_get("created_at")?,
-            updated_at: row.try_get("updated_at")?,
+            created_at: sqlx_to_ts(row.try_get::<time::OffsetDateTime, _>("created_at")?),
+            updated_at: sqlx_to_ts(row.try_get::<time::OffsetDateTime, _>("updated_at")?),
             revision: row.try_get::<i64, _>("revision")? as u64,
             primary: row.try_get("primary_flag")?,
             parent_id: row.try_get("parent_id")?,
@@ -351,8 +360,8 @@ impl MemoryStore for PostgresMemoryStore {
         .bind(&record.content)
         .bind(&record.metadata)
         .bind(embedding_str)
-        .bind(record.created_at)
-        .bind(record.updated_at)
+        .bind(ts_to_sqlx(record.created_at))
+        .bind(ts_to_sqlx(record.updated_at))
         .bind(record.revision as i64)
         .bind(record.primary)
         .bind(&record.parent_id)
@@ -455,11 +464,11 @@ impl MemoryStore for PostgresMemoryStore {
             None => Vec::new(),
         };
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         let tokens_rows =
             sqlx::query("SELECT * FROM session_tokens WHERE workspace_id = $1 AND expires_at > $2")
                 .bind(workspace_id)
-                .bind(now)
+                .bind(ts_to_sqlx(now))
                 .fetch_all(&self.pool)
                 .await?;
 
@@ -467,8 +476,8 @@ impl MemoryStore for PostgresMemoryStore {
         for row in tokens_rows {
             session_tokens.push(SessionTokenRecord {
                 token: row.try_get("token")?,
-                created_at: row.try_get("created_at")?,
-                expires_at: row.try_get("expires_at")?,
+                created_at: sqlx_to_ts(row.try_get::<time::OffsetDateTime, _>("created_at")?),
+                expires_at: sqlx_to_ts(row.try_get::<time::OffsetDateTime, _>("expires_at")?),
             });
         }
 
@@ -512,7 +521,7 @@ impl MemoryStore for PostgresMemoryStore {
         .bind(&belief_key)
         .bind(workspace_id)
         .bind(beliefs_json)
-        .bind(Utc::now())
+        .bind(ts_to_sqlx(Timestamp::now()))
         .execute(&self.pool)
         .await?;
 
@@ -538,8 +547,8 @@ impl MemoryStore for PostgresMemoryStore {
         .bind(&token_key)
         .bind(workspace_id)
         .bind(&token.token)
-        .bind(token.created_at)
-        .bind(token.expires_at)
+        .bind(ts_to_sqlx(token.created_at))
+        .bind(ts_to_sqlx(token.expires_at))
         .execute(&self.pool)
         .await?;
 
@@ -548,11 +557,11 @@ impl MemoryStore for PostgresMemoryStore {
 
     async fn is_session_token_valid(&self, workspace_id: &str, token: &str) -> Result<bool> {
         let token_key = stable_key("session_token_row", &[workspace_id, token]);
-        let now = Utc::now();
+        let now = Timestamp::now();
 
         let row = sqlx::query("SELECT 1 FROM session_tokens WHERE id = $1 AND expires_at > $2")
             .bind(&token_key)
-            .bind(now)
+            .bind(ts_to_sqlx(now))
             .fetch_optional(&self.pool)
             .await?;
 

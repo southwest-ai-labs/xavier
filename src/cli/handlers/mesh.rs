@@ -87,8 +87,8 @@ pub async fn add_peer_handler(Json(payload): Json<AddPeerRequest>) -> impl IntoR
         alias: payload.alias,
         endpoint_url: payload.endpoint_url,
         public_key_hex: payload.public_key_hex.unwrap_or_default(),
-        added_at: chrono::Utc::now().timestamp(),
-        last_seen_at: Some(chrono::Utc::now().timestamp()),
+        added_at: jiff::Timestamp::now().as_second(),
+        last_seen_at: Some(jiff::Timestamp::now().as_second()),
         sync_enabled: payload.sync_enabled.unwrap_or(true),
         is_cloud: payload.is_cloud.unwrap_or(false),
         iroh_addr: payload.iroh_addr,
@@ -332,7 +332,7 @@ pub async fn pair_peer_handler(Json(payload): Json<PairRequest>) -> impl IntoRes
         alias: None,
         endpoint_url: data.endpoint.clone(),
         public_key_hex: data.public_key_hex.clone(),
-        added_at: chrono::Utc::now().timestamp(),
+        added_at: jiff::Timestamp::now().as_second(),
         last_seen_at: None,
         sync_enabled: true,
         is_cloud: false,
@@ -670,7 +670,7 @@ pub async fn share_workspace_handler(
     let endpoint = format!("http://localhost:{}", port);
 
     let token_id = uuid::Uuid::new_v4().to_string();
-    let expires_at = chrono::Utc::now().timestamp() + 31536000; // 1 year
+    let expires_at = jiff::Timestamp::now().as_second() + 31536000; // 1 year
 
     let payload_data = serde_json::json!({
         "token_id": token_id.clone(),
@@ -920,7 +920,7 @@ pub async fn join_workspace_handler(
         .get("expires_at")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     if expires_at < now {
         return json_response(
             StatusCode::BAD_REQUEST,
@@ -947,7 +947,7 @@ pub async fn join_workspace_handler(
             alias: None,
             endpoint_url: endpoint,
             public_key_hex: public_key_hex.clone(),
-            added_at: chrono::Utc::now().timestamp(),
+            added_at: jiff::Timestamp::now().as_second(),
             last_seen_at: None,
             sync_enabled: true,
             is_cloud: false,
@@ -1180,7 +1180,7 @@ pub async fn query_workspace_handler(
         .get("expires_at")
         .and_then(|v| v.as_u64())
         .unwrap_or(0);
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
     if expires_at < now {
         return json_response(
             StatusCode::BAD_REQUEST,

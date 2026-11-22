@@ -14,7 +14,7 @@ argon2 = "0.6"
 rand = "0.8"
 bip39 = { version = "2.2.2", features = ["rand", "spanish"] }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+jiff = { version = "0.2", features = ["serde"] }
 subtle = "2.6"
 async-trait = "0.1"
 xavier-core-logic = { path = "../xavier-core-logic" }

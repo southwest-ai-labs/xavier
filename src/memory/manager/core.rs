@@ -21,9 +21,9 @@ pub struct MemoryManager {
     /// Track access counts per document
     pub(crate) access_counts: std::sync::Mutex<HashMap<String, usize>>,
     /// Track last access times
-    pub(crate) last_access_times: std::sync::Mutex<HashMap<String, chrono::DateTime<chrono::Utc>>>,
+    pub(crate) last_access_times: std::sync::Mutex<HashMap<String, jiff::Timestamp>>,
     /// Track created times
-    pub(crate) created_times: std::sync::Mutex<HashMap<String, chrono::DateTime<chrono::Utc>>>,
+    pub(crate) created_times: std::sync::Mutex<HashMap<String, jiff::Timestamp>>,
     /// Relevance scores (can be decayed over time)
     pub(crate) relevance_scores: std::sync::Mutex<HashMap<String, f32>>,
 }
@@ -122,7 +122,7 @@ impl MemoryManager {
                                 meta.insert("curated".to_string(), serde_json::json!(true));
                                 meta.insert(
                                     "curated_at".to_string(),
-                                    serde_json::json!(chrono::Utc::now().to_rfc3339()),
+                                    serde_json::json!(jiff::Timestamp::now().to_string()),
                                 );
                             }
                         }

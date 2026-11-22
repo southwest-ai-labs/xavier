@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::{Context, Result};
-use chrono::Utc;
 use code_graph::types::{HubNode, IndexStats};
+use jiff::Timestamp;
 use tracing::info;
 
 use crate::wiki::log::WikiLogManager;
@@ -47,7 +47,7 @@ impl WikiCatalogBuilder {
 
         out.push_str(&format!("# {}\n\n", repo_name));
         out.push_str("> Living Knowledge Wiki — compiled via Xavier Brain 2 engine.\n\n");
-        out.push_str(&format!("*Last compiled: {}*\n\n", Utc::now().to_rfc3339()));
+        out.push_str(&format!("*Last compiled: {}*\n\n", Timestamp::now()));
 
         // Section 1: Overview & Stats
         out.push_str("## 1. Repository Overview\n\n");

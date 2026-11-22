@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
@@ -78,17 +78,16 @@ impl LastSyncState {
     }
 
     /// Get the last sync timestamp for a workspace.
-    pub fn last_sync_at(&self, workspace_id: &str) -> Option<DateTime<Utc>> {
+    pub fn last_sync_at(&self, workspace_id: &str) -> Option<Timestamp> {
         self.workspaces
             .get(workspace_id)
-            .and_then(|ts| DateTime::parse_from_rfc3339(ts).ok())
-            .map(|dt| dt.with_timezone(&Utc))
+            .and_then(|ts| ts.parse::<Timestamp>().ok())
     }
 
     /// Update the last sync timestamp for a workspace.
     pub fn update_sync_at(&mut self, workspace_id: &str, count: usize) {
         self.workspaces
-            .insert(workspace_id.to_string(), Utc::now().to_rfc3339());
+            .insert(workspace_id.to_string(), Timestamp::now().to_string());
         self.record_counts.insert(workspace_id.to_string(), count);
     }
 }
@@ -649,7 +648,6 @@ pub fn shard_for_sync(id: &str) -> u8 {
 mod tests {
     use super::*;
     use crate::memory::sync::manifest::tests::TestStore;
-    use chrono::TimeDelta;
     use std::sync::Arc;
     use tempfile::TempDir;
 
@@ -657,7 +655,7 @@ mod tests {
         id: &str,
         workspace_id: &str,
         content: &str,
-        updated_at: DateTime<Utc>,
+        updated_at: Timestamp,
         revision: u64,
         node_id: &str,
     ) -> MemoryRecord {
@@ -721,7 +719,7 @@ mod tests {
                 "r1",
                 "episodic",
                 "local content",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_test",
             ))
@@ -757,7 +755,7 @@ mod tests {
                 "r1",
                 "episodic",
                 "cloud content",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_cloud",
             ))
@@ -783,7 +781,7 @@ mod tests {
                 "a",
                 "episodic",
                 "from local",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_test",
             ))
@@ -794,7 +792,9 @@ mod tests {
                 "b",
                 "episodic",
                 "from cloud",
-                Utc::now() + TimeDelta::seconds(1),
+                Timestamp::now()
+                    .checked_add(jiff::Span::new().seconds(1))
+                    .unwrap(),
                 1,
                 "node_cloud",
             ))
@@ -824,7 +824,7 @@ mod tests {
         let local = new_test_store();
         let (sync, _tmp) = create_cloud_sync(new_test_store()).await;
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         local
             .put(make_record(
                 "r1",
@@ -841,7 +841,7 @@ mod tests {
                 "r1",
                 "episodic",
                 "newer cloud",
-                now + TimeDelta::seconds(10),
+                now.checked_add(jiff::Span::new().seconds(10)).unwrap(),
                 2,
                 "node_cloud",
             ))
@@ -861,7 +861,7 @@ mod tests {
         let local = new_test_store();
         let (sync, _tmp) = create_cloud_sync(new_test_store()).await;
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         local
             .put(make_record("r1", "episodic", "from A", now, 1, "A"))
             .await
@@ -896,7 +896,7 @@ mod tests {
                 "r1",
                 "episodic",
                 "content",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_test",
             ))
@@ -925,7 +925,9 @@ mod tests {
                     &format!("r{}", i),
                     "episodic",
                     &format!("content {}", i),
-                    Utc::now() + TimeDelta::milliseconds(i as i64),
+                    Timestamp::now()
+                        .checked_add(jiff::Span::new().milliseconds(i as i64))
+                        .unwrap(),
                     i,
                     "node_test",
                 ))
@@ -953,7 +955,7 @@ mod tests {
                 "r1",
                 "workspace_a",
                 "from local a",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_test",
             ))
@@ -964,7 +966,9 @@ mod tests {
                 "r2",
                 "workspace_b",
                 "from cloud b",
-                Utc::now() + TimeDelta::seconds(1),
+                Timestamp::now()
+                    .checked_add(jiff::Span::new().seconds(1))
+                    .unwrap(),
                 1,
                 "node_cloud",
             ))
@@ -988,7 +992,7 @@ mod tests {
         let local = new_test_store();
         let (sync, _tmp) = create_cloud_sync(new_test_store()).await;
 
-        let rec1 = make_record("r1", "episodic", "first", Utc::now(), 1, "node_test");
+        let rec1 = make_record("r1", "episodic", "first", Timestamp::now(), 1, "node_test");
         local.put(rec1).await.unwrap();
         let report1 = sync.push_to_cloud(&local, "episodic").await.unwrap();
         assert_eq!(report1.pushed, 1);
@@ -997,7 +1001,9 @@ mod tests {
             "r2",
             "episodic",
             "second",
-            Utc::now() + TimeDelta::seconds(5),
+            Timestamp::now()
+                .checked_add(jiff::Span::new().seconds(5))
+                .unwrap(),
             1,
             "node_test",
         );
@@ -1033,7 +1039,7 @@ mod tests {
                 "r1",
                 "episodic",
                 "content",
-                Utc::now(),
+                Timestamp::now(),
                 1,
                 "node_test",
             ))

@@ -18,7 +18,7 @@
 //! this module runs and the legacy path behaves exactly as before.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -62,7 +62,7 @@ pub struct LegacySpace {
     pub name: String,
     /// Always true; lets clients tell it apart from real spaces.
     pub legacy: bool,
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     pub store: LegacyWorkspace,
 }
 
@@ -100,7 +100,7 @@ pub fn ensure_default_space(spaces_dir: &Path, legacy: &LegacyWorkspace) -> Resu
         "description": "Pre-espacio workspace, referenced in place; never moved or rewritten",
         "owner_node": "root",
         "is_public": false,
-        "created_at": Utc::now(),
+        "created_at": Timestamp::now(),
         "namespace": format!("xavier://{}/xavier/default", legacy.id),
         "legacy": true,
         "legacy_store": legacy,

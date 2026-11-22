@@ -1,30 +1,30 @@
 use crate::memory::sqlite_vec_store::VecSqliteMemoryStore;
 use crate::memory::store::MemoryStore;
-use chrono::{DateTime, TimeDelta, Utc};
+use jiff::{Span, Timestamp};
 use rusqlite::params;
 
-pub fn retention_cutoff(now: DateTime<Utc>, retention_days: Option<u64>) -> Option<DateTime<Utc>> {
+pub fn retention_cutoff(now: Timestamp, retention_days: Option<u64>) -> Option<Timestamp> {
     let days = retention_days?;
     if days == 0 {
         return None;
     }
 
-    // Convert u64 to i64 safely
-    let duration = TimeDelta::try_days(days as i64)?;
-    now.checked_sub_signed(duration)
+    let hours = i64::try_from(days).ok()?.checked_mul(24)?;
+    let duration = Span::new().hours(hours);
+    now.checked_sub(duration).ok()
 }
 
 pub async fn sweep_repo_store(
     store: &VecSqliteMemoryStore,
     workspace_id: &str,
     retention_days: Option<u64>,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> anyhow::Result<usize> {
     let Some(cutoff) = retention_cutoff(now, retention_days) else {
         return Ok(0);
     };
 
-    let cutoff_str = cutoff.to_rfc3339();
+    let cutoff_str = cutoff.to_string();
     let workspace_id_str = workspace_id.to_string();
 
     let ids_to_delete: Vec<String> = store
@@ -64,16 +64,16 @@ mod tests {
 
     #[test]
     fn test_retention_cutoff_none_or_zero() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         assert_eq!(retention_cutoff(now, None), None);
         assert_eq!(retention_cutoff(now, Some(0)), None);
     }
 
     #[test]
     fn test_retention_cutoff_valid() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let cutoff = retention_cutoff(now, Some(5)).unwrap();
-        assert_eq!(now.signed_duration_since(cutoff).num_days(), 5);
+        assert_eq!(now.duration_since(cutoff).as_secs() / 86400, 5);
     }
 
     #[tokio::test]
@@ -89,7 +89,7 @@ mod tests {
         .await
         .unwrap();
 
-        let count = sweep_repo_store(&store, "ws", None, Utc::now())
+        let count = sweep_repo_store(&store, "ws", None, Timestamp::now())
             .await
             .unwrap();
         assert_eq!(count, 0);
@@ -124,7 +124,10 @@ mod tests {
         }
 
         // Backdate two of them
-        let old_date = (Utc::now() - TimeDelta::try_days(10).unwrap()).to_rfc3339();
+        let old_date = (Timestamp::now()
+            .checked_sub(Span::new().hours(10 * 24))
+            .unwrap())
+        .to_string();
         store
             .conn_provider
             .with_conn(store.connection_project_id(), move |conn| {
@@ -137,7 +140,7 @@ mod tests {
             .await
             .unwrap();
 
-        let count = sweep_repo_store(&store, "test-ws", Some(5), Utc::now())
+        let count = sweep_repo_store(&store, "test-ws", Some(5), Timestamp::now())
             .await
             .unwrap();
         assert_eq!(count, 2);

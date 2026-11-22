@@ -6,7 +6,6 @@ use crate::codebase::connection_manager::ConnectionManager;
 use crate::ports::outbound::schema_init::SchemaInitializer;
 use crate::security::detections::Threat;
 use anyhow::Result;
-use chrono::Utc;
 use rusqlite::params;
 use sha2::{Digest, Sha256};
 use tracing::log::warn;
@@ -64,7 +63,7 @@ impl SecurityThreatStore {
             let threat_hash = crate::crypto::hex_encode(hasher.finalize());
 
             let id = ulid::Ulid::new().to_string();
-            let now = Utc::now().to_rfc3339();
+            let now = jiff::Timestamp::now().to_string();
 
             // 3. Save threat and chain entry in a transaction
             let tx = conn.unchecked_transaction()?;

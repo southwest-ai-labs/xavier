@@ -1,4 +1,4 @@
-use chrono::{Duration, TimeZone, Utc};
+use jiff::{Span, Timestamp};
 use xavier::maloca::governance::{is_expired, outcome, tally, Outcome};
 use xavier::maloca::types::{Vote, VoteChoice};
 
@@ -70,16 +70,18 @@ fn zero_eligible_weight_has_zero_participation_and_no_quorum() {
 
 #[test]
 fn expiry_boundary() {
-    let created_at = Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).unwrap();
+    let created_at: Timestamp = "2026-10-01T00:00:00Z".parse().unwrap();
     let duration_days = 7;
 
-    let boundary = created_at + Duration::try_days(duration_days).unwrap();
+    let boundary = created_at
+        .checked_add(Span::new().hours(duration_days * 24))
+        .unwrap();
 
     // one second before is false
     assert!(!is_expired(
         created_at,
         duration_days,
-        boundary - Duration::seconds(1)
+        boundary.checked_sub(Span::new().seconds(1)).unwrap()
     ));
 
     // at boundary is true
@@ -89,6 +91,6 @@ fn expiry_boundary() {
     assert!(is_expired(
         created_at,
         duration_days,
-        boundary + Duration::seconds(1)
+        boundary.checked_add(Span::new().seconds(1)).unwrap()
     ));
 }

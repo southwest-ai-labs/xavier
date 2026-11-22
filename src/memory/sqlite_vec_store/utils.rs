@@ -9,8 +9,8 @@ use std::sync::OnceLock;
 
 pub struct SessionTokenRow {
     pub token: String,
-    pub created_at: chrono::DateTime<chrono::Utc>,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
+    pub expires_at: jiff::Timestamp,
 }
 
 impl From<SessionTokenRow> for SessionTokenRecord {

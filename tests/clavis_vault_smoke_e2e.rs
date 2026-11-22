@@ -43,7 +43,7 @@ fn build_router_request(
             "e2e-admin".to_string(),
             "e2e-admin@example.com".to_string(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
     }
     req
@@ -153,7 +153,7 @@ async fn test_full_cycle_api_key_generate_http_read_revoke_404() {
         &key_name,
         KeyScope::Live,
         3600,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .expect("key generation failed");
 

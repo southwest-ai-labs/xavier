@@ -220,7 +220,7 @@ impl DataConsentManager {
             std::collections::HashSet::new()
         };
 
-        let now = chrono::Utc::now().timestamp() as u64;
+        let now = jiff::Timestamp::now().as_second() as u64;
         let active = all_consents
             .into_iter()
             .filter(|c| !revocations.contains(&c.token_id) && c.expires_at >= now)
@@ -499,7 +499,7 @@ mod tests {
         let consent = ActiveConsent {
             token_id: token_id.clone(),
             workspace_id: "ws-1".to_string(),
-            expires_at: chrono::Utc::now().timestamp() as u64 + 10000,
+            expires_at: (jiff::Timestamp::now().as_second() + 10000) as u64,
             token: "secret".to_string(),
         };
         DataConsentManager::register_active_consent(consent).unwrap();
@@ -537,7 +537,7 @@ mod tests {
         let consent = ActiveConsent {
             token_id: "token-exp".to_string(),
             workspace_id: "ws-2".to_string(),
-            expires_at: chrono::Utc::now().timestamp() as u64 - 10000, // Past
+            expires_at: (jiff::Timestamp::now().as_second() - 10000) as u64, // Past
             token: "secret-exp".to_string(),
         };
         DataConsentManager::register_active_consent(consent).unwrap();

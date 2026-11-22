@@ -96,14 +96,14 @@ pub fn as_push_diffs(entries: &[ManifestEntry]) -> Vec<ManifestEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     fn make_entry(hash: &str, rev: u64, namespace: &str) -> ManifestEntry {
         ManifestEntry {
             chunk_hash: hash.to_string(),
             namespace: namespace.to_string(),
             revision: rev,
-            updated_at: Utc::now(),
+            updated_at: Timestamp::now(),
             size_bytes: 100,
             record_path: None,
         }

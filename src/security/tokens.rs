@@ -6,7 +6,6 @@
 use crate::codebase::connection_manager::ConnectionManager;
 use crate::crypto::password::{hash, verify, DEFAULT_COST};
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -19,9 +18,9 @@ pub struct ApiTokenMetadata {
     pub name: String,
     pub partial_hash: String,
     pub scopes: Vec<String>,
-    pub expires_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<jiff::Timestamp>,
+    pub created_at: jiff::Timestamp,
+    pub last_used_at: Option<jiff::Timestamp>,
 }
 
 /// Store for managing API tokens in a persistent SQLite database.
@@ -80,7 +79,7 @@ impl TokenStore {
         &self,
         name: String,
         scopes: Vec<String>,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: Option<jiff::Timestamp>,
     ) -> Result<(String, ApiTokenMetadata)> {
         let plaintext = format!("xav_{}", Uuid::new_v4().to_string().replace("-", ""));
         let hashed = hash(&plaintext, DEFAULT_COST)?;
@@ -91,9 +90,9 @@ impl TokenStore {
         let partial_hash = format!("{}...", &full_hash[0..12]);
 
         let id = Uuid::new_v4().to_string();
-        let now = Utc::now();
+        let now = jiff::Timestamp::now();
         let scopes_json = serde_json::to_string(&scopes)?;
-        let expires_at_str = expires_at.map(|dt| dt.to_rfc3339());
+        let expires_at_str = expires_at.map(|dt| dt.to_string());
 
         let metadata = ApiTokenMetadata {
             id: id.clone(),
@@ -109,7 +108,7 @@ impl TokenStore {
             let id = id.clone();
             let name = metadata.name.clone();
             let partial_hash = partial_hash.clone();
-            let now_str = now.to_rfc3339();
+            let now_str = now.to_string();
             move |conn| {
                 conn.execute(
                     "INSERT INTO api_tokens (id, name, hash, partial_hash, scopes, expires_at, created_at)
@@ -140,9 +139,9 @@ impl TokenStore {
                     name: row.get(1)?,
                     partial_hash: row.get(2)?,
                     scopes: serde_json::from_str(&scopes_json).unwrap_or_default(),
-                    expires_at: expires_at_str.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
-                    created_at: created_at_str.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
-                    last_used_at: last_used_at_str.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+                    expires_at: expires_at_str.and_then(|s| s.parse::<jiff::Timestamp>().ok()),
+                    created_at: created_at_str.parse::<jiff::Timestamp>().unwrap_or_else(|_| jiff::Timestamp::now()),
+                    last_used_at: last_used_at_str.and_then(|s| s.parse::<jiff::Timestamp>().ok()),
                 })
             })?;
 
@@ -182,7 +181,7 @@ impl TokenStore {
             if verify(plaintext, &hashed).unwrap_or(false) {
                 // Check expiry
                 if let Some(expiry) = meta.expires_at {
-                    if Utc::now() > expiry {
+                    if jiff::Timestamp::now() > expiry {
                         return Ok(None);
                     }
                 }
@@ -214,9 +213,9 @@ impl TokenStore {
                     name: row.get(1)?,
                     partial_hash: row.get(2)?,
                     scopes: serde_json::from_str(&scopes_json).unwrap_or_default(),
-                    expires_at: expires_at_str.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
-                    created_at: created_at_str.parse::<DateTime<Utc>>().unwrap_or_else(|_| Utc::now()),
-                    last_used_at: last_used_at_str.and_then(|s| s.parse::<DateTime<Utc>>().ok()),
+                    expires_at: expires_at_str.and_then(|s| s.parse::<jiff::Timestamp>().ok()),
+                    created_at: created_at_str.parse::<jiff::Timestamp>().unwrap_or_else(|_| jiff::Timestamp::now()),
+                    last_used_at: last_used_at_str.and_then(|s| s.parse::<jiff::Timestamp>().ok()),
                 };
                 let hashed: String = row.get(7)?;
                 Ok((meta, hashed))
@@ -232,7 +231,7 @@ impl TokenStore {
 
     async fn update_last_used(&self, id: &str) -> Result<()> {
         let id = id.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
         ConnectionManager::global()
             .with_conn(&self.project_id, move |conn| {
                 conn.execute(

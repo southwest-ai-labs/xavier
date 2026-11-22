@@ -3,11 +3,10 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use std::future::Future;
-use std::str::FromStr;
 
-use anyhow::{Context, Result};
-use chrono::{DateTime, Duration, Utc};
-use cron::Schedule;
+use anyhow::Result;
+use croner::Cron;
+use jiff::{Span, Timestamp};
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration as TokioDuration};
 use tracing::warn;
@@ -26,8 +25,8 @@ pub struct ScheduledJob {
     pub id: String,
     pub name: String,
     pub schedule: String,
-    pub last_run: Option<DateTime<Utc>>,
-    pub next_run: DateTime<Utc>,
+    pub last_run: Option<Timestamp>,
+    pub next_run: Timestamp,
     pub status: ScheduledJobStatus,
 }
 
@@ -37,7 +36,7 @@ impl ScheduledJob {
         id: impl Into<String>,
         name: impl Into<String>,
         schedule: impl Into<String>,
-        next_run: DateTime<Utc>,
+        next_run: Timestamp,
     ) -> Self {
         Self {
             id: id.into(),
@@ -56,14 +55,14 @@ impl ScheduledJob {
         schedule: impl Into<String>,
     ) -> Result<Self> {
         let schedule = schedule.into();
-        let next_run = compute_next_run(&schedule, Utc::now())?;
+        let next_run = compute_next_run(&schedule, Timestamp::now())?;
         Ok(Self::new(id, name, schedule, next_run))
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct RecoveryConfig {
-    pub missed_window: Duration,
+    pub missed_window: Span,
     pub max_per_restart: usize,
     pub stagger_ms: u64,
 }
@@ -71,7 +70,7 @@ pub struct RecoveryConfig {
 impl Default for RecoveryConfig {
     fn default() -> Self {
         Self {
-            missed_window: Duration::minutes(5),
+            missed_window: Span::new().minutes(5),
             max_per_restart: 5,
             stagger_ms: 500,
         }
@@ -79,26 +78,26 @@ impl Default for RecoveryConfig {
 }
 
 /// Compute next run.
-pub fn compute_next_run(schedule: &str, after: DateTime<Utc>) -> Result<DateTime<Utc>> {
-    let parsed = Schedule::from_str(schedule)
-        .with_context(|| format!("invalid cron expression: {schedule}"))?;
+pub fn compute_next_run(schedule: &str, after: Timestamp) -> Result<Timestamp> {
+    let cron: Cron = schedule
+        .parse()
+        .map_err(|e| anyhow::anyhow!("invalid cron expression: {schedule}: {e}"))?;
 
-    parsed
-        .after(&after)
-        .next()
-        .ok_or_else(|| anyhow::anyhow!("no future run found for cron expression"))
+    let after_zoned = after.to_zoned(jiff::tz::TimeZone::UTC);
+    cron.find_next_occurrence(&after_zoned, false)
+        .map(|z| z.timestamp())
+        .map_err(|e| anyhow::anyhow!("no future run found for cron expression: {e}"))
 }
 
 /// Detect missed jobs.
-pub fn detect_missed_jobs(
-    jobs: &mut [ScheduledJob],
-    now: DateTime<Utc>,
-    missed_window: Duration,
-) -> usize {
+pub fn detect_missed_jobs(jobs: &mut [ScheduledJob], now: Timestamp, missed_window: Span) -> usize {
     let mut missed = 0;
 
     for job in jobs.iter_mut() {
-        let is_late = now.signed_duration_since(job.next_run) > missed_window;
+        let is_late = job
+            .next_run
+            .checked_add(missed_window)
+            .is_ok_and(|deadline| now > deadline);
         if is_late && job.status != ScheduledJobStatus::Running {
             if job.status != ScheduledJobStatus::Missed {
                 missed += 1;
@@ -147,7 +146,7 @@ where
 
         match executor(job_snapshot.clone()).await {
             Ok(()) => {
-                let completed_at = Utc::now();
+                let completed_at = Timestamp::now();
                 let job = &mut jobs[index];
                 job.last_run = Some(completed_at);
                 job.next_run = compute_next_run(&job.schedule, completed_at)?;
@@ -175,27 +174,27 @@ mod tests {
 
     #[test]
     fn flags_jobs_outside_missed_window() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut jobs = vec![
             ScheduledJob {
                 id: "missed".to_string(),
                 name: "missed".to_string(),
-                schedule: "0/5 * * * * * *".to_string(),
+                schedule: "*/5 * * * * * *".to_string(),
                 last_run: None,
-                next_run: now - Duration::minutes(10),
+                next_run: now.checked_sub(Span::new().minutes(10)).unwrap(),
                 status: ScheduledJobStatus::Pending,
             },
             ScheduledJob {
                 id: "fresh".to_string(),
                 name: "fresh".to_string(),
-                schedule: "0/5 * * * * * *".to_string(),
+                schedule: "*/5 * * * * * *".to_string(),
                 last_run: None,
-                next_run: now - Duration::minutes(1),
+                next_run: now.checked_sub(Span::new().minutes(1)).unwrap(),
                 status: ScheduledJobStatus::Pending,
             },
         ];
 
-        let missed = detect_missed_jobs(&mut jobs, now, Duration::minutes(5));
+        let missed = detect_missed_jobs(&mut jobs, now, Span::new().minutes(5));
 
         assert_eq!(missed, 1);
         assert_eq!(jobs[0].status, ScheduledJobStatus::Missed);
@@ -204,22 +203,22 @@ mod tests {
 
     #[tokio::test]
     async fn recovers_only_configured_number_of_missed_jobs() {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut jobs = vec![
             ScheduledJob {
                 id: "job-1".to_string(),
                 name: "job-1".to_string(),
-                schedule: "0/10 * * * * * *".to_string(),
+                schedule: "*/10 * * * * * *".to_string(),
                 last_run: None,
-                next_run: now - Duration::minutes(10),
+                next_run: now.checked_sub(Span::new().minutes(10)).unwrap(),
                 status: ScheduledJobStatus::Missed,
             },
             ScheduledJob {
                 id: "job-2".to_string(),
                 name: "job-2".to_string(),
-                schedule: "0/10 * * * * * *".to_string(),
+                schedule: "*/10 * * * * * *".to_string(),
                 last_run: None,
-                next_run: now - Duration::minutes(9),
+                next_run: now.checked_sub(Span::new().minutes(9)).unwrap(),
                 status: ScheduledJobStatus::Missed,
             },
         ];
@@ -229,7 +228,7 @@ mod tests {
         let recovered = recover_missed_jobs(
             &mut jobs,
             &RecoveryConfig {
-                missed_window: Duration::minutes(5),
+                missed_window: Span::new().minutes(5),
                 max_per_restart: 1,
                 stagger_ms: 0,
             },

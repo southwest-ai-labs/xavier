@@ -3,7 +3,6 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::Result;
-use chrono::Utc;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -67,7 +66,7 @@ pub fn export_to_chunk(
         ChunkMetadata {
             hash: hash.clone(),
             document_ids: documents.iter().filter_map(|d| d.id.clone()).collect(),
-            created_at: Utc::now().timestamp(),
+            created_at: jiff::Timestamp::now().as_second(),
         },
     );
 

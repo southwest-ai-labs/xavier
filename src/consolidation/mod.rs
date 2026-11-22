@@ -8,7 +8,7 @@ pub mod merger;
 pub mod reflection;
 
 use anyhow::Result;
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -208,8 +208,7 @@ impl ConsolidationTask {
                     .metadata
                     .get("created_at")
                     .and_then(|v| v.as_str())
-                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| dt.with_timezone(&Utc))
+                    .and_then(|s| s.parse::<Timestamp>().ok())
             });
 
             let importance = merger::importance_score(
@@ -235,7 +234,7 @@ impl ConsolidationTask {
                     );
                     meta.insert(
                         "memory_last_consolidated_at".to_string(),
-                        serde_json::json!(chrono::Utc::now().to_rfc3339()),
+                        serde_json::json!(Timestamp::now().to_string()),
                     );
                 }
                 if memory.update(updated).await.is_ok() {
@@ -257,7 +256,7 @@ impl ConsolidationTask {
                     );
                     meta.insert(
                         "memory_last_consolidated_at".to_string(),
-                        serde_json::json!(Utc::now().to_rfc3339()),
+                        serde_json::json!(Timestamp::now().to_string()),
                     );
                 }
                 if memory.update(updated).await.is_ok() {
@@ -309,8 +308,7 @@ impl ConsolidationTask {
                         .metadata
                         .get("created_at")
                         .and_then(|v| v.as_str())
-                        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&Utc))
+                        .and_then(|s| s.parse::<Timestamp>().ok())
                 });
                 let age = merger::age_days(m.last_access, created_at);
                 age < 1.0 // less than 1 day old
@@ -429,7 +427,7 @@ impl ConsolidationTask {
                     );
                     meta.insert(
                         "tgd_refined_at".to_string(),
-                        serde_json::json!(Utc::now().to_rfc3339()),
+                        serde_json::json!(Timestamp::now().to_string()),
                     );
                 }
 
@@ -476,8 +474,7 @@ impl ConsolidationTask {
                         .metadata
                         .get("created_at")
                         .and_then(|v| v.as_str())
-                        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                        .map(|dt| dt.with_timezone(&Utc))
+                        .and_then(|s| s.parse::<Timestamp>().ok())
                 });
                 let importance = merger::importance_score(
                     memory.access_count,
@@ -513,7 +510,7 @@ impl ConsolidationTask {
         let summary_path = format!(
             "reflections/{}/{}",
             workspace.workspace_id,
-            Utc::now().format("%Y%m%dT%H%M%SZ")
+            Timestamp::now().strftime("%Y%m%dT%H%M%SZ")
         );
         workspace
             .workspace
@@ -528,7 +525,7 @@ impl ConsolidationTask {
                     "reflection_sources": docs.iter().filter_map(|doc| doc.id.clone()).collect::<Vec<_>>(),
                     "reflection_themes": reflection.themes,
                     "reflection_notes": reflection.notes,
-                    "reflection_generated_at": Utc::now().to_rfc3339(),
+                    "reflection_generated_at": Timestamp::now().to_string(),
                 }),
                 Some(TypedMemoryPayload {
                     kind: Some(MemoryKind::Document),
@@ -632,7 +629,9 @@ mod tests {
             .unwrap();
 
         // 2. Add a stale low-importance document created 100 days ago
-        let old_ts = Utc::now() - chrono::Duration::days(100);
+        let old_ts = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(100 * 24))
+            .expect("time underflow");
         workspace_ctx
             .workspace
             .memory
@@ -642,7 +641,7 @@ mod tests {
                 serde_json::json!({
                     "memory_importance": 0.20,
                     "memory_priority": "low",
-                    "created_at": old_ts.to_rfc3339(),
+                    "created_at": old_ts.to_string(),
                     "kind": "scratch"
                 }),
                 None,
@@ -797,7 +796,9 @@ mod tests {
             workspace: workspace_state,
         };
 
-        let old_ts = Utc::now() - chrono::Duration::days(120);
+        let old_ts = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(120 * 24))
+            .expect("time underflow");
 
         workspace_ctx
             .workspace
@@ -808,7 +809,7 @@ mod tests {
                 serde_json::json!({
                     "memory_importance": 0.20,
                     "access_count": 0,
-                    "created_at": old_ts.to_rfc3339(),
+                    "created_at": old_ts.to_string(),
                     "kind": "spec"
                 }),
                 None,
@@ -826,7 +827,7 @@ mod tests {
                 serde_json::json!({
                     "memory_importance": 0.20,
                     "access_count": 0,
-                    "created_at": old_ts.to_rfc3339(),
+                    "created_at": old_ts.to_string(),
                     "kind": "spec"
                 }),
                 None,
@@ -915,7 +916,9 @@ mod tests {
             workspace: workspace_state,
         };
 
-        let old_ts = Utc::now() - chrono::Duration::days(730);
+        let old_ts = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(730 * 24))
+            .expect("time underflow");
         workspace_ctx
             .workspace
             .memory
@@ -925,7 +928,7 @@ mod tests {
                 serde_json::json!({
                     "memory_importance": 0.25,
                     "access_count": 0,
-                    "created_at": old_ts.to_rfc3339(),
+                    "created_at": old_ts.to_string(),
                     "kind": "note"
                 }),
                 None,

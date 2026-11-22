@@ -317,7 +317,7 @@ impl VerificationCycle {
         system: &str,
         result: &VerificationResult,
     ) -> Result<(), String> {
-        let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let date = jiff::Timestamp::now().strftime("%Y-%m-%d").to_string();
         let path = format!("feedback/{}/{}", system, date);
 
         let feedback_content = serde_json::to_string_pretty(&result).unwrap_or_default();

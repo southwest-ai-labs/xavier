@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::Timestamp;
 use rusqlite::params;
 
 use crate::adapters::inbound::http::dto::TimeMetricDto;
@@ -49,8 +49,8 @@ impl TimeMetricsStore {
         workspace_id: &str,
     ) -> Result<(), String> {
         let id = ulid::Ulid::new().to_string();
-        let now = Utc::now();
-        let date = now.format("%Y-%m-%d").to_string();
+        let now = Timestamp::now();
+        let date = now.strftime("%Y-%m-%d").to_string();
 
         // Build path: metrics/time/{YYYY-MM-DD}/{metric_type}/{agent_id}
         let path = format!(

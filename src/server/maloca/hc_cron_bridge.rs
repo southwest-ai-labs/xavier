@@ -224,7 +224,7 @@ mod tests {
     use super::*;
     use crate::humanchallenge::types::ChallengeType;
     use crate::session::types::SessionEventType;
-    use chrono::Utc;
+    use jiff::Timestamp;
     use tempfile::TempDir;
 
     #[tokio::test]
@@ -265,35 +265,35 @@ mod tests {
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Sin embargo esto contradice lo anterior".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Decidimos usar la arquitectura hexagonal".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::ToolCall,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("sudo systemctl restart xavier".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Asumiendo que el puerto 8006 esta libre".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Por favor aclara la configuracion de la base de datos".into()),
                 metadata: None,
             },
@@ -327,21 +327,21 @@ mod tests {
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Sin embargo contradice".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Decidimos usar Rust".into()),
                 metadata: None,
             },
             SessionEvent {
                 session_id: "s1".into(),
                 event_type: SessionEventType::Message,
-                timestamp: Utc::now(),
+                timestamp: Timestamp::now(),
                 content: Some("Asumiendo parametro valido".into()),
                 metadata: None,
             },
@@ -360,7 +360,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "sess_dir_01".into(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Decidimos implementar HcCronBridge".into()),
             metadata: None,
         };

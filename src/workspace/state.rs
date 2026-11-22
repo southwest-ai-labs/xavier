@@ -37,13 +37,13 @@ use crate::memory::{
 };
 use crate::retrieval::LayerWeights;
 use crate::settings::XavierSettings;
-use chrono::{DateTime, Duration, Utc};
+use jiff::Timestamp;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionToken {
     pub token: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
+    pub created_at: Timestamp,
+    pub expires_at: Timestamp,
 }
 
 async fn detect_cloud_backend() -> MemoryBackend {
@@ -1110,12 +1110,12 @@ impl WorkspaceState {
                 .metadata
                 .get("created_at")
                 .cloned()
-                .unwrap_or_else(|| serde_json::json!(Utc::now().to_rfc3339()));
+                .unwrap_or_else(|| serde_json::json!(Timestamp::now().to_string()));
             object.insert("revision".to_string(), serde_json::json!(revision));
             object.insert("created_at".to_string(), created_at);
             object.insert(
                 "updated_at".to_string(),
-                serde_json::json!(Utc::now().to_rfc3339()),
+                serde_json::json!(Timestamp::now().to_string()),
             );
         }
         self.memory.update(document.clone()).await?;
@@ -1133,15 +1133,15 @@ impl WorkspaceState {
         user_message: &str,
         assistant_message: &str,
     ) -> Result<String> {
-        let timestamp = Utc::now();
+        let timestamp = Timestamp::now();
         let path = format!(
             "sessions/{}/{}",
             session_id,
-            timestamp.format("%Y%m%dT%H%M%S%.3fZ")
+            timestamp.strftime("%Y%m%dT%H%M%S%.3fZ")
         );
         let content = format!("User: {user_message}\nAssistant: {assistant_message}");
         let metadata =
-            serde_json::json!({ "session_time": timestamp.to_rfc3339(), "source": source_app, });
+            serde_json::json!({ "session_time": timestamp.to_string(), "source": source_app, });
         let doc_id = self
             .memory
             .add_document_typed(
@@ -1158,7 +1158,7 @@ impl WorkspaceState {
                     provenance: Some(crate::memory::schema::MemoryProvenance {
                         source_app: Some(source_app.to_string()),
                         source_type: Some("session_exchange".to_string()),
-                        recorded_at: Some(timestamp.to_rfc3339()),
+                        recorded_at: Some(timestamp.to_string()),
                         ..crate::memory::schema::MemoryProvenance::default()
                     }),
                     ..Default::default()
@@ -1197,7 +1197,7 @@ impl WorkspaceState {
                     .extension()
                     .and_then(|s| s.to_str())
                     .unwrap_or("");
-                let ts = Utc::now().timestamp_millis();
+                let ts = Timestamp::now().as_millisecond();
                 let corrupt_ext = format!("{}.corrupt-{}", ext, ts);
                 let corrupt_path = self.usage_state_path.with_extension(corrupt_ext);
                 tracing::warn!(
@@ -1232,8 +1232,8 @@ impl WorkspaceState {
     /// Generate session token.
     pub async fn generate_session_token(&self) -> Result<String> {
         let token = ulid::Ulid::new().to_string();
-        let now = Utc::now();
-        let expires_at = now + Duration::hours(12);
+        let now = Timestamp::now();
+        let expires_at = now.checked_add(jiff::Span::new().hours(12)).unwrap();
         self.store
             .save_session_token(
                 &self.config.id,
@@ -1387,7 +1387,7 @@ pub enum SpaceScopeError {
 
 struct CachedSpaceWorkspace {
     storage_path: PathBuf,
-    created_at: DateTime<Utc>,
+    created_at: jiff::Timestamp,
     /// Whether the store was built with a space key; a change rebuilds it.
     encrypted: bool,
     /// Filled once, outside the cache lock; concurrent first requests for the

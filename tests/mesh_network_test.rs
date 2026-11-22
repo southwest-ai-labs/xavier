@@ -1,6 +1,6 @@
 //! WX-205 — MeshNetwork unit tests (crear red, añadir miembro, grant cruzado, revocar, check_permission con y sin expiración)
 
-use chrono::{Duration, Utc};
+use jiff::Timestamp;
 use xavier::enterprise::rbac::Permission;
 use xavier::mesh::network::MeshNetwork;
 
@@ -57,7 +57,9 @@ fn test_revocar() {
 #[test]
 fn test_check_permission_con_expiracion() {
     let mut n = net("net-1", "node-a");
-    let past = Utc::now() - Duration::hours(1);
+    let past = Timestamp::now()
+        .checked_sub(jiff::Span::new().hours(1))
+        .unwrap();
     n.grant_cross(
         "res-1".to_string(),
         "node-b".to_string(),
@@ -83,7 +85,9 @@ fn test_check_permission_sin_expiracion() {
 #[test]
 fn test_check_permission_futura_activa() {
     let mut n = net("net-2", "node-a");
-    let future = Utc::now() + Duration::hours(1);
+    let future = Timestamp::now()
+        .checked_add(jiff::Span::new().hours(1))
+        .unwrap();
     n.grant_cross(
         "res-1".to_string(),
         "node-b".to_string(),
@@ -144,7 +148,7 @@ fn test_private_mesh_registry_delegacion() {
             "doc-1".to_string(),
             "node-b".to_string(),
             Permission::Read,
-            None,
+            None::<Timestamp>,
         )
         .unwrap();
     assert!(reg.check_permission("node-b", "doc-1"));

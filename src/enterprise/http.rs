@@ -179,7 +179,7 @@ pub struct TenantResponse {
     pub id: TenantId,
     pub name: String,
     pub plan: Plan,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 impl From<Tenant> for TenantResponse {
@@ -277,7 +277,7 @@ pub struct ApiKeyResponse {
     pub tenant_id: TenantId,
     pub name: String,
     pub key_type: ApiKeyType,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
     /// The raw key — ONLY shown once at creation!
     pub raw_key: String,
 }

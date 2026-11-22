@@ -82,7 +82,7 @@ async fn spawn_mock_peer() -> String {
 }
 
 fn record(id: &str, path: &str, content: &str) -> MemoryRecord {
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     MemoryRecord {
         id: id.to_string(),
         workspace_id: "default".to_string(),

@@ -121,7 +121,7 @@ impl GapAnalyzer {
         }
 
         Ok(GapReport {
-            timestamp: chrono::Utc::now().to_rfc3339(),
+            timestamp: jiff::Timestamp::now().to_string(),
             avg_latency_ms,
             p95_latency_ms,
             error_rate,

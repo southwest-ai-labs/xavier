@@ -25,7 +25,7 @@ pub mod types;
 pub use types::*;
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
+use jiff::Timestamp;
 use std::collections::{HashSet, VecDeque};
 use tokio::sync::RwLock;
 
@@ -64,7 +64,7 @@ impl EntityGraph {
             for entity_id in entities {
                 if let Some(entity) = data.entities.get_mut(&entity_id) {
                     entity.memory_count = entity.memory_count.saturating_sub(1);
-                    entity.last_seen = Utc::now();
+                    entity.last_seen = jiff::Timestamp::now();
                 }
             }
         }
@@ -195,7 +195,7 @@ impl EntityGraph {
     /// Apply decay.
     pub async fn apply_decay(&self, factor: f32) -> Result<()> {
         let mut data = self.inner.write().await;
-        data.apply_decay(factor, Utc::now());
+        data.apply_decay(factor, Timestamp::now());
         Ok(())
     }
 
@@ -289,7 +289,7 @@ impl EntityGraph {
         metadata: Option<&serde_json::Value>,
         extracted: Vec<ExtractedEntity>,
     ) -> Result<GraphRelationsView> {
-        let now = Utc::now();
+        let now = Timestamp::now();
         let mut data = self.inner.write().await;
         let memory_key = memory_id.to_string();
         let mut entity_ids = Vec::new();
@@ -590,10 +590,14 @@ mod tests {
         {
             let mut data = graph.inner.write().await;
             for r in data.relations.values_mut() {
-                r.updated_at = Utc::now() - chrono::Duration::hours(24);
+                r.updated_at = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(24);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
         }
 
@@ -624,10 +628,14 @@ mod tests {
         {
             let mut data = graph.inner.write().await;
             for r in data.relations.values_mut() {
-                r.updated_at = Utc::now() - chrono::Duration::hours(12);
+                r.updated_at = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(12);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
         }
         graph.apply_decay(0.0).await.unwrap();
@@ -639,10 +647,14 @@ mod tests {
         {
             let mut data = graph.inner.write().await;
             for r in data.relations.values_mut() {
-                r.updated_at = Utc::now() - chrono::Duration::hours(12);
+                r.updated_at = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
             for e in data.entities.values_mut() {
-                e.last_seen = Utc::now() - chrono::Duration::hours(12);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(12))
+                    .unwrap();
             }
         }
         graph.apply_decay(1.5).await.unwrap();
@@ -655,11 +667,15 @@ mod tests {
             for r in data.relations.values_mut() {
                 r.weight = initial_weight;
                 r.confidence_score = 1.0;
-                r.updated_at = Utc::now() - chrono::Duration::hours(24);
+                r.updated_at = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
             for e in data.entities.values_mut() {
                 e.trust_score = initial_trust;
-                e.last_seen = Utc::now() - chrono::Duration::hours(24);
+                e.last_seen = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(24))
+                    .unwrap();
             }
         }
 
@@ -675,7 +691,9 @@ mod tests {
         {
             let mut data = graph.inner.write().await;
             for r in data.relations.values_mut() {
-                r.updated_at = Utc::now() - chrono::Duration::hours(10);
+                r.updated_at = jiff::Timestamp::now()
+                    .checked_sub(jiff::Span::new().hours(10))
+                    .unwrap();
             }
         }
         graph.apply_decay(-0.2).await.unwrap();
@@ -1114,13 +1132,11 @@ mod knowledge_tests {
         use crate::memory::store::InMemoryMemoryStore;
         use crate::memory::store::MemoryRecord;
         use crate::memory::store::MemoryStore;
-        use chrono::Duration;
-        use chrono::Utc;
-
         let store = InMemoryMemoryStore::new();
         let ws = "ws-test";
-
-        let old_time = Utc::now() - Duration::days(40);
+        let old_time = jiff::Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(40 * 24))
+            .unwrap();
         let old_record = MemoryRecord {
             id: "rec-old-low".into(),
             workspace_id: ws.into(),
@@ -1135,7 +1151,9 @@ mod knowledge_tests {
         };
         store.put(old_record).await.unwrap();
 
-        let ancient_time = Utc::now() - Duration::days(3650);
+        let ancient_time = jiff::Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(3650 * 24))
+            .unwrap();
         let ancient_record = MemoryRecord {
             id: "rec-ancient-ephemeral".into(),
             workspace_id: ws.into(),

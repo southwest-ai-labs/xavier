@@ -7,7 +7,6 @@
 //! the `XAVIER_ENTERPRISE_DB_PATH` environment variable.
 
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -145,7 +144,7 @@ impl EnterpriseDb {
                 tenant.id.to_string(),
                 tenant.name,
                 plan_str,
-                tenant.created_at.to_rfc3339(),
+                tenant.created_at.to_string(),
                 metadata_json,
             ],
         )?;
@@ -171,7 +170,7 @@ impl EnterpriseDb {
             let (id_str, name, plan_str, created_at_str, metadata_str) = row?;
             let id: TenantId = id_str.parse()?;
             let plan: Plan = string_to_plan(&plan_str);
-            let created_at: DateTime<Utc> = created_at_str.parse()?;
+            let created_at: jiff::Timestamp = created_at_str.parse()?;
             let metadata: HashMap<String, String> =
                 serde_json::from_str(&metadata_str).unwrap_or_default();
             tenants.insert(
@@ -228,9 +227,9 @@ impl EnterpriseDb {
                 key.name,
                 key_type_str,
                 key.rate_limit as i64,
-                key.created_at.to_rfc3339(),
-                key.last_used.map(|d| d.to_rfc3339()),
-                key.expires_at.map(|d| d.to_rfc3339()),
+                key.created_at.to_string(),
+                key.last_used.map(|d| d.to_string()),
+                key.expires_at.map(|d| d.to_string()),
                 key.revoked as i64,
                 metadata_json,
             ],
@@ -293,9 +292,9 @@ impl EnterpriseDb {
             ) = row?;
             let tenant_id: TenantId = tenant_id_str.parse()?;
             let key_type = string_to_api_key_type(&key_type_str);
-            let created_at: DateTime<Utc> = created_at_str.parse()?;
-            let last_used: Option<DateTime<Utc>> = last_used_str.and_then(|s| s.parse().ok());
-            let expires_at: Option<DateTime<Utc>> = expires_at_str.and_then(|s| s.parse().ok());
+            let created_at: jiff::Timestamp = created_at_str.parse()?;
+            let last_used: Option<jiff::Timestamp> = last_used_str.and_then(|s| s.parse().ok());
+            let expires_at: Option<jiff::Timestamp> = expires_at_str.and_then(|s| s.parse().ok());
             let metadata: HashMap<String, String> =
                 serde_json::from_str(&metadata_str).unwrap_or_default();
 
@@ -338,7 +337,7 @@ impl EnterpriseDb {
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 entry.id,
-                entry.timestamp.to_rfc3339(),
+                entry.timestamp.to_string(),
                 entry.tenant_id.to_string(),
                 entry.user_id.map(|u| u.to_string()),
                 entry.action.as_str(),
@@ -488,7 +487,9 @@ fn row_to_audit_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<AuditEntry> {
     let ip_address: Option<String> = row.get(9)?;
     let user_agent: Option<String> = row.get(10)?;
 
-    let timestamp: DateTime<Utc> = timestamp_str.parse().unwrap_or_else(|_| Utc::now());
+    let timestamp: jiff::Timestamp = timestamp_str
+        .parse()
+        .unwrap_or_else(|_| jiff::Timestamp::now());
     let tenant_id: TenantId = tenant_id_str.parse().unwrap_or_else(|_| Uuid::nil());
     let user_id: Option<uuid::Uuid> = user_id_str.and_then(|s| s.parse().ok());
     let action = parse_audit_action(&action_str);

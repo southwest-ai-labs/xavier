@@ -3,7 +3,7 @@
 //! No I/O. Vote weights come from the caller (`Vote::weight`), never from a
 //! constant. Callers pass only the votes of one proposal.
 
-use chrono::{DateTime, Duration, Utc};
+use jiff::{Span, Timestamp};
 
 use super::types::{Vote, VoteChoice};
 
@@ -84,17 +84,20 @@ pub fn outcome(tally: &Tally, quorum_pct: f64, approval_threshold: f64) -> Outco
 
 /// A proposal expires once `now` reaches `created_at + duration_days`.
 /// Out-of-range durations never expire.
-pub fn is_expired(created_at: DateTime<Utc>, duration_days: i64, now: DateTime<Utc>) -> bool {
-    match Duration::try_days(duration_days).and_then(|d| created_at.checked_add_signed(d)) {
-        Some(expiry) => now >= expiry,
-        None => false,
+pub fn is_expired(created_at: Timestamp, duration_days: i64, now: Timestamp) -> bool {
+    let hours = match duration_days.checked_mul(24) {
+        Some(h) => h,
+        None => return false,
+    };
+    match created_at.checked_add(Span::new().hours(hours)) {
+        Ok(expiry) => now >= expiry,
+        Err(_) => false,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::TimeZone;
 
     fn vote(choice: VoteChoice, weight: f64) -> Vote {
         Vote {
@@ -107,8 +110,10 @@ mod tests {
         }
     }
 
-    fn at(day: u32, hour: u32) -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 10, day, hour, 0, 0).unwrap()
+    fn at(day: u32, hour: u32) -> Timestamp {
+        format!("2026-10-{:02}T{:02}:00:00Z", day, hour)
+            .parse::<Timestamp>()
+            .unwrap()
     }
 
     #[test]
@@ -214,10 +219,18 @@ mod tests {
     #[test]
     fn expiry_boundaries() {
         let created = at(1, 0);
-        assert!(!is_expired(created, 7, at(8, 0) - Duration::seconds(1)));
+        assert!(!is_expired(
+            created,
+            7,
+            at(8, 0).checked_sub(Span::new().seconds(1)).unwrap()
+        ));
         assert!(is_expired(created, 7, at(8, 0)));
         assert!(is_expired(created, 7, at(9, 0)));
-        assert!(!is_expired(created, 0, created - Duration::seconds(1)));
+        assert!(!is_expired(
+            created,
+            0,
+            created.checked_sub(Span::new().seconds(1)).unwrap()
+        ));
         assert!(is_expired(created, 0, created));
     }
 

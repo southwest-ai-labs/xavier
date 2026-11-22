@@ -101,7 +101,7 @@ pub(crate) fn keys_generate_with_vault<V: keygen::KeyVault, W: std::io::Write>(
     ttl_secs: u64,
     writer: &mut W,
 ) -> Result<()> {
-    let key = keygen::generate_key(vault, name, scope, ttl_secs, chrono::Utc::now())
+    let key = keygen::generate_key(vault, name, scope, ttl_secs, jiff::Timestamp::now())
         .map_err(|e| anyhow::anyhow!("{e}"))?;
     writeln!(writer, "{}", keygen::format_generate_output(&key))?;
     writeln!(
@@ -164,7 +164,7 @@ pub(crate) fn keys_list_with_vault<V: keygen::KeyVault, W: std::io::Write>(
     })?;
     let expiry = meta
         .expires_at
-        .map(|t| t.to_rfc3339())
+        .map(|t| t.to_string())
         .unwrap_or_else(|| "never".to_string());
     writeln!(
         writer,

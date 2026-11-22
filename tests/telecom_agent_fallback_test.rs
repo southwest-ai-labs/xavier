@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
 use xavier::telecom::agent_responder::{AgentParticipant, AgentResponsePayload, DispatchPolicy};
@@ -20,13 +20,13 @@ async fn slow_agent_dispatch(
     );
 
     Ok(AgentResponsePayload {
-        response_id: format!("resp_{}", Utc::now().timestamp_millis()),
+        response_id: format!("resp_{}", Timestamp::now().as_millisecond()),
         agent_id: agent.agent_id.clone(),
         room_id: _room_id.to_string(),
         replying_to_message_id: Some(_incoming_msg_id.to_string()),
         content: reply_content,
         token_usage: 42,
-        timestamp: Utc::now(),
+        timestamp: Timestamp::now(),
     })
 }
 
@@ -46,22 +46,22 @@ async fn dispatch_with_fallback(
     match result {
         Ok(Ok(payload)) => payload,
         Ok(Err(e)) => AgentResponsePayload {
-            response_id: format!("resp_err_{}", Utc::now().timestamp_millis()),
+            response_id: format!("resp_err_{}", Timestamp::now().as_millisecond()),
             agent_id: agent.agent_id.clone(),
             room_id: room_id.to_string(),
             replying_to_message_id: Some(incoming_msg_id.to_string()),
             content: format!("Error: {}", e),
             token_usage: 0,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         },
         Err(_) => AgentResponsePayload {
-            response_id: format!("resp_err_{}", Utc::now().timestamp_millis()),
+            response_id: format!("resp_err_{}", Timestamp::now().as_millisecond()),
             agent_id: agent.agent_id.clone(),
             room_id: room_id.to_string(),
             replying_to_message_id: Some(incoming_msg_id.to_string()),
             content: "Error: Agent auto-responder is offline or taking too long to respond (>5000ms). Falling back.".to_string(),
             token_usage: 0,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
         },
     }
 }
@@ -74,7 +74,7 @@ async fn test_telecom_agent_fallback_on_timeout() {
         model: "mock-model".to_string(),
         dispatch_policy: DispatchPolicy::AlwaysRespond,
         bound_rooms: vec!["test-room-123".to_string()],
-        created_at: Utc::now(),
+        created_at: Timestamp::now(),
     };
 
     let room_id = "test-room-123";

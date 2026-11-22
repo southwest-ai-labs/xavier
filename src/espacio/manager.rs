@@ -5,7 +5,7 @@
 //! distinct WorkspaceConfig.id and separate storage paths.
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -107,7 +107,7 @@ pub struct SpaceInfo {
     /// Whether the space is public (listed in Directory Chain)
     pub is_public: bool,
     /// Creation timestamp
-    pub created_at: DateTime<Utc>,
+    pub created_at: Timestamp,
     /// Namespace: xavier://{space_id}/{appId}/{instanceId}
     pub namespace: String,
     /// Storage path
@@ -126,7 +126,7 @@ struct SpaceDescriptor {
     owner_node: String,
     #[serde(default)]
     is_public: bool,
-    created_at: DateTime<Utc>,
+    created_at: Timestamp,
     namespace: String,
     /// Encryption decision, persisted outside the keystore so that losing
     /// `keystore.json` can never downgrade the space to plaintext. Absent in
@@ -597,7 +597,7 @@ impl SpaceManager {
         crate::espacio::retention::sweep_spaces_per_space(
             &self.stores,
             &targets,
-            chrono::Utc::now(),
+            Timestamp::now(),
             fallback_days,
         )
     }
@@ -696,7 +696,7 @@ impl SpaceManager {
             description,
             owner_node,
             is_public,
-            created_at: Utc::now(),
+            created_at: Timestamp::now(),
             namespace: Self::namespace_for(&id, "xavier", "default"),
             storage_path,
         };
@@ -785,10 +785,11 @@ impl SpaceManager {
         }
         if info.storage_path.exists() {
             let trash = self.base_dir.join(TRASH_DIR);
-            let mut dest = trash.join(format!("{id}-{}", Utc::now().timestamp()));
+            let now = Timestamp::now();
+            let mut dest = trash.join(format!("{id}-{}", now.as_second()));
             if dest.exists() {
-                let nanos = Utc::now().timestamp_nanos_opt().unwrap_or(0);
-                dest = trash.join(format!("{id}-{}-{nanos}", Utc::now().timestamp()));
+                let nanos = now.subsec_nanosecond();
+                dest = trash.join(format!("{id}-{}-{nanos}", now.as_second()));
             }
             let moved = match tokio::fs::create_dir_all(&trash).await {
                 Ok(()) => tokio::fs::rename(&info.storage_path, &dest).await,
@@ -1516,7 +1517,7 @@ mod persistence_tests {
                 space_id: "esp_m".into(),
                 author: "a".into(),
                 content: SECRET_TEXT.into(),
-                created_at: Utc::now(),
+                created_at: Timestamp::now(),
             }],
         )
         .await;
@@ -1858,10 +1859,10 @@ mod persistence_tests {
             .append_message("esp_retain", "owner", "msg 2")
             .unwrap();
 
-        let old_time = chrono::Utc::now()
-            .checked_sub_signed(chrono::TimeDelta::try_days(10).unwrap())
+        let old_time = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(10 * 24))
             .unwrap();
-        let old_ts = old_time.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true);
+        let old_ts = old_time.to_string();
 
         {
             let mut conn = store.lock();

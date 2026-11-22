@@ -684,7 +684,6 @@ use std::sync::LazyLock;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
 
     #[test]
     fn test_drift_threshold_default() {
@@ -706,8 +705,8 @@ mod tests {
             description: None,
             occurrence_count: 10,
             memory_count: 5,
-            first_seen: Utc::now(),
-            last_seen: Utc::now(),
+            first_seen: jiff::Timestamp::now(),
+            last_seen: jiff::Timestamp::now(),
             merged_from: vec![],
             trust_score: 0.0,
             trust_rank: 0,

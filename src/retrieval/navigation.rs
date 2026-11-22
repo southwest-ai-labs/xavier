@@ -16,7 +16,7 @@ impl NavigationPolicy {
         &self,
         query: &str,
         edge: &BeliefEdge,
-        now: chrono::DateTime<chrono::Utc>,
+        now: jiff::Timestamp,
         source_degree: usize,
         target_degree: usize,
     ) -> f32 {
@@ -37,7 +37,7 @@ impl NavigationPolicy {
         &self,
         query: &str,
         edge: &BeliefEdge,
-        now: chrono::DateTime<chrono::Utc>,
+        now: jiff::Timestamp,
         source_degree: usize,
         target_degree: usize,
     ) -> NavigationScore {
@@ -95,7 +95,7 @@ impl NavigationPolicy {
         let weight = edge.weight;
 
         // 4. Recency (Sigmoid-based decay)
-        let age_hours = (now - edge.updated_at).num_hours() as f32;
+        let age_hours = (now.duration_since(edge.updated_at).as_secs_f64() / 3600.0) as f32;
         // sigmoid(x) = 1 / (1 + e^x)
         // We want 1.0 at age=0 and decay slowly.
         // x = (age - center) / scale
@@ -196,7 +196,7 @@ mod tests {
             0.9,
             "provenance".to_string(),
         );
-        let score = policy.score_transition("Rust", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("Rust", &edge, jiff::Timestamp::now(), 1, 1);
         assert!(score > 0.0);
     }
 
@@ -212,13 +212,13 @@ mod tests {
             "prov".to_string(),
         );
 
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let components_now = policy.calculate_score_components("query", &edge, now, 1, 1);
 
-        edge.updated_at = now - chrono::Duration::hours(72);
+        edge.updated_at = now.checked_sub(jiff::Span::new().hours(72)).unwrap();
         let components_72h = policy.calculate_score_components("query", &edge, now, 1, 1);
 
-        edge.updated_at = now - chrono::Duration::hours(240);
+        edge.updated_at = now.checked_sub(jiff::Span::new().hours(240)).unwrap();
         let components_old = policy.calculate_score_components("query", &edge, now, 1, 1);
 
         assert!(components_now.recency > components_72h.recency);
@@ -246,7 +246,7 @@ mod tests {
             "prov".to_string(),
         );
 
-        let now = chrono::Utc::now();
+        let now = jiff::Timestamp::now();
         let comp_same = policy.calculate_score_components("query", &edge_same, now, 1, 1);
         let comp_diff = policy.calculate_score_components("query", &edge_diff, now, 1, 1);
 
@@ -268,7 +268,7 @@ mod tests {
         edge.source_language = Some("python".to_string());
         edge.target_language = Some("rust".to_string());
 
-        let score = policy.score_transition("Rust", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("Rust", &edge, jiff::Timestamp::now(), 1, 1);
         assert_eq!(
             score, 0.0,
             "Inferred cross-language edge should have score 0.0"
@@ -276,7 +276,7 @@ mod tests {
 
         // Same language family - should have normal score
         edge.source_language = Some("rust".to_string());
-        let score = policy.score_transition("Rust", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("Rust", &edge, jiff::Timestamp::now(), 1, 1);
         assert!(score > 0.0);
     }
 
@@ -295,11 +295,11 @@ mod tests {
         let queries = vec!["my_target_node", "MY.TARGET.NODE", "My Target Node"];
 
         for query in queries {
-            let score = policy.score_transition(query, &edge, chrono::Utc::now(), 1, 1);
+            let score = policy.score_transition(query, &edge, jiff::Timestamp::now(), 1, 1);
             assert!(score > 0.0, "Score should be positive for query: {}", query);
 
             let components =
-                policy.calculate_score_components(query, &edge, chrono::Utc::now(), 1, 1);
+                policy.calculate_score_components(query, &edge, jiff::Timestamp::now(), 1, 1);
             assert_eq!(
                 components.semantic_similarity, 1.0,
                 "Semantic similarity should be 1.0 for query: {}",
@@ -331,11 +331,11 @@ mod tests {
         );
 
         // query matches target -> similarity 1.0 -> total score 1.0
-        let score = policy.score_transition("target", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("target", &edge, jiff::Timestamp::now(), 1, 1);
         assert_eq!(score, 1.0);
 
         // query doesn't match -> similarity 0.0 -> total score 0.0
-        let score = policy.score_transition("nomatch", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("nomatch", &edge, jiff::Timestamp::now(), 1, 1);
         assert_eq!(score, 0.0);
     }
 
@@ -358,15 +358,18 @@ mod tests {
         );
 
         // source_degree <= 3, target_degree >= 10 -> peripheral_hub 1.2
-        let components = policy.calculate_score_components("q", &edge, chrono::Utc::now(), 3, 10);
+        let components =
+            policy.calculate_score_components("q", &edge, jiff::Timestamp::now(), 3, 10);
         assert_eq!(components.peripheral_hub, 1.2);
 
         // source_degree <= 2, target_degree >= 5 -> peripheral_hub 1.0
-        let components = policy.calculate_score_components("q", &edge, chrono::Utc::now(), 2, 5);
+        let components =
+            policy.calculate_score_components("q", &edge, jiff::Timestamp::now(), 2, 5);
         assert_eq!(components.peripheral_hub, 1.0);
 
         // No boost
-        let components = policy.calculate_score_components("q", &edge, chrono::Utc::now(), 5, 5);
+        let components =
+            policy.calculate_score_components("q", &edge, jiff::Timestamp::now(), 5, 5);
         assert_eq!(components.peripheral_hub, 0.0);
     }
 
@@ -399,7 +402,7 @@ mod tests {
         );
 
         // Should handle "binary" extensions just fine as they are just strings
-        let score = policy.score_transition("blob.bin", &edge, chrono::Utc::now(), 1, 1);
+        let score = policy.score_transition("blob.bin", &edge, jiff::Timestamp::now(), 1, 1);
         assert!(score > 0.0);
 
         let edge_empty = BeliefEdge::new(
@@ -409,7 +412,7 @@ mod tests {
             1.0,
             "prov".to_string(),
         );
-        let score_empty = policy.score_transition("", &edge_empty, chrono::Utc::now(), 1, 1);
+        let score_empty = policy.score_transition("", &edge_empty, jiff::Timestamp::now(), 1, 1);
         assert!(score_empty >= 0.0);
     }
 }

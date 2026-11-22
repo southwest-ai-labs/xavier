@@ -231,7 +231,7 @@ mod tests {
             "user1".into(),
             "user1@swal.dev".into(),
             UserRole::User, // User -> Confidential < Secret
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
 
         let resp_denied = app.clone().oneshot(req_denied).await.unwrap();
@@ -246,7 +246,7 @@ mod tests {
             "admin1".into(),
             "admin1@swal.dev".into(),
             UserRole::Admin,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
 
         let resp_granted = app.oneshot(req_granted).await.unwrap();
@@ -266,7 +266,7 @@ mod tests {
             "u".into(),
             "u@swal.dev".into(),
             UserRole::Admin,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         assert_eq!(
             resolve_requester_clearance(&headers, Some(&admin)),
@@ -279,7 +279,7 @@ mod tests {
             "u".into(),
             "u@swal.dev".into(),
             UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         assert_eq!(
             resolve_requester_clearance(&headers, Some(&readonly)),
@@ -309,7 +309,7 @@ mod tests {
             "u".into(),
             "u@swal.dev".into(),
             UserRole::User,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         assert_eq!(
             clearance_from_claims(Some(&user)),
@@ -343,7 +343,7 @@ mod tests {
             "u".into(),
             "u@swal.dev".into(),
             UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
         assert_eq!(
             app.clone().oneshot(req).await.unwrap().status(),
@@ -454,7 +454,7 @@ mod tests {
             "nodo-sin-segmento".into(),
             "nodo@swal.dev".into(),
             UserRole::Readonly,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         );
         assert_eq!(
             resolve_effective_clearance(&HeaderMap::new(), Some(&readonly)),

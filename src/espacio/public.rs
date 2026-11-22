@@ -41,7 +41,7 @@ pub async fn espacio_public_search(
                     score: score as f32,
                     source: "espacio_public".to_string(),
                     path: space.storage_path.to_string_lossy().to_string(),
-                    updated_at: Some(space.created_at.timestamp_millis()),
+                    updated_at: Some(space.created_at.as_millisecond()),
                     zone: None,
                 });
             }
@@ -68,7 +68,7 @@ pub async fn espacio_public_search(
                     score: score as f32,
                     source: "espacio_public".to_string(),
                     path: format!("data/spaces/{}/packs/{}", pack.space_id, pack.pack_id),
-                    updated_at: Some(pack.created_at.timestamp_millis()),
+                    updated_at: Some(pack.created_at.as_millisecond()),
                     zone: None,
                 });
             }
@@ -95,7 +95,7 @@ pub struct PublicPack {
     pub description: String,
     pub content_hash: String,
     pub is_free: bool,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 /// Manager for public packs (R2 bucket stub + SDC anchor)
@@ -153,7 +153,6 @@ impl PublicConnector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
 
     #[tokio::test]
     async fn publish_and_list_free() {
@@ -165,7 +164,7 @@ mod tests {
             description: "free pack".into(),
             content_hash: "abc".into(),
             is_free: true,
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
         })
         .await;
         conn.publish(PublicPack {
@@ -175,7 +174,7 @@ mod tests {
             description: "paid".into(),
             content_hash: "def".into(),
             is_free: false,
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
         })
         .await;
         assert_eq!(conn.list("").await.len(), 1);
@@ -220,7 +219,7 @@ mod tests {
             description: "Free public pack".into(),
             content_hash: "123".into(),
             is_free: true,
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
         })
         .await;
 

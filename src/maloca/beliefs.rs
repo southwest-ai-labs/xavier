@@ -68,7 +68,7 @@ pub async fn beliefs_snapshot(Extension(ctx): Extension<WorkspaceContext>) -> im
             concept: n.concept.clone(),
             confidence: n.confidence,
             language_family: n.language_family.clone(),
-            created_at: n.created_at.to_rfc3339(),
+            created_at: n.created_at.to_string(),
         })
         .collect();
 

@@ -1,4 +1,4 @@
-use chrono::Utc;
+use jiff::Timestamp;
 use tempfile::tempdir;
 use xavier::domain::memory::belief::BeliefEdge;
 use xavier::memory::sqlite_vec_store::{VecSqliteMemoryStore, VecSqliteStoreConfig};
@@ -29,7 +29,7 @@ async fn test_unified_storage_persistence() {
     let workspace_id = "test_ws";
 
     // 1. Test Memory + Vector persistence
-    let now = Utc::now();
+    let now = Timestamp::now();
     let record = MemoryRecord {
         id: "mem1".to_string(),
         workspace_id: workspace_id.to_string(),

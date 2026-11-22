@@ -130,7 +130,7 @@ pub async fn api_auth_middleware(req: Request<Body>, next: Next) -> Response {
                 "root".to_string(),
                 "admin@swal.dev".to_string(),
                 UserRole::Admin,
-                chrono::Duration::hours(1),
+                jiff::Span::new().hours(1),
             ));
             next.run(req).await
         }

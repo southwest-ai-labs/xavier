@@ -178,7 +178,7 @@ pub async fn espacio_invite_create_handler(
         "root".to_string()
     };
 
-    let expires_at = chrono::Utc::now() + chrono::Duration::hours(req.ttl_hours);
+    let expires_at = jiff::Timestamp::now() + jiff::Span::new().hours(req.ttl_hours);
 
     let invites = crate::espacio::InviteManager::with_stores(manager.stores());
     match run_blocking(async move {
@@ -421,7 +421,7 @@ mod tests {
                 "admin".to_string(),
                 "m1".to_string(),
                 SpaceRole::Member,
-                chrono::Utc::now() - chrono::Duration::hours(1), // expired
+                jiff::Timestamp::now() - jiff::Span::new().hours(1), // expired
             )
             .await
             .unwrap();

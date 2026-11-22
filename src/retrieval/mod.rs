@@ -80,7 +80,7 @@ pub async fn retrieve_visible_espacios(
                 score: score as f32,
                 source: "espacio_visible".to_string(),
                 path: space.storage_path.to_string_lossy().to_string(),
-                updated_at: Some(space.created_at.timestamp_millis()),
+                updated_at: Some(space.created_at.as_millisecond()),
                 zone: None,
             });
         }

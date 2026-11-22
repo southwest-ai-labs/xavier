@@ -129,7 +129,7 @@ async fn test_two_node_sealed_memory_sync_and_unknown_peer_rejected() {
             path: "notes/mesh-sync".to_string(),
             content: "hello from node A".to_string(),
             metadata: serde_json::json!({}),
-            created_at: chrono::Utc::now().timestamp(),
+            created_at: jiff::Timestamp::now().as_second(),
         }],
         vectors: vec![],
         snapshots: vec![],

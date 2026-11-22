@@ -26,7 +26,7 @@ pub async fn build_manifest(store: &dyn MemoryStore) -> Result<Manifest> {
             let mut hasher = Sha256::new();
             hasher.update(rec.path.as_bytes());
             hasher.update(rec.revision.to_le_bytes());
-            hasher.update(rec.updated_at.timestamp().to_le_bytes());
+            hasher.update(rec.updated_at.as_second().to_le_bytes());
             let hash = crate::crypto::hex_encode(hasher.finalize());
 
             if seen.insert(hash.clone()) {
@@ -213,7 +213,7 @@ pub(crate) mod tests {
 
     #[tokio::test]
     async fn test_build_manifest_with_records() {
-        use chrono::Utc;
+        use jiff::Timestamp;
 
         let store = Arc::new(TestStore {
             records: std::sync::Mutex::new(vec![MemoryRecord {
@@ -223,8 +223,8 @@ pub(crate) mod tests {
                 content: "hello world".into(),
                 metadata: serde_json::Value::Null,
                 embedding: vec![],
-                created_at: Utc::now(),
-                updated_at: Utc::now(),
+                created_at: Timestamp::now(),
+                updated_at: Timestamp::now(),
                 revision: 1,
                 primary: false,
                 parent_id: None,

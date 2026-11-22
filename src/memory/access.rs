@@ -52,7 +52,7 @@ use std::sync::{Arc, LazyLock, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::memory::decay::get_last_accessed;
@@ -92,12 +92,12 @@ pub const DEFAULT_FLUSH_INTERVAL: Duration = Duration::from_secs(30);
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccessStats {
     pub access_count: u64,
-    pub first_accessed_at: Option<DateTime<Utc>>,
-    pub last_accessed_at: Option<DateTime<Utc>>,
+    pub first_accessed_at: Option<Timestamp>,
+    pub last_accessed_at: Option<Timestamp>,
 }
 
 impl AccessStats {
-    fn apply_delta(&mut self, delta: u64, now: DateTime<Utc>) {
+    fn apply_delta(&mut self, delta: u64, now: Timestamp) {
         self.access_count = self.access_count.saturating_add(delta);
         if self.first_accessed_at.is_none() {
             self.first_accessed_at = Some(now);
@@ -154,7 +154,7 @@ impl AccessRecorder {
     /// Buffer one access per id for `workspace_id` and update the in-memory view.
     ///
     /// Returns the number of distinct records recorded.
-    pub fn record(&self, workspace_id: &str, ids: &[String], now: DateTime<Utc>) -> usize {
+    pub fn record(&self, workspace_id: &str, ids: &[String], now: Timestamp) -> usize {
         if ids.is_empty() {
             return 0;
         }
@@ -505,7 +505,7 @@ pub async fn record_user_access_ids(
         register_store(workspace_id, &store);
     }
 
-    let recorded = RECORDER.record(workspace_id, ids, Utc::now());
+    let recorded = RECORDER.record(workspace_id, ids, Timestamp::now());
     for id in ids {
         manager.record_access(id);
     }
@@ -854,13 +854,13 @@ pub enum PruneBlockReason {
 /// destructive code exists. With `observation_started_at` missing, the answer is
 /// always "not yet" — absence of a clock is not evidence of 30 days of calm.
 pub fn prune_block_reason(
-    observation_started_at: Option<DateTime<Utc>>,
-    now: DateTime<Utc>,
+    observation_started_at: Option<Timestamp>,
+    now: Timestamp,
 ) -> PruneBlockReason {
     let Some(started) = observation_started_at else {
         return PruneBlockReason::ObservationClockMissing;
     };
-    let elapsed_days = (now - started).num_days().max(0);
+    let elapsed_days = (now.duration_since(started).as_secs_f64() / 86400.0).max(0.0) as i64;
     if elapsed_days < MIN_OBSERVATION_DAYS {
         return PruneBlockReason::ObservationWindowOpen {
             elapsed_days,
@@ -880,18 +880,18 @@ pub async fn ensure_instrumentation(store: &dyn MemoryStore) -> Result<()> {
 }
 
 /// Read the instant the access observation window opened.
-pub async fn observation_started_at(store: &dyn MemoryStore) -> Result<Option<DateTime<Utc>>> {
+pub async fn observation_started_at(store: &dyn MemoryStore) -> Result<Option<Timestamp>> {
     store
         .read_maintenance_meta(OBSERVATION_STARTED_AT_KEY)
         .await
 }
 
 /// Days elapsed since the observation clock started (0 when absent).
-pub async fn observation_days_elapsed(store: &dyn MemoryStore, now: DateTime<Utc>) -> Result<f64> {
+pub async fn observation_days_elapsed(store: &dyn MemoryStore, now: Timestamp) -> Result<f64> {
     let Some(started) = observation_started_at(store).await? else {
         return Ok(0.0);
     };
-    Ok((now - started).num_days().max(0) as f64)
+    Ok((now.duration_since(started).as_secs_f64() / 86400.0).max(0.0))
 }
 
 /// Combine the clock and the per-record gate into one verdict.
@@ -901,7 +901,7 @@ pub async fn observation_days_elapsed(store: &dyn MemoryStore, now: DateTime<Utc
 pub async fn prune_precondition(
     store: &dyn MemoryStore,
     record: &MemoryRecord,
-    now: DateTime<Utc>,
+    now: Timestamp,
 ) -> Result<PruneBlockReason> {
     // 1. Guard protected sources and context zones
     if let Some(source) = record.metadata.get("source").and_then(|v| v.as_str()) {
@@ -1018,7 +1018,7 @@ mod prune_zone_tests {
             metadata: serde_json::json!({ "source": "codebase" }),
             ..Default::default()
         };
-        let res = prune_precondition(&store, &record, Utc::now())
+        let res = prune_precondition(&store, &record, Timestamp::now())
             .await
             .unwrap();
         assert_eq!(res, PruneBlockReason::ZoneProtected);
@@ -1031,7 +1031,7 @@ mod prune_zone_tests {
             metadata: serde_json::json!({ "zone": "atomic" }),
             ..Default::default()
         };
-        let res = prune_precondition(&store, &record, Utc::now())
+        let res = prune_precondition(&store, &record, Timestamp::now())
             .await
             .unwrap();
         assert_eq!(res, PruneBlockReason::ZoneProtected);

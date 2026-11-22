@@ -15,7 +15,7 @@
 //!   belonging to a removed member all yield the same [`TokenError`].
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, SecondsFormat, Utc};
+use jiff::{Span, Timestamp};
 use rand::RngCore;
 use rusqlite::{params, OptionalExtension, TransactionBehavior};
 use sha2::{Digest, Sha256};
@@ -57,13 +57,13 @@ pub struct TokenInfo {
     pub token_id: String,
     pub member_id: String,
     pub role: SpaceRole,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub created_at: Timestamp,
+    pub expires_at: Option<Timestamp>,
     pub revoked: bool,
 }
 
-fn ts(t: &DateTime<Utc>) -> String {
-    t.to_rfc3339_opts(SecondsFormat::Nanos, true)
+fn ts(t: &Timestamp) -> String {
+    t.to_string()
 }
 
 fn role_from(s: &str) -> Result<SpaceRole> {
@@ -125,13 +125,15 @@ const DEFAULT_TTL_DAYS: i64 = 90;
 
 /// Expiry applied when the caller supplies none. Every token is bounded;
 /// an unset, zero, negative or unparsable env value falls back to 90 days.
-pub fn default_token_expiry() -> DateTime<Utc> {
+pub fn default_token_expiry() -> Timestamp {
     let days = std::env::var("XAVIER_SPACE_TOKEN_TTL_DAYS")
         .ok()
         .and_then(|v| v.trim().parse::<i64>().ok())
         .filter(|d| (1..=3650).contains(d))
         .unwrap_or(DEFAULT_TTL_DAYS);
-    Utc::now() + chrono::Duration::days(days)
+    Timestamp::now()
+        .checked_add(Span::new().hours(days * 24))
+        .unwrap_or_else(|_| Timestamp::now())
 }
 
 /// Insert a token row for an EXISTING member (the member check and the insert
@@ -141,7 +143,7 @@ fn insert_token_row(
     space_id: &str,
     member_id: &str,
     role: SpaceRole,
-    expires_at: Option<DateTime<Utc>>,
+    expires_at: Option<Timestamp>,
 ) -> Result<IssuedToken> {
     validate_space_id(space_id)?;
     let mut secret = [0u8; 32];
@@ -164,7 +166,7 @@ fn insert_token_row(
             hash_token(&raw),
             member_id,
             role.as_str(),
-            ts(&Utc::now()),
+            ts(&Timestamp::now()),
             ts(&expires)
         ],
     )?;
@@ -182,7 +184,7 @@ impl SpaceStore {
         space_id: &str,
         member_id: &str,
         role: SpaceRole,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: Option<Timestamp>,
     ) -> Result<IssuedToken> {
         insert_token_row(&self.lock(), space_id, member_id, role, expires_at)
     }
@@ -231,7 +233,7 @@ impl SpaceStore {
         }
         let added = tx.execute(
             "INSERT OR IGNORE INTO members (node_id, role, joined_at) VALUES (?1, ?2, ?3)",
-            params![member_id, role.as_str(), ts(&Utc::now())],
+            params![member_id, role.as_str(), ts(&Timestamp::now())],
         )?;
         if added != 1 {
             return Err(anyhow!("member {member_id} already exists in the space"));
@@ -290,10 +292,8 @@ impl SpaceStore {
                     token_id,
                     member_id,
                     role: role_from(&role)?,
-                    created_at: DateTime::parse_from_rfc3339(&created)?.with_timezone(&Utc),
-                    expires_at: expires
-                        .map(|e| DateTime::parse_from_rfc3339(&e).map(|d| d.with_timezone(&Utc)))
-                        .transpose()?,
+                    created_at: created.parse::<Timestamp>()?,
+                    expires_at: expires.map(|e| e.parse::<Timestamp>()).transpose()?,
                     revoked: revoked != 0,
                 })
             })
@@ -332,8 +332,8 @@ impl SpaceStore {
         }
         if let Some(e) = expires {
             // An unparseable expiry fails closed.
-            let exp = DateTime::parse_from_rfc3339(&e).map_err(|_| TokenError::Invalid)?;
-            if Utc::now() >= exp.with_timezone(&Utc) {
+            let exp = e.parse::<Timestamp>().map_err(|_| TokenError::Invalid)?;
+            if Timestamp::now() >= exp {
                 return Err(TokenError::Invalid);
             }
         }
@@ -361,7 +361,7 @@ impl SpaceStore {
     pub fn add_member_if_absent(&self, node_id: &str, role: SpaceRole) -> Result<bool> {
         let n = self.lock().execute(
             "INSERT OR IGNORE INTO members (node_id, role, joined_at) VALUES (?1, ?2, ?3)",
-            params![node_id, role.as_str(), ts(&Utc::now())],
+            params![node_id, role.as_str(), ts(&Timestamp::now())],
         )?;
         Ok(n > 0)
     }
@@ -425,7 +425,6 @@ pub async fn create_space_with_owner_token(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Duration;
 
     fn stores_with(space: &str) -> (std::sync::Arc<SpaceStores>, std::sync::Arc<SpaceStore>) {
         let stores = SpaceStores::in_memory();
@@ -531,12 +530,12 @@ mod tests {
         assert_eq!(s.revoke_token("nope").unwrap(), RevokeOutcome::NotFound);
         assert_eq!(verify_in_stores(&stores, &t.raw), Err(TokenError::Invalid));
 
-        let past = Utc::now() - Duration::seconds(1);
+        let past = Timestamp::now() - Span::new().seconds(1);
         let e = s
             .issue_token("esp_a", "alice", SpaceRole::Admin, Some(past))
             .unwrap();
         assert_eq!(verify_in_stores(&stores, &e.raw), Err(TokenError::Invalid));
-        let future = Utc::now() + Duration::hours(1);
+        let future = Timestamp::now() + Span::new().hours(1);
         let f = s
             .issue_token("esp_a", "alice", SpaceRole::Admin, Some(future))
             .unwrap();
@@ -647,11 +646,11 @@ mod tests {
         let info = s.list_tokens().unwrap().remove(0);
         assert_eq!(info.token_id, t.token_id);
         let exp = info.expires_at.expect("default expiry must be set");
-        let days = (exp - Utc::now()).num_days();
+        let days = (exp.as_second() - Timestamp::now().as_second()) / 86400;
         assert!((88..=90).contains(&days) || std::env::var("XAVIER_SPACE_TOKEN_TTL_DAYS").is_ok());
         assert!(verify_in_stores(&stores, &t.raw).is_ok());
         // An expired token is refused.
-        let past = Utc::now() - Duration::seconds(1);
+        let past = Timestamp::now() - Span::new().seconds(1);
         let e = s
             .issue_token("esp_a", "alice", SpaceRole::Admin, Some(past))
             .unwrap();

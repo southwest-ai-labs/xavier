@@ -167,18 +167,18 @@ async fn test_nightly_consolidation_process() {
         .unwrap();
 
     // 2. Add an expired memory with expires_at in the past
-    let past_time = chrono::Utc::now() - chrono::Duration::hours(1);
+    let past_time = jiff::Timestamp::now() - jiff::Span::new().hours(1);
     qmd_memory
         .add_document(
             "docs/expired1".to_string(),
             "This memory has expired in the past.".to_string(),
-            serde_json::json!({ "expires_at": past_time.to_rfc3339() }),
+            serde_json::json!({ "expires_at": past_time.to_string() }),
         )
         .await
         .unwrap();
 
     // 3. Add an expired memory with epoch timestamp in the past
-    let past_epoch = chrono::Utc::now().timestamp() - 3600;
+    let past_epoch = jiff::Timestamp::now().as_second() - 3600;
     qmd_memory
         .add_document(
             "docs/expired2".to_string(),
@@ -199,12 +199,12 @@ async fn test_nightly_consolidation_process() {
         .unwrap();
 
     // 5. Add an active memory with expires_at in the future
-    let future_time = chrono::Utc::now() + chrono::Duration::hours(12);
+    let future_time = jiff::Timestamp::now() + jiff::Span::new().hours(12);
     qmd_memory
         .add_document(
             "docs/active1".to_string(),
             "This memory is still active and should not be purged.".to_string(),
-            serde_json::json!({ "expires_at": future_time.to_rfc3339() }),
+            serde_json::json!({ "expires_at": future_time.to_string() }),
         )
         .await
         .unwrap();

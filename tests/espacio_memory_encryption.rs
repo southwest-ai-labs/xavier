@@ -832,14 +832,14 @@ async fn beliefs_and_session_tokens_are_not_stored_in_clear() {
         .save_beliefs("esp_a", vec![edge.clone()])
         .await
         .unwrap();
-    let now = chrono::Utc::now();
+    let now = jiff::Timestamp::now();
     store
         .save_session_token(
             "esp_a",
             xavier::memory::store::SessionTokenRecord {
                 token: "SessionTokCanary".to_string(),
                 created_at: now,
-                expires_at: now + chrono::Duration::hours(1),
+                expires_at: now.checked_add(jiff::Span::new().hours(1)).unwrap(),
             },
         )
         .await

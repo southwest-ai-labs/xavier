@@ -1,5 +1,4 @@
 use anyhow::Result;
-use chrono::{DateTime, Utc};
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -12,8 +11,8 @@ pub struct User {
     pub password_hash: String,
     pub recovery_seed_hash: String,
     pub two_factor_enabled: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
+    pub updated_at: jiff::Timestamp,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -51,8 +50,8 @@ impl UserStore {
 
     /// Add user.
     pub async fn add_user(&self, user: User) -> Result<()> {
-        let created_at = user.created_at.to_rfc3339();
-        let updated_at = user.updated_at.to_rfc3339();
+        let created_at = user.created_at.to_string();
+        let updated_at = user.updated_at.to_string();
         let two_factor_enabled = if user.two_factor_enabled { 1 } else { 0 };
 
         ConnectionManager::global().with_conn(&self.project_id, move |conn| {
@@ -90,8 +89,8 @@ impl UserStore {
                     password_hash: row.get(2)?,
                     recovery_seed_hash: row.get(3)?,
                     two_factor_enabled: row.get::<_, i32>(4)? != 0,
-                    created_at: created_at_str.parse().unwrap_or_else(|_| Utc::now()),
-                    updated_at: updated_at_str.parse().unwrap_or_else(|_| Utc::now()),
+                    created_at: created_at_str.parse().unwrap_or_else(|_| jiff::Timestamp::now()),
+                    updated_at: updated_at_str.parse().unwrap_or_else(|_| jiff::Timestamp::now()),
                 }))
             } else {
                 Ok(None)
@@ -109,7 +108,7 @@ impl UserStore {
         let user_id = user_id.to_string();
         let password_hash = password_hash.to_string();
         let recovery_seed_hash = recovery_seed_hash.to_string();
-        let now = Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
 
         ConnectionManager::global().with_conn(&self.project_id, move |conn| {
             conn.execute(

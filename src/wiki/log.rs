@@ -53,7 +53,10 @@ impl WikiLogManager {
             .open(&self.log_path)
             .with_context(|| format!("Failed to open log file: {}", self.log_path.display()))?;
 
-        let timestamp_str = entry.timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string();
+        let timestamp_str = entry
+            .timestamp
+            .strftime("%Y-%m-%d %H:%M:%S UTC")
+            .to_string();
         let mut entry_str = String::new();
 
         entry_str.push_str(&format!(

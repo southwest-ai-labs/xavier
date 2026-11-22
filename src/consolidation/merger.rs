@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use anyhow::{bail, Result};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashSet;
@@ -129,7 +129,8 @@ pub fn merge_documents(memories: &[ManagedMemory]) -> Result<MergeOutcome> {
         &canonical.metadata,
     );
     canonical.metadata["memory_importance"] = serde_json::json!(importance);
-    canonical.metadata["memory_last_consolidated_at"] = serde_json::json!(Utc::now().to_rfc3339());
+    canonical.metadata["memory_last_consolidated_at"] =
+        serde_json::json!(Timestamp::now().to_string());
     if canonical.id.is_none() {
         canonical.id = Some(canonical_id);
     }
@@ -243,8 +244,8 @@ fn usable_vector(vector: &[f32]) -> bool {
 /// Importance score.
 pub fn importance_score(
     access_count: usize,
-    last_access: Option<DateTime<Utc>>,
-    created_at: Option<DateTime<Utc>>,
+    last_access: Option<Timestamp>,
+    created_at: Option<Timestamp>,
     metadata: &serde_json::Value,
 ) -> f32 {
     let access_component = 1.0 - (-((access_count as f32) / 4.0)).exp();
@@ -276,8 +277,8 @@ pub fn reinforced_stability(access_count: usize, base_stability_days: f32) -> f3
 
 pub fn decay_importance_with_stability(
     importance: f32,
-    last_access: Option<DateTime<Utc>>,
-    created_at: Option<DateTime<Utc>>,
+    last_access: Option<Timestamp>,
+    created_at: Option<Timestamp>,
     decay_rate: f32,
     access_count: usize,
 ) -> f32 {
@@ -289,7 +290,8 @@ pub fn decay_importance_with_stability(
     let mut score = importance * decay_rate.powf(age / 7.0) * usage_decay * (0.3 + 0.7 * retention);
 
     if let Some(last_access) = last_access {
-        let days_since_access = (Utc::now() - last_access).num_seconds().max(0) as f32 / 86_400.0;
+        let days_since_access =
+            (Timestamp::now().duration_since(last_access).as_secs_f64() / 86_400.0).max(0.0) as f32;
         let access_retention = ebbinghaus_retention(stability, days_since_access);
         score *= 0.4 + 0.6 * access_retention;
     }
@@ -300,17 +302,17 @@ pub fn decay_importance_with_stability(
 /// Decay importance.
 pub fn decay_importance(
     importance: f32,
-    last_access: Option<DateTime<Utc>>,
-    created_at: Option<DateTime<Utc>>,
+    last_access: Option<Timestamp>,
+    created_at: Option<Timestamp>,
     decay_rate: f32,
 ) -> f32 {
     decay_importance_with_stability(importance, last_access, created_at, decay_rate, 1)
 }
 
 /// Age days.
-pub fn age_days(last_access: Option<DateTime<Utc>>, created_at: Option<DateTime<Utc>>) -> f32 {
-    let reference = last_access.or(created_at).unwrap_or_else(Utc::now);
-    (Utc::now() - reference).num_seconds().max(0) as f32 / 86_400.0
+pub fn age_days(last_access: Option<Timestamp>, created_at: Option<Timestamp>) -> f32 {
+    let reference = last_access.or(created_at).unwrap_or_else(Timestamp::now);
+    (Timestamp::now().duration_since(reference).as_secs_f64() / 86_400.0).max(0.0) as f32
 }
 
 /// Similarity to summary.
@@ -382,20 +384,22 @@ fn normalize_whitespace(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn recency_boost(last_access: Option<DateTime<Utc>>) -> f32 {
+fn recency_boost(last_access: Option<Timestamp>) -> f32 {
     match last_access {
         Some(last_access) => {
-            let days = (Utc::now() - last_access).num_days().max(0) as f32;
+            let days = (Timestamp::now().duration_since(last_access).as_secs_f64() / 86_400.0)
+                .max(0.0) as f32;
             1.0 / (1.0 + days / 14.0)
         }
         None => 0.45,
     }
 }
 
-fn age_boost(created_at: Option<DateTime<Utc>>) -> f32 {
+fn age_boost(created_at: Option<Timestamp>) -> f32 {
     match created_at {
         Some(created_at) => {
-            let days = (Utc::now() - created_at).num_days().max(0) as f32;
+            let days = (Timestamp::now().duration_since(created_at).as_secs_f64() / 86_400.0)
+                .max(0.0) as f32;
             1.0 / (1.0 + days / 60.0)
         }
         None => 0.70,
@@ -420,7 +424,7 @@ fn priority_boost(metadata: &serde_json::Value) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Duration;
+    use jiff::Span;
 
     #[test]
     fn test_ebbinghaus_retention_boundary_values() {
@@ -438,8 +442,16 @@ mod tests {
 
     #[test]
     fn test_decay_importance_preserves_reinforced_memory() {
-        let created_at = Some(Utc::now() - Duration::days(30));
-        let last_access = Some(Utc::now() - Duration::days(5));
+        let created_at = Some(
+            Timestamp::now()
+                .checked_sub(Span::new().hours(30 * 24))
+                .expect("time underflow"),
+        );
+        let last_access = Some(
+            Timestamp::now()
+                .checked_sub(Span::new().hours(5 * 24))
+                .expect("time underflow"),
+        );
 
         let score_unreinforced =
             decay_importance_with_stability(1.0, last_access, created_at, 0.95, 0);
@@ -468,8 +480,8 @@ mod tests {
             priority: crate::memory::manager::MemoryPriority::Medium,
             quality: Default::default(),
             access_count: 3,
-            last_access: Some(Utc::now()),
-            created_at: Some(Utc::now()),
+            last_access: Some(Timestamp::now()),
+            created_at: Some(Timestamp::now()),
             size_bytes: 0,
         }
     }
@@ -564,7 +576,7 @@ mod tests {
     fn importance_increases_with_access_pattern() {
         let metadata = serde_json::json!({"memory_priority": "high"});
         let low = importance_score(0, None, None, &metadata);
-        let high = importance_score(8, Some(Utc::now()), Some(Utc::now()), &metadata);
+        let high = importance_score(8, Some(Timestamp::now()), Some(Timestamp::now()), &metadata);
         assert!(high > low);
     }
 

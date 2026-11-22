@@ -6,8 +6,8 @@ use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
 };
-use chrono::Utc;
 use http_body_util::BodyExt;
+use jiff::Timestamp;
 use tempfile::tempdir;
 use tower::ServiceExt;
 
@@ -28,8 +28,8 @@ fn setup_isolated_vault(service_name: &str) -> (HardwareVault, tempfile::TempDir
     (vault, dir)
 }
 
-fn test_now() -> chrono::DateTime<Utc> {
-    chrono::DateTime::from_timestamp(1_700_000_000, 0).expect("valid timestamp")
+fn test_now() -> Timestamp {
+    Timestamp::from_second(1_700_000_000).expect("valid timestamp")
 }
 
 fn build_router_request(
@@ -54,7 +54,7 @@ fn build_router_request(
             "e2e-admin".to_string(),
             "e2e-admin@example.com".to_string(),
             role,
-            chrono::Duration::hours(1),
+            jiff::Span::new().hours(1),
         ));
     }
     req

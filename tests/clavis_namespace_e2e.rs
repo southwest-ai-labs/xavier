@@ -109,7 +109,7 @@ async fn test_cli_keys_generate_and_http_read_contract() {
         "e2e_cli_probe",
         KeyScope::Live,
         3600,
-        chrono::Utc::now(),
+        jiff::Timestamp::now(),
     )
     .expect("generate CLI key");
 

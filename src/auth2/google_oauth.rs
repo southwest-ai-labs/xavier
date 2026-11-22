@@ -3,7 +3,6 @@
 //! Provides OAuth2 authorization code flow with PKCE (RFC 7636), token management,
 //! expiry checking, and Clavis vault secret reference integration.
 
-use chrono::Utc;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -105,7 +104,7 @@ pub struct GoogleToken {
 impl GoogleToken {
     /// Checks if the token is expired or within a 30-second expiry buffer.
     pub fn is_expired(&self) -> bool {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         now >= (self.expires_at - 30)
     }
 
@@ -279,7 +278,7 @@ impl GoogleOAuthManager {
         }
 
         let token_resp: TokenResponse = res.json().await?;
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
 
         let token = GoogleToken {
             access_token: token_resp.access_token,
@@ -366,7 +365,7 @@ mod tests {
 
     #[test]
     fn test_token_expiry_detection() {
-        let now = Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
 
         let valid_token = GoogleToken {
             access_token: "ya29.valid".to_string(),
@@ -406,7 +405,7 @@ mod tests {
         let token = GoogleToken {
             access_token: "ya29.test_token".to_string(),
             refresh_token: Some("1//refresh_token".to_string()),
-            expires_at: Utc::now().timestamp() + 3600,
+            expires_at: jiff::Timestamp::now().as_second() + 3600,
             id_token: Some("id.jwt.token".to_string()),
             scope: Some("openid email profile https://www.googleapis.com/auth/colab".to_string()),
             token_type: "Bearer".to_string(),

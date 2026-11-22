@@ -277,7 +277,7 @@ impl MultiDbManager {
                     db_id: db_id.clone(),
                     kind,
                     display_name,
-                    created_at: chrono::Utc::now().to_rfc3339(),
+                    created_at: jiff::Timestamp::now().to_string(),
                     path: workspace_db.db_path.clone(),
                     config: None,
                 },

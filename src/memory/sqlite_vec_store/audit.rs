@@ -36,7 +36,7 @@ impl VecSqliteMemoryStore {
             ).unwrap_or((None, None));
 
         let event_id = ulid::Ulid::new().to_string();
-        let timestamp = chrono::Utc::now().to_rfc3339();
+        let timestamp = jiff::Timestamp::now().to_string();
         let agent_id = record
             .metadata
             .get("_audit")

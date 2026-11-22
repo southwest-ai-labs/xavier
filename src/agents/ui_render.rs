@@ -2,7 +2,7 @@
 //!
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
-use chrono::Utc;
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 
 use crate::agents::{runtime::AgentRunTrace, system1::RetrievedDocument, system2::Evidence};
@@ -111,7 +111,7 @@ impl UiRenderAgent {
         } else {
             blocks.push(format!(
                 "<TextCallout variant=\"success\" title=\"Backed by memory\" content=\"{}\" />",
-                escape_attr(&format!("Rendered at {}", Utc::now().to_rfc3339()))
+                escape_attr(&format!("Rendered at {}", Timestamp::now()))
             ));
             rules.push("confirm_when_confidence_high".to_string());
         }

@@ -544,7 +544,7 @@ pub fn parse_log_line(line: &str) -> Option<LogScanEntry> {
                 last_seen: Some(ts),
             })
         } else {
-            let ts = chrono::Utc::now().to_rfc3339();
+            let ts = jiff::Timestamp::now().to_string();
             Some(LogScanEntry {
                 timestamp: ts.clone(),
                 level: "INFO".to_string(),
@@ -600,8 +600,8 @@ fn update_seen_timestamps(entry: &mut LogScanEntry, new_ts: &str) {
     }
     if let Some(fs) = &entry.first_seen {
         let is_earlier = match (
-            chrono::DateTime::parse_from_rfc3339(new_ts),
-            chrono::DateTime::parse_from_rfc3339(fs),
+            new_ts.parse::<jiff::Timestamp>(),
+            fs.parse::<jiff::Timestamp>(),
         ) {
             (Ok(a), Ok(b)) => a < b,
             _ => new_ts < fs.as_str(),
@@ -615,8 +615,8 @@ fn update_seen_timestamps(entry: &mut LogScanEntry, new_ts: &str) {
 
     if let Some(ls) = &entry.last_seen {
         let is_later = match (
-            chrono::DateTime::parse_from_rfc3339(new_ts),
-            chrono::DateTime::parse_from_rfc3339(ls),
+            new_ts.parse::<jiff::Timestamp>(),
+            ls.parse::<jiff::Timestamp>(),
         ) {
             (Ok(a), Ok(b)) => a > b,
             _ => new_ts > ls.as_str(),
@@ -743,7 +743,7 @@ pub fn log_scan_internal(
     let since_time = args
         .since
         .as_ref()
-        .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok());
+        .and_then(|s| s.parse::<jiff::Timestamp>().ok());
 
     for (file_idx, file_path) in files_to_scan.iter().enumerate() {
         let file_name = file_path
@@ -776,9 +776,7 @@ pub fn log_scan_internal(
                     }
 
                     if let Some(since) = since_time {
-                        if let Ok(entry_time) =
-                            chrono::DateTime::parse_from_rfc3339(&entry.timestamp)
-                        {
+                        if let Ok(entry_time) = entry.timestamp.parse::<jiff::Timestamp>() {
                             if entry_time < since {
                                 continue;
                             }
@@ -860,8 +858,8 @@ pub fn log_scan_internal(
                 None => earliest_timestamp = Some(ts.to_string()),
                 Some(cur) => {
                     let is_earlier = match (
-                        chrono::DateTime::parse_from_rfc3339(ts),
-                        chrono::DateTime::parse_from_rfc3339(cur),
+                        ts.parse::<jiff::Timestamp>(),
+                        cur.parse::<jiff::Timestamp>(),
                     ) {
                         (Ok(t), Ok(c)) => t < c,
                         _ => ts < cur.as_str(),
@@ -875,8 +873,8 @@ pub fn log_scan_internal(
                 None => latest_timestamp = Some(ts.to_string()),
                 Some(cur) => {
                     let is_later = match (
-                        chrono::DateTime::parse_from_rfc3339(ts),
-                        chrono::DateTime::parse_from_rfc3339(cur),
+                        ts.parse::<jiff::Timestamp>(),
+                        cur.parse::<jiff::Timestamp>(),
                     ) {
                         (Ok(t), Ok(c)) => t > c,
                         _ => ts > cur.as_str(),
@@ -1706,7 +1704,7 @@ pub fn ticket_create_with(
     });
 
     let mut reg = load_tickets_registry_from(registry_path);
-    let now = chrono::Utc::now().timestamp() as u64;
+    let now = jiff::Timestamp::now().as_second() as u64;
 
     // Prune timestamps older than 1 hour (3600s) for rate limit check
     reg.creation_timestamps

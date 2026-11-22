@@ -229,7 +229,7 @@ async fn emit_operation_event(memory: &QmdMemory, operation: &str, path: &str, m
     let event = SessionEvent {
         session_id,
         event_type: SessionEventType::ToolResult,
-        timestamp: chrono::Utc::now(),
+        timestamp: jiff::Timestamp::now(),
         content: Some(format!("Memory {} operation on path: {}", operation, path)),
         metadata: Some(serde_json::json!({
             "operation": operation,
@@ -283,7 +283,7 @@ fn bus_quota_exceeded(path: &str) -> bool {
     }
 
     let cell = BUS_WINDOW.get_or_init(|| std::sync::Mutex::new((0, 0)));
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let Ok(mut guard) = cell.lock() else {
         return false;
     };
@@ -322,7 +322,7 @@ pub fn bus_quota_exhausted(path: &str) -> bool {
         return false;
     }
     let cell = BUS_WINDOW.get_or_init(|| std::sync::Mutex::new((0, 0)));
-    let now = chrono::Utc::now().timestamp();
+    let now = jiff::Timestamp::now().as_second();
     let Ok(guard) = cell.lock() else {
         return false;
     };

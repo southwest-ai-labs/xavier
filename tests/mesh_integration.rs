@@ -918,7 +918,7 @@ async fn test_e2e_private_sync_two_nodes() {
                 "path": "notes/private-sync",
                 "content": "delivered to node B",
                 "metadata": {},
-                "created_at": chrono::Utc::now().timestamp(),
+                "created_at": jiff::Timestamp::now().as_second(),
             }],
             "snapshots": ["snap-not-applied"],
         }))

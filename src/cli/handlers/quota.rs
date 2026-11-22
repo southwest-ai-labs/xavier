@@ -2,7 +2,6 @@ use crate::cli::handlers::json_response;
 use crate::cli::state::CliState;
 use anyhow::Result;
 use axum::{extract::State, http::StatusCode, response::Response};
-use chrono::Utc;
 use xavier::domain::proxy::types::ProviderQuota;
 
 /// Handle quota command.
@@ -39,10 +38,10 @@ pub async fn handle_quota_command() -> Result<()> {
                 .unwrap_or_else(|| "-".to_string());
             let resets = q
                 .resets_at
-                .map(|dt: chrono::DateTime<chrono::Utc>| {
-                    let duration = dt.signed_duration_since(Utc::now());
-                    if duration.num_seconds() > 0 {
-                        format!("in {}s", duration.num_seconds())
+                .map(|ts: jiff::Timestamp| {
+                    let diff_secs = ts.as_second() - jiff::Timestamp::now().as_second();
+                    if diff_secs > 0 {
+                        format!("in {}s", diff_secs)
                     } else {
                         "Now".to_string()
                     }

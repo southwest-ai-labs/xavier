@@ -461,7 +461,7 @@ impl CodebaseDb {
         let source_file = source_file.map(|s| s.to_string());
         let source_snippet = source_snippet.map(|s| s.to_string());
         let verification = verification.to_string();
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now().to_string();
 
         ConnectionManager::global().with_conn(&self.project_id, move |conn| {
             conn.execute(

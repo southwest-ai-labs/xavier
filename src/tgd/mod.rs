@@ -114,7 +114,7 @@ impl TgdEngine {
                 );
                 // Update and save cache to avoid redundant threshold checks
                 cache.last_hash = current_hash;
-                cache.last_run = chrono::Utc::now();
+                cache.last_run = jiff::Timestamp::now();
                 if let Err(e) = cache.save(&self.config.cache_path).await {
                     warn!("⚠️ TGD: Failed to save cache: {}", e);
                 }
@@ -163,7 +163,7 @@ impl TgdEngine {
 
                 // Update and save cache after successful run (even if no rules found)
                 cache.last_hash = current_hash;
-                cache.last_run = chrono::Utc::now();
+                cache.last_run = jiff::Timestamp::now();
                 if let Err(e) = cache.save(&self.config.cache_path).await {
                     warn!("⚠️ TGD: Failed to save cache: {}", e);
                 }
@@ -376,7 +376,7 @@ mod tests {
             id: "msg".to_string(),
             role: MessageRole::User,
             content: content.to_string(),
-            timestamp: chrono::Utc::now(),
+            timestamp: jiff::Timestamp::now(),
         }
     }
 

@@ -1,6 +1,6 @@
 //! Token accounting and savings tracker.
 
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenAccountingEntry {
     pub session_id: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub original_tokens: usize,
     pub optimized_tokens: usize,
     pub cost_usd: f32,
@@ -62,7 +62,7 @@ impl TokenAccountingTracker {
 
         let entry = TokenAccountingEntry {
             session_id,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             original_tokens,
             optimized_tokens,
             cost_usd: cost_optimized,

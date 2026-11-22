@@ -201,7 +201,10 @@ async fn test_prune_older_than_days_removes_only_old_records() {
     let (app, _context) = create_test_app().await;
 
     // Add old memory (last_accessed_at set to 10 days ago)
-    let old_access_time = (chrono::Utc::now() - chrono::Duration::days(10)).to_rfc3339();
+    let old_access_time = jiff::Timestamp::now()
+        .checked_sub(jiff::Span::new().hours(10 * 24))
+        .unwrap()
+        .to_string();
     let add_old = Request::builder()
         .method("POST")
         .uri("/v1/memories")
@@ -409,8 +412,8 @@ async fn test_consolidation_merge_duplicate_paths_after_dedup_config_change() {
         content: "Knowledge base entry regarding Xavier core features".to_string(),
         metadata: serde_json::json!({ "dedup": true }),
         embedding: vec![0.1, 0.2, 0.3, 0.4],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         parent_id: None,
@@ -450,8 +453,8 @@ async fn test_consolidation_merge_duplicate_paths_after_dedup_config_change() {
             .to_string(),
         metadata: serde_json::json!({ "dedup": true }),
         embedding: vec![0.11, 0.21, 0.31, 0.41],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         parent_id: None,

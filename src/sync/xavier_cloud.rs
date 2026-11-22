@@ -43,7 +43,7 @@ use aes_gcm::aead::{Aead, KeyInit, Payload};
 use aes_gcm::{Aes256Gcm, Nonce};
 use anyhow::{anyhow, bail, Context, Result};
 use async_trait::async_trait;
-use chrono::{DateTime, Datelike, Utc};
+use jiff::Timestamp;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -450,9 +450,8 @@ pub fn backup_copy(record: &MemoryRecord) -> MemoryRecord {
     r
 }
 
-fn week_key(ts: &DateTime<Utc>) -> String {
-    let w = ts.iso_week();
-    format!("{}-W{:02}", w.year(), w.week())
+fn week_key(ts: &Timestamp) -> String {
+    ts.strftime("%G-W%V").to_string()
 }
 
 fn gzip(data: &[u8]) -> Result<Vec<u8>> {
@@ -551,7 +550,7 @@ pub struct PackRef {
 pub struct BackupManifest {
     pub format: String,
     pub instance_id: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: jiff::Timestamp,
     pub xavier_version: String,
     pub kdf: KdfParams,
     pub kcv: String,
@@ -980,7 +979,7 @@ pub async fn run_backup(
     let mut manifest = BackupManifest {
         format: FORMAT.into(),
         instance_id: instance.clone(),
-        created_at: Utc::now(),
+        created_at: jiff::Timestamp::now(),
         xavier_version: env!("CARGO_PKG_VERSION").into(),
         kdf,
         kcv,
@@ -1005,7 +1004,7 @@ pub async fn run_backup(
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct RestoreReport {
     pub instance_id: String,
-    pub backup_created_at: Option<DateTime<Utc>>,
+    pub backup_created_at: Option<jiff::Timestamp>,
     pub records_in_backup: usize,
     /// False when the restored backup left locked records out.
     pub backup_complete: bool,
@@ -1107,7 +1106,7 @@ pub async fn run_restore(
 pub struct VerifyReport {
     pub instance_id: String,
     pub manifest_found: bool,
-    pub backup_created_at: Option<DateTime<Utc>>,
+    pub backup_created_at: Option<jiff::Timestamp>,
     pub records: usize,
     pub packs: usize,
     pub packs_missing: Vec<String>,
@@ -1281,7 +1280,9 @@ mod tests {
     }
 
     fn record(ws: &str, id: &str, content: &str, days_ago: i64) -> MemoryRecord {
-        let ts = Utc::now() - chrono::Duration::days(days_ago);
+        let ts = Timestamp::now()
+            .checked_sub(jiff::Span::new().hours(days_ago * 24))
+            .unwrap();
         MemoryRecord {
             id: id.into(),
             workspace_id: ws.into(),

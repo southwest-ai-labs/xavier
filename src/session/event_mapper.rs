@@ -3,7 +3,7 @@
 //! Provides the implementation and data structures for this module's
 //! responsibilities within the Xavier cognitive memory system.
 use crate::session::types::{SessionEvent, SessionEventType};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use tracing::info;
 
 /// A single entry in a panel/thread conversation
@@ -11,7 +11,7 @@ use tracing::info;
 pub struct PanelThreadEntry {
     pub role: String,
     pub content: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: Timestamp,
     pub session_id: String,
     pub event_type: String,
 }
@@ -79,14 +79,14 @@ impl PanelThreadEntry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     #[test]
     fn test_map_to_panel_thread_message_user() {
         let event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("User query content".to_string()),
             metadata: None,
         };
@@ -102,7 +102,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::ToolCall,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Call tool_a".to_string()),
             metadata: None,
         };
@@ -117,7 +117,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::ToolResult,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Tool output ok".to_string()),
             metadata: None,
         };
@@ -132,7 +132,7 @@ mod tests {
         let event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::Error,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Fatal execution failure".to_string()),
             metadata: None,
         };
@@ -147,7 +147,7 @@ mod tests {
         let start_event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::SessionStart,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Session initialized".to_string()),
             metadata: None,
         };
@@ -156,7 +156,7 @@ mod tests {
         let end_event = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::SessionEnd,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("Session terminated".to_string()),
             metadata: None,
         };
@@ -168,7 +168,7 @@ mod tests {
         let none_content = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: None,
             metadata: None,
         };
@@ -177,7 +177,7 @@ mod tests {
         let empty_content = SessionEvent {
             session_id: "sess-123".to_string(),
             event_type: SessionEventType::Message,
-            timestamp: Utc::now(),
+            timestamp: Timestamp::now(),
             content: Some("".to_string()),
             metadata: None,
         };

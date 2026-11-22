@@ -4,7 +4,7 @@
 //! Tokens and private keys are ALWAYS masked or completely redacted before logging.
 
 use crate::nodes::Provider;
-use chrono::Utc;
+use jiff::Timestamp;
 use tracing::info;
 
 /// Mask a secret token or key for audit logging.
@@ -46,7 +46,7 @@ impl std::fmt::Display for NodeAuditEvent {
 
 /// Log a structured node audit event with automatic secret masking.
 pub fn log_node_audit(event: NodeAuditEvent, node_id: &str, provider: Provider, details: &str) {
-    let now = Utc::now().to_rfc3339();
+    let now = Timestamp::now().to_string();
     info!(
         audit = true,
         timestamp = %now,

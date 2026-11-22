@@ -2,7 +2,7 @@ use crate::agents::provider::config::ModelProviderConfig;
 use crate::agents::provider::types::{LlmResponse, ProviderMode};
 use crate::domain::proxy::types::{ApiTier, ProviderKind, ProviderQuota};
 use anyhow::{anyhow, Context, Result};
-use chrono::Utc;
+use jiff::{Span, Timestamp};
 use reqwest::Client;
 use serde_json::json;
 
@@ -174,10 +174,10 @@ pub(crate) async fn generate_openai_compatible(
                 r.parse::<u64>().ok().map(|s| {
                     if s > 1_000_000_000 {
                         // Likely a timestamp
-                        chrono::DateTime::from_timestamp(s as i64, 0).unwrap_or_default()
+                        Timestamp::from_second(s as i64).unwrap_or(Timestamp::UNIX_EPOCH)
                     } else {
                         // Likely seconds until reset
-                        Utc::now() + chrono::Duration::seconds(s as i64)
+                        Timestamp::now() + Span::new().seconds(s as i64)
                     }
                 })
             }
@@ -194,7 +194,7 @@ pub(crate) async fn generate_openai_compatible(
             requests_limit: limit_req,
             tokens_limit: limit_tok,
             resets_at,
-            last_checked: Utc::now(),
+            last_checked: Timestamp::now(),
         });
     }
 

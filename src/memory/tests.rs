@@ -14,7 +14,7 @@ mod tests {
     use crate::memory::simple_index::{extract_keywords, SimpleMemoryDoc, SimpleMemoryIndex};
     use crate::memory::store::{InMemoryMemoryStore, MemoryRecord, MemoryStore};
     use crate::memory::virtual_memory::{Checkpoint, TokenSavings, VirtualMemoryEntry};
-    use chrono::Utc;
+    use jiff::Timestamp;
 
     // ==================== Hierarchy Tests ====================
 
@@ -26,8 +26,8 @@ mod tests {
             content: "test".to_string(),
             metadata: serde_json::json!({}),
             embedding: vec![],
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
             revision: 1,
             primary: true,
             parent_id: None,
@@ -736,7 +736,9 @@ mod tests {
                 "namespace": { "project": "gara-g", "scope": "project" }
             }),
             encrypted_dek: Some(Vec::new()),
-            created_at: chrono::Utc::now() - chrono::Duration::days(30),
+            created_at: Timestamp::now()
+                .checked_sub(jiff::Span::new().hours(30 * 24))
+                .unwrap(),
             ..Default::default()
         };
         store.put(matching).await.unwrap();
@@ -753,7 +755,9 @@ mod tests {
                     "namespace": { "project": "otro", "scope": "session" }
                 }),
                 encrypted_dek: Some(Vec::new()),
-                created_at: chrono::Utc::now() - chrono::Duration::minutes(i as i64),
+                created_at: Timestamp::now()
+                    .checked_sub(jiff::Span::new().minutes(i as i64))
+                    .unwrap(),
                 ..Default::default()
             };
             store.put(rec).await.unwrap();

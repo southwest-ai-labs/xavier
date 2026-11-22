@@ -67,7 +67,7 @@ impl DiscordClient {
                 title,
                 description,
                 color,
-                timestamp: Some(chrono::Utc::now().to_rfc3339()),
+                timestamp: Some(jiff::Timestamp::now().to_string()),
             }],
             username: "Xavier".to_string(),
             avatar_url: None, // Could be configurable later

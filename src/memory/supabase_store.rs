@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use chrono::Utc;
+use jiff::Timestamp;
 use reqwest::Client;
 use serde_json::json;
 use std::any::Any;
@@ -372,7 +372,7 @@ impl MemoryStore for SupabaseMemoryStore {
             .and_then(|v| serde_json::from_value(v).ok())
             .unwrap_or_default();
 
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         let session_tokens = self
             .postgrest_get(
                 "session_tokens",
@@ -402,7 +402,7 @@ impl MemoryStore for SupabaseMemoryStore {
             "id": belief_key,
             "workspace_id": workspace_id,
             "beliefs": beliefs,
-            "updated_at": Utc::now().to_rfc3339()
+            "updated_at": Timestamp::now().to_string()
         });
         self.postgrest_upsert("belief_states", &payload).await
     }
@@ -417,15 +417,15 @@ impl MemoryStore for SupabaseMemoryStore {
             "id": token_key,
             "workspace_id": workspace_id,
             "token": token.token,
-            "created_at": token.created_at.to_rfc3339(),
-            "expires_at": token.expires_at.to_rfc3339()
+            "created_at": token.created_at.to_string(),
+            "expires_at": token.expires_at.to_string()
         });
         self.postgrest_upsert("session_tokens", &payload).await
     }
 
     async fn is_session_token_valid(&self, workspace_id: &str, token: &str) -> Result<bool> {
         let token_key = stable_key("session_token_row", &[workspace_id, token]);
-        let now = Utc::now().to_rfc3339();
+        let now = Timestamp::now().to_string();
         let rows: Vec<serde_json::Value> = self
             .postgrest_get(
                 "session_tokens",

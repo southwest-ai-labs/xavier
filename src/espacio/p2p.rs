@@ -26,7 +26,7 @@ pub struct ClosedNetwork {
     pub space_id: String,
     pub network_id: String,
     pub members: Vec<String>,
-    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub created_at: jiff::Timestamp,
 }
 
 /// Encrypted envelope for P2P payload (AES-256-GCM)
@@ -67,7 +67,7 @@ impl ClosedNetworkManager {
             space_id: space_id.clone(),
             network_id: format!("net_{}", ulid::Ulid::new()),
             members,
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
         };
         let id = network.network_id.clone();
         self.networks.write().await.insert(id, network.clone());
@@ -462,7 +462,7 @@ mod tests {
             space_id: "esp_b".into(),
             author: "n1".into(),
             content: "hello".into(),
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
         };
         let pt = serde_json::to_vec(&vec![msg]).unwrap();
         let env = mgr.encrypt(&net.network_id, "n1", &pt, &KEY).unwrap();
@@ -483,7 +483,7 @@ mod tests {
             space_id: "esp_a".into(),
             author: "n1".into(),
             content: "hello".into(),
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
         };
         let pt = serde_json::to_vec(&vec![msg]).unwrap();
         let wire_key = ClosedNetworkManager::derive_network_key(&KEY, &net.network_id).unwrap();
@@ -507,7 +507,7 @@ mod tests {
             space_id: "esp_a".into(),
             author: "n1".into(),
             content: "hello".into(),
-            created_at: chrono::Utc::now(),
+            created_at: jiff::Timestamp::now(),
         };
         let pt = serde_json::to_vec(&vec![msg]).unwrap();
         let wire_key = ClosedNetworkManager::derive_network_key(&KEY, &net.network_id).unwrap();

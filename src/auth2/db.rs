@@ -202,7 +202,7 @@ impl AuthDb {
         user_id: &str,
         email: Option<&str>,
     ) -> AnyhowResult<()> {
-        let now = chrono::Utc::now().timestamp();
+        let now = jiff::Timestamp::now().as_second();
         self.conn
             .execute(
                 "INSERT INTO oauth_identities (provider, subject, user_id, email, created_at)

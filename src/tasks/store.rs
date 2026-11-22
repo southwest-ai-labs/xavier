@@ -247,7 +247,7 @@ impl<S: TaskStore> TaskService<S> {
             .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
         task.assignee = Some(assignee.to_string());
-        task.updated_at = chrono::Utc::now();
+        task.updated_at = jiff::Timestamp::now();
         self.store.update_task(&task).await?;
 
         Ok(task)

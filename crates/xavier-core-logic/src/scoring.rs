@@ -3,6 +3,7 @@
 //! Provides pure, I/O-free scoring logic for working, episodic, and semantic memories.
 
 use crate::types::{ContextZone, EntityRecord, MemoryDocument, ScoredResult, SessionSummary};
+use jiff::Timestamp;
 
 pub const EXACT_PHRASE_MATCH_BONUS: f32 = 0.5;
 pub const TERM_MATCH_BONUS: f32 = 0.1;
@@ -24,15 +25,30 @@ pub struct WorkingScoringParams<'a> {
     pub active_zones: Option<&'a Vec<ContextZone>>,
     pub zone_boost_multiplier: f32,
     pub zone_penalty_multiplier: f32,
-    pub now: chrono::DateTime<chrono::Utc>,
+    pub now: Timestamp,
     pub recency_weight: f32,
     pub half_life_hours: f32,
+}
+
+/// Extract temporal anchor from string representation.
+pub fn extract_temporal_anchor(s: &str) -> Option<Timestamp> {
+    s.parse::<Timestamp>().ok()
+}
+
+/// Calculate recency decay using half life in days.
+pub fn recency_decay(updated_at_ms: i64, now: Timestamp, half_life_days: f32) -> f32 {
+    let updated_at = Timestamp::from_millisecond(updated_at_ms).unwrap_or(now);
+    let elapsed_days = (now.duration_since(updated_at).as_secs_f64() / 86400.0).max(0.0) as f32;
+    if half_life_days <= 0.0 {
+        return 1.0;
+    }
+    (-elapsed_days / half_life_days).exp()
 }
 
 /// Calculate recency boost factor.
 pub fn calculate_recency_boost_factor(
     updated_at_ms: Option<i64>,
-    now: chrono::DateTime<chrono::Utc>,
+    now: Timestamp,
     recency_weight: f32,
     half_life_hours: f32,
 ) -> f32 {
@@ -42,9 +58,8 @@ pub fn calculate_recency_boost_factor(
     let Some(updated_at_ms) = updated_at_ms else {
         return 1.0;
     };
-    let updated_at = chrono::DateTime::from_timestamp_millis(updated_at_ms).unwrap_or(now);
-    let age_hours = (now - updated_at).num_hours() as f32;
-    let age_hours = age_hours.max(0.0);
+    let updated_at = Timestamp::from_millisecond(updated_at_ms).unwrap_or(now);
+    let age_hours = (now.duration_since(updated_at).as_secs_f64() / 3600.0).max(0.0) as f32;
     if half_life_hours <= 0.0 {
         return 1.0 + recency_weight;
     }
@@ -87,8 +102,8 @@ pub fn score_single_working(
             .metadata
             .get("updated_at")
             .and_then(|v| v.as_str())
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.timestamp_millis());
+            .and_then(|s| s.parse::<Timestamp>().ok())
+            .map(|dt| dt.as_millisecond());
         let recency = calculate_recency_boost_factor(
             updated_at_ms,
             params.now,
@@ -115,7 +130,7 @@ pub fn score_single_episodic(
     session: &SessionSummary,
     query_lower: &str,
     query_terms: &[&str],
-    now: chrono::DateTime<chrono::Utc>,
+    now: Timestamp,
     recency_weight: f32,
     half_life_hours: f32,
 ) -> Option<ScoredResult> {
@@ -144,7 +159,7 @@ pub fn score_single_episodic(
     }
     if score > 0.0 {
         let mut final_score = score.min(1.0);
-        let updated_at_ms = Some(session.start_time.timestamp_millis());
+        let updated_at_ms = Some(session.start_time.as_millisecond());
         let recency =
             calculate_recency_boost_factor(updated_at_ms, now, recency_weight, half_life_hours);
         final_score *= recency;
@@ -166,7 +181,7 @@ pub fn score_single_episodic(
 pub fn score_single_semantic(
     entity: &EntityRecord,
     query_lower: &str,
-    now: chrono::DateTime<chrono::Utc>,
+    now: Timestamp,
     recency_weight: f32,
     half_life_hours: f32,
 ) -> Option<ScoredResult> {
@@ -198,7 +213,7 @@ pub fn score_single_semantic(
     }
     let mut final_score = (score * SEMANTIC_CONFIDENCE_MULTIPLIER).min(1.0);
     if final_score > 0.0 {
-        let updated_at_ms = Some(entity.last_seen.timestamp_millis());
+        let updated_at_ms = Some(entity.last_seen.as_millisecond());
         let recency =
             calculate_recency_boost_factor(updated_at_ms, now, recency_weight, half_life_hours);
         final_score *= recency;
@@ -219,51 +234,65 @@ pub fn score_single_semantic(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::Span;
 
     #[test]
     fn test_recency_boost_zero_weight_returns_one() {
-        let now = chrono::Utc::now();
-        let result = calculate_recency_boost_factor(Some(now.timestamp_millis()), now, 0.0, 24.0);
+        let now = Timestamp::now();
+        let result = calculate_recency_boost_factor(Some(now.as_millisecond()), now, 0.0, 24.0);
         assert_eq!(result, 1.0);
     }
 
     #[test]
     fn test_recency_boost_no_timestamp_returns_one() {
-        let now = chrono::Utc::now();
+        let now = Timestamp::now();
         let result = calculate_recency_boost_factor(None, now, 0.5, 24.0);
         assert_eq!(result, 1.0);
     }
 
     #[test]
     fn test_recency_boost_fresh_returns_boosted() {
-        let now = chrono::Utc::now();
-        let result = calculate_recency_boost_factor(Some(now.timestamp_millis()), now, 0.5, 24.0);
+        let now = Timestamp::now();
+        let result = calculate_recency_boost_factor(Some(now.as_millisecond()), now, 0.5, 24.0);
         assert!((result - 1.5).abs() < 0.001);
     }
 
     #[test]
     fn test_recency_boost_old_decays() {
-        let now = chrono::Utc::now();
-        let hours_ago = chrono::Utc::now() - chrono::Duration::hours(48);
+        let now = Timestamp::now();
+        let hours_ago = now.checked_sub(Span::new().hours(48)).unwrap();
         let result =
-            calculate_recency_boost_factor(Some(hours_ago.timestamp_millis()), now, 0.5, 24.0);
+            calculate_recency_boost_factor(Some(hours_ago.as_millisecond()), now, 0.5, 24.0);
         assert!(result > 1.0);
         assert!(result < 1.5);
     }
 
     #[test]
     fn test_recency_boost_negative_half_life() {
-        let now = chrono::Utc::now();
-        let result = calculate_recency_boost_factor(Some(now.timestamp_millis()), now, 0.5, -1.0);
+        let now = Timestamp::now();
+        let result = calculate_recency_boost_factor(Some(now.as_millisecond()), now, 0.5, -1.0);
         assert!((result - 1.5).abs() < 0.001);
     }
 
     #[test]
     fn test_recency_boost_future_timestamp_uses_now() {
-        let now = chrono::Utc::now();
-        let future = now + chrono::Duration::hours(24);
-        let result =
-            calculate_recency_boost_factor(Some(future.timestamp_millis()), now, 0.5, 24.0);
+        let now = Timestamp::now();
+        let future = now.checked_add(Span::new().hours(24)).unwrap();
+        let result = calculate_recency_boost_factor(Some(future.as_millisecond()), now, 0.5, 24.0);
         assert!((result - 1.5).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_recency_decay_and_temporal_anchor() {
+        let now = Timestamp::now();
+        let parsed = extract_temporal_anchor("2026-11-19T12:00:00Z");
+        assert!(parsed.is_some());
+
+        let decay = recency_decay(now.as_millisecond(), now, 7.0);
+        assert!((decay - 1.0).abs() < 0.001);
+
+        let past = now.checked_sub(Span::new().hours(7 * 24)).unwrap();
+        let decay_past = recency_decay(past.as_millisecond(), now, 7.0);
+        assert!((decay_past - (-1.0_f32).exp()).abs() < 0.01);
     }
 }

@@ -363,9 +363,10 @@ fn parse_since(since: &Option<String>) -> SystemTime {
     if let Ok(secs) = trimmed.parse::<u64>() {
         return SystemTime::UNIX_EPOCH + Duration::from_secs(secs);
     }
-    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(trimmed) {
-        let utc = dt.with_timezone(&chrono::Utc);
-        return utc.into();
+    if let Ok(ts) = trimmed.parse::<jiff::Timestamp>() {
+        if ts.as_nanosecond() >= 0 {
+            return SystemTime::UNIX_EPOCH + Duration::from_nanos(ts.as_nanosecond() as u64);
+        }
     }
     SystemTime::UNIX_EPOCH
 }

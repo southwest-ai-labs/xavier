@@ -305,7 +305,7 @@ mod tests {
             chunk_hash: format!("hash_{}", namespace),
             namespace: namespace.to_string(),
             revision: 1,
-            updated_at: chrono::Utc::now(),
+            updated_at: jiff::Timestamp::now(),
             size_bytes: 100,
             record_path: Some(format!("/memories/{}", namespace)),
         }
@@ -864,7 +864,7 @@ mod tests {
         let active_consent = ActiveConsent {
             token_id: "tok_123".to_string(),
             workspace_id: "ws_test".to_string(),
-            expires_at: chrono::Utc::now().timestamp() as u64 + 3600,
+            expires_at: (jiff::Timestamp::now().as_second() + 3600) as u64,
             token: "secret_token".to_string(),
         };
         DataConsentManager::register_active_consent(active_consent.clone()).unwrap();

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
@@ -41,7 +40,7 @@ impl SystemAlertStore {
             level: level.to_string(),
             message: formatted_message,
             component: component.to_string(),
-            created_at: Utc::now(),
+            created_at: jiff::Timestamp::now(),
         };
 
         if let Ok(mut alerts) = self.alerts.write() {
@@ -121,12 +120,12 @@ impl SystemAlertStore {
         window_secs: u64,
         key: Option<&crate::espacio::keys::KeyHandle>,
     ) -> bool {
-        let now = Utc::now();
-        let window_duration = chrono::Duration::seconds(window_secs as i64);
+        let now = jiff::Timestamp::now();
+        let window_duration = jiff::Span::new().seconds(window_secs as i64);
 
         if let Ok(guard) = self.last_email_sent.read() {
             if let Some(last_time) = guard.get(alert_key) {
-                if now < *last_time + window_duration {
+                if now < last_time.checked_add(window_duration).unwrap_or(*last_time) {
                     return false;
                 }
             }
@@ -136,7 +135,7 @@ impl SystemAlertStore {
         let key_owned = alert_key.to_string();
         let exclude_owned = exclude_id.to_string();
         let dek = key.cloned();
-        let db_last_ts: Option<DateTime<Utc>> = crate::codebase::connection_manager::ConnectionManager::global()
+        let db_last_ts: Option<jiff::Timestamp> = crate::codebase::connection_manager::ConnectionManager::global()
             .with_conn("memory", move |conn| {
                 let mut stmt = conn.prepare(
                     "SELECT id, title, body, timestamp FROM notifications WHERE id != ?1 ORDER BY timestamp DESC LIMIT 200",
@@ -162,7 +161,7 @@ impl SystemAlertStore {
                     };
 
                     if opened_title == key_owned {
-                        return Ok(ts_str.parse::<DateTime<Utc>>().ok());
+                        return Ok(ts_str.parse::<jiff::Timestamp>().ok());
                     }
                 }
                 Ok(None)
@@ -171,7 +170,7 @@ impl SystemAlertStore {
             .unwrap_or(None);
 
         if let Some(last_ts) = db_last_ts {
-            if now < last_ts + window_duration {
+            if now < last_ts.checked_add(window_duration).unwrap_or(last_ts) {
                 return false;
             }
         }
@@ -182,7 +181,7 @@ impl SystemAlertStore {
     /// Record that an email notification was sent for the given key.
     pub fn record_email_sent(&self, alert_key: &str) {
         if let Ok(mut guard) = self.last_email_sent.write() {
-            guard.insert(alert_key.to_string(), Utc::now());
+            guard.insert(alert_key.to_string(), jiff::Timestamp::now());
         }
     }
 
@@ -399,7 +398,7 @@ mod tests {
         let store = SystemAlertStore::new();
         let alert_title = "Sealed Storage Disk Failure";
 
-        let now_str = Utc::now().to_rfc3339();
+        let now_str = jiff::Timestamp::now().to_string();
         let inserted_id = "alert-notif-1";
         cm.with_conn("memory", {
             let dek = dek.clone();

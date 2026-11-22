@@ -620,24 +620,38 @@ pub fn temporal_decay_multiplier(created_at: Option<&str>, half_life_days: f32) 
         return 1.0;
     }
 
-    let parsed_time = chrono::DateTime::parse_from_rfc3339(raw_date)
-        .map(|dt| dt.with_timezone(&chrono::Utc))
+    let parsed_time = raw_date
+        .parse::<jiff::Timestamp>()
         .or_else(|_| {
-            chrono::NaiveDateTime::parse_from_str(raw_date, "%Y-%m-%d %H:%M:%S")
-                .map(|ndt| ndt.and_utc())
+            raw_date
+                .parse::<jiff::civil::DateTime>()
+                .ok()
+                .and_then(|dt| {
+                    dt.to_zoned(jiff::tz::TimeZone::UTC)
+                        .ok()
+                        .map(|z| z.timestamp())
+                })
+                .ok_or(())
         })
         .or_else(|_| {
-            chrono::NaiveDate::parse_from_str(raw_date, "%Y-%m-%d")
-                .map(|nd| nd.and_hms_opt(0, 0, 0).unwrap().and_utc())
+            raw_date
+                .parse::<jiff::civil::Date>()
+                .ok()
+                .and_then(|nd| {
+                    nd.to_zoned(jiff::tz::TimeZone::UTC)
+                        .ok()
+                        .map(|z| z.timestamp())
+                })
+                .ok_or(())
         });
 
     let Ok(created_utc) = parsed_time else {
         return 1.0;
     };
 
-    let now = chrono::Utc::now();
-    let age_seconds = (now - created_utc).num_seconds().max(0);
-    let age_days = age_seconds as f32 / 86400.0;
+    let now = jiff::Timestamp::now();
+    let age_seconds = now.duration_since(created_utc).as_secs_f64().max(0.0);
+    let age_days = (age_seconds / 86400.0) as f32;
 
     (-age_days / half_life_days).exp()
 }
@@ -668,11 +682,11 @@ pub fn memory_decay_penalty(document: &MemoryDocument) -> f32 {
     let Some(updated) = updated else {
         return 0.0;
     };
-    let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(updated) else {
+    let Ok(parsed) = updated.parse::<jiff::Timestamp>() else {
         return 0.0;
     };
-    use chrono::Utc;
-    let age_days = (Utc::now() - parsed.with_timezone(&Utc)).num_days().max(0) as f32;
+    let age_days =
+        (jiff::Timestamp::now().duration_since(parsed).as_secs_f64() / 86400.0).max(0.0) as f32;
     -(age_days / 365.0).min(1.0) * 0.15
 }
 
@@ -1159,12 +1173,16 @@ mod tests {
         );
 
         // Brand new timestamp (now) should yield ~1.0
-        let now_str = chrono::Utc::now().to_rfc3339();
+        let now = jiff::Timestamp::now();
+        let now_str = now.to_string();
         let fresh_mult = temporal_decay_multiplier(Some(&now_str), 30.0);
         assert!((fresh_mult - 1.0).abs() < 1e-3);
 
         // Exactly 30 days old with 30-day half-life -> exp(-1) = 0.367879...
-        let thirty_days_ago = (chrono::Utc::now() - chrono::Duration::days(30)).to_rfc3339();
+        let thirty_days_ago = now
+            .checked_sub(jiff::Span::new().hours(30 * 24))
+            .unwrap()
+            .to_string();
         let half_life_mult = temporal_decay_multiplier(Some(&thirty_days_ago), 30.0);
         let expected_exp = (-1.0_f32).exp();
         assert!(
@@ -1175,7 +1193,10 @@ mod tests {
         );
 
         // 60 days old -> exp(-2) = 0.135335...
-        let sixty_days_ago = (chrono::Utc::now() - chrono::Duration::days(60)).to_rfc3339();
+        let sixty_days_ago = now
+            .checked_sub(jiff::Span::new().hours(60 * 24))
+            .unwrap()
+            .to_string();
         let double_half_life_mult = temporal_decay_multiplier(Some(&sixty_days_ago), 30.0);
         assert!(double_half_life_mult < half_life_mult);
         assert!(half_life_mult < fresh_mult);

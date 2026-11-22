@@ -242,12 +242,14 @@ impl VecSqliteMemoryStore {
             } else {
                 vector::deserialize_embedding(&embedding_blob)
             },
-            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(6)?)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|_| chrono::Utc::now()),
-            updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|_| chrono::Utc::now()),
+            created_at: row
+                .get::<_, String>(6)?
+                .parse::<jiff::Timestamp>()
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
+            updated_at: row
+                .get::<_, String>(7)?
+                .parse::<jiff::Timestamp>()
+                .unwrap_or_else(|_| jiff::Timestamp::now()),
             revision: row.get(8)?,
             primary: row.get::<_, i32>(9)? != 0,
             parent_id: row.get::<_, Option<String>>(10)?,

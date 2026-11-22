@@ -22,7 +22,7 @@ static LAST_CONFIG: std::sync::LazyLock<RwLock<Option<ConfigSnapshot>>> =
 
 /// Snapshot the current configuration
 pub fn snapshot_config(context: &str) -> ConfigSnapshot {
-    let timestamp = chrono::Utc::now().timestamp();
+    let timestamp = jiff::Timestamp::now().as_second();
     let mut values = HashMap::new();
 
     // Snapshot environment variables (sanitized)

@@ -72,7 +72,7 @@ pub async fn session_event_handler(
 
     let content = format!(
         "[{}] {}: {}",
-        entry.timestamp.format("%Y-%m-%d %H:%M:%S"),
+        entry.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
         entry.role,
         entry_content
     );
@@ -85,8 +85,8 @@ pub async fn session_event_handler(
         content,
         metadata: serde_json::json!({"kind": "Context", "namespace": "Session"}),
         embedding: vec![],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         score: 0.0,
@@ -218,8 +218,8 @@ pub async fn session_compact_handler(
         content: compacted_content.clone(),
         metadata: serde_json::json!({"kind": "Context", "namespace": "Session"}),
         embedding: vec![],
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: jiff::Timestamp::now(),
+        updated_at: jiff::Timestamp::now(),
         revision: 1,
         primary: true,
         deleted_at: None,
