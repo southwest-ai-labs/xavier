@@ -5,8 +5,20 @@ use keystore::MeshKeyringStore;
 use tempfile::TempDir;
 use xavier::mesh::node::NodeIdentity;
 
+fn sever_dbus() {
+    std::env::set_var(
+        "DBUS_SESSION_BUS_ADDRESS",
+        "unix:path=/nonexistent-xavier-test-secret-service",
+    );
+    std::env::set_var(
+        "DBUS_SYSTEM_BUS_ADDRESS",
+        "unix:path=/nonexistent-xavier-test-secret-service",
+    );
+}
+
 #[test]
 fn test_mesh_keystore_fallback_save_load_roundtrip() {
+    sever_dbus();
     let temp_dir = TempDir::new().unwrap();
     let store = MeshKeyringStore::with_path(temp_dir.path().to_path_buf());
 
@@ -33,6 +45,7 @@ fn test_mesh_keystore_fallback_save_load_roundtrip() {
 
 #[test]
 fn test_mesh_keystore_delete() {
+    sever_dbus();
     let temp_dir = TempDir::new().unwrap();
     let store = MeshKeyringStore::with_path(temp_dir.path().to_path_buf());
 
@@ -48,6 +61,7 @@ fn test_mesh_keystore_delete() {
 
 #[test]
 fn test_mesh_keystore_probe() {
+    sever_dbus();
     let store = MeshKeyringStore::new();
     // probe method should execute without panicking
     let _available = store.is_keyring_available();
