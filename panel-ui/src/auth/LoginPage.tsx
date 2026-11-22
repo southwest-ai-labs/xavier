@@ -121,7 +121,7 @@ export const LoginPage: React.FC = () => {
                 const mail = params.get("email");
                 const tenant = params.get("tenant");
                 if (sessionToken) {
-                  useAuthStore.getState().setSession(sessionToken, mail || undefined, tenant || undefined);
+                  void useAuthStore.getState().verifySessionToken(sessionToken, mail || undefined);
                 }
               }
             }

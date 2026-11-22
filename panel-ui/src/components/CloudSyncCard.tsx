@@ -51,9 +51,9 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
     connected: false,
     tenant: "unconnected",
     plan: "standard",
-    storageUsedBytes: 96174899, // 91.72 MiB
+    storageUsedBytes: 0,
     storageQuotaBytes: 1073741824, // 1 GiB
-    chunksVerified: 1420,
+    chunksVerified: 0,
     lastSyncedAt: null,
     endpoint: "xavier-cloud.swal.network",
   });
@@ -126,20 +126,19 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
           authStatus?.role === "founder"
             ? "founder"
             : authStatus?.plan || "founder";
-        const connected =
-          authStatus?.status === "authenticated" ||
-          syncStatus?.initialized ||
-          true;
+        const connected = Boolean(
+          authStatus?.status === "authenticated" || syncStatus?.initialized,
+        );
         const chunks =
           syncStatus?.last_session?.pulled_count !== undefined
-            ? syncStatus.last_session.pulled_count + 1420
-            : 1420;
+            ? syncStatus.last_session.pulled_count
+            : (syncStatus?.stats?.chunks_count ?? 0);
         const lastSync =
-          syncStatus?.last_session?.ended_at || new Date().toISOString();
+          syncStatus?.last_session?.ended_at || null;
 
         setStatus((prev) => ({
           ...prev,
-          connected: Boolean(connected),
+          connected,
           tenant: String(tenant),
           plan: String(plan),
           chunksVerified: chunks,
@@ -148,6 +147,14 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
 
         // Reset backoff on success
         backoffRef.current = 1000;
+      } else {
+        setStatus((prev) => ({
+          ...prev,
+          connected: false,
+          tenant: "unconnected",
+          chunksVerified: 0,
+          lastSyncedAt: null,
+        }));
       }
     } catch {
       // Exponential backoff
@@ -191,7 +198,10 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
       let res = await fetch(getApiUrl("/api/v1/memory/sync/push"), {
         method: "POST",
         headers,
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          peer_url: "https://xaviercloud.swal.network",
+          workspace_id: "default",
+        }),
       });
 
       if (!res.ok) {
@@ -202,19 +212,16 @@ export const CloudSyncCard: React.FC<CloudSyncCardProps> = ({
         });
       }
 
-      setStatus((prev) => ({
-        ...prev,
-        connected: true,
-        lastSyncedAt: new Date().toISOString(),
-        chunksVerified: prev.chunksVerified + 5,
-        storageUsedBytes: Math.min(
-          prev.storageQuotaBytes,
-          prev.storageUsedBytes + 1024 * 1024 * 2,
-        ),
-      }));
-
-      setSyncMessage("Incremental sync completed successfully!");
-      if (onSyncComplete) onSyncComplete();
+      if (res.ok) {
+        await fetchStatus();
+        setSyncMessage("Incremental sync completed successfully!");
+        if (onSyncComplete) onSyncComplete();
+      } else {
+        const errData = await res.json().catch(() => null);
+        throw new Error(
+          errData?.message || `Sync failed with status ${res.status}`,
+        );
+      }
     } catch (e: any) {
       setSyncError(e?.message || "Incremental sync failed to reach R2 gateway.");
     } finally {

@@ -296,19 +296,22 @@ function AppContent() {
 			const q = h.indexOf("?");
 			if (q >= 0) {
 				const params = new URLSearchParams(h.slice(q + 1));
-				const sessionToken =
-					params.get("token") ||
-					(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
+				const sessionToken = params.get("token");
 				const email = params.get("email") || undefined;
-				const tenant = params.get("tenant") || undefined;
 				if (sessionToken) {
-					useAuthStore.getState().setSession(sessionToken, email, tenant);
-					localStorage.setItem("xavier_onboarding_completed", "true");
-					localStorage.setItem("xavier_security_onboarding_completed", "true");
-					setShowOnboarding(false);
-					setShowSecurityOnboarding(false);
-					window.history.replaceState(null, "", window.location.pathname);
-					setHash("");
+					void useAuthStore
+						.getState()
+						.verifySessionToken(sessionToken, email)
+						.then((verified) => {
+							if (verified) {
+								localStorage.setItem("xavier_onboarding_completed", "true");
+								localStorage.setItem("xavier_security_onboarding_completed", "true");
+								setShowOnboarding(false);
+								setShowSecurityOnboarding(false);
+								window.history.replaceState(null, "", window.location.pathname);
+								setHash("");
+							}
+						});
 				}
 			}
 		}

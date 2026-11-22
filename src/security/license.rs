@@ -30,17 +30,15 @@ use crate::settings::XavierSettings;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
-/// Seed for default SWAL License Authority root keypair (32 bytes)
-pub const SWAL_ROOT_LICENSE_SEED: &[u8; 32] = b"SWAL-COMMERCIAL-LICENSE-KEY-2026";
-
-/// Get SWAL License Authority root signing key
-pub fn swal_root_signing_key() -> SigningKey {
-    SigningKey::from_bytes(SWAL_ROOT_LICENSE_SEED)
-}
+/// Official SWAL License Authority root verifying public key (32 bytes)
+pub const SWAL_ROOT_VERIFYING_KEY_BYTES: [u8; 32] = [
+    0xa2, 0xd4, 0xd0, 0xca, 0xab, 0x79, 0x2d, 0x08, 0x6e, 0xba, 0x18, 0x2a, 0x1c, 0x02, 0x73, 0xc1,
+    0xc3, 0xcf, 0xfa, 0x01, 0x38, 0x69, 0x32, 0x4b, 0x00, 0x73, 0xfd, 0xbc, 0x31, 0x43, 0x2a, 0x4a,
+];
 
 /// Get SWAL License Authority root verifying key bytes (32 bytes)
 pub fn swal_root_verifying_key_bytes() -> [u8; 32] {
-    swal_root_signing_key().verifying_key().to_bytes()
+    SWAL_ROOT_VERIFYING_KEY_BYTES
 }
 
 /// Payload structure encoded within a SWAL Commercial License token.
@@ -301,12 +299,8 @@ pub fn accept_commercial_license_for_node(
         }
     }
 
-    // Fallback for development mode non-token keys
-    settings.license.mesh_accepted = true;
-    settings.license.license_type = "Xavier-Commercial-1.0".to_string();
-    settings.license.commercial_key = Some(key.to_string());
-    tracing::info!("Commercial License accepted (development mode key)");
-    true
+    tracing::warn!("Commercial license rejected: invalid token format or signature");
+    false
 }
 
 /// Accept a Commercial License (requires key/verification).
@@ -319,6 +313,21 @@ pub fn accept_commercial_license(settings: &mut XavierSettings, license_key: &st
 mod tests {
     use super::*;
     use crate::settings::XavierSettings;
+
+    fn test_signing_key() -> SigningKey {
+        SigningKey::from_bytes(b"SWAL-COMMERCIAL-LICENSE-KEY-2026")
+    }
+
+    fn sample_commercial_token(tier: &str, node_id: Option<&str>) -> String {
+        let signing_key = test_signing_key();
+        let payload = CommercialLicensePayload {
+            issuer: "SWAL".to_string(),
+            tier: tier.to_string(),
+            expires_at: Some(jiff::Timestamp::now().as_second() + 86400),
+            node_id: node_id.map(str::to_string),
+        };
+        generate_license_token("SWAL-COM", &payload, &signing_key).unwrap()
+    }
 
     #[test]
     fn test_default_license_is_agpl() {
@@ -339,10 +348,8 @@ mod tests {
     #[test]
     fn test_accept_commercial_upgrades_license() {
         let mut settings = XavierSettings::default();
-        assert!(accept_commercial_license(
-            &mut settings,
-            "swal-com-2026-abc123"
-        ));
+        let token = sample_commercial_token("Commercial", None);
+        assert!(accept_commercial_license(&mut settings, &token));
         assert_eq!(detect_license(&settings), LicenseKind::Commercial);
     }
 
@@ -350,6 +357,16 @@ mod tests {
     fn test_empty_commercial_key_rejected() {
         let mut settings = XavierSettings::default();
         assert!(!accept_commercial_license(&mut settings, ""));
+        assert_eq!(detect_license(&settings), LicenseKind::Agpl);
+    }
+
+    #[test]
+    fn test_non_token_commercial_key_rejected() {
+        let mut settings = XavierSettings::default();
+        assert!(!accept_commercial_license(
+            &mut settings,
+            "swal-com-2026-abc123"
+        ));
         assert_eq!(detect_license(&settings), LicenseKind::Agpl);
     }
 
@@ -401,7 +418,7 @@ mod tests {
 
     #[test]
     fn test_valid_signed_license_token_verification() {
-        let signing_key = swal_root_signing_key();
+        let signing_key = test_signing_key();
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Commercial".to_string(),
@@ -418,7 +435,7 @@ mod tests {
 
     #[test]
     fn test_expired_license_token_rejected() {
-        let signing_key = swal_root_signing_key();
+        let signing_key = test_signing_key();
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Enterprise".to_string(),
@@ -433,7 +450,7 @@ mod tests {
 
     #[test]
     fn test_node_id_mismatch_rejected() {
-        let signing_key = swal_root_signing_key();
+        let signing_key = test_signing_key();
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Commercial".to_string(),
@@ -448,7 +465,7 @@ mod tests {
 
     #[test]
     fn test_tampered_signature_rejected() {
-        let signing_key = swal_root_signing_key();
+        let signing_key = test_signing_key();
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Commercial".to_string(),
@@ -481,7 +498,7 @@ mod tests {
     #[test]
     fn test_accept_commercial_license_with_signed_token() {
         let mut settings = XavierSettings::default();
-        let signing_key = swal_root_signing_key();
+        let signing_key = test_signing_key();
         let payload = CommercialLicensePayload {
             issuer: "SWAL".to_string(),
             tier: "Enterprise".to_string(),
@@ -536,14 +553,17 @@ mod tests {
     /// commercial gates after a round-trip.
     #[test]
     fn test_commercial_license_persists_with_key() {
-        let key = "swal-com-2026-deadbeef";
+        let key = sample_commercial_token("Commercial", None);
         let mut settings = XavierSettings::default();
-        assert!(accept_commercial_license(&mut settings, key));
+        assert!(accept_commercial_license(&mut settings, &key));
 
         let json = serde_json::to_string(&settings).expect("serialize");
         let reloaded: XavierSettings = serde_json::from_str(&json).expect("deserialize");
 
-        assert_eq!(reloaded.license.commercial_key.as_deref(), Some(key));
+        assert_eq!(
+            reloaded.license.commercial_key.as_deref(),
+            Some(key.as_str())
+        );
         assert_eq!(detect_license(&reloaded), LicenseKind::Commercial);
         // Commercial acceptance also unlocks mesh features.
         assert!(require_mesh_license(&reloaded).is_ok());
@@ -553,8 +573,9 @@ mod tests {
     /// the AGPL default must be detected as AGPL and lose enterprise gating.
     #[test]
     fn test_license_downgrade_from_commercial_to_agpl() {
+        let key = sample_commercial_token("Commercial", None);
         let mut settings = XavierSettings::default();
-        assert!(accept_commercial_license(&mut settings, "key-123"));
+        assert!(accept_commercial_license(&mut settings, &key));
         assert_eq!(detect_license(&settings), LicenseKind::Commercial);
 
         // Downgrade: clear the commercial markers.
@@ -607,7 +628,8 @@ mod tests {
         // A commercial setting flips detection but the gate logic is symmetric:
         // both branches return a stable Ok/Err for the same input.
         let mut commercial = XavierSettings::default();
-        assert!(accept_commercial_license(&mut commercial, "k"));
+        let token = sample_commercial_token("Commercial", None);
+        assert!(accept_commercial_license(&mut commercial, &token));
         assert_eq!(detect_license(&commercial), LicenseKind::Commercial);
         assert!(require_commercial_license(&commercial).is_ok());
     }
@@ -626,7 +648,8 @@ mod tests {
         assert_eq!(detect_license(&settings), LicenseKind::Agpl);
 
         // Commercial acceptance flips the detected kind.
-        accept_commercial_license(&mut settings, "swal-x");
+        let token = sample_commercial_token("Commercial", None);
+        accept_commercial_license(&mut settings, &token);
         assert_eq!(detect_license(&settings), LicenseKind::Commercial);
 
         // Each variant renders a non-empty, distinct string for the status box.

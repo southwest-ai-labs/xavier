@@ -3243,39 +3243,52 @@ fn stdio_claims() -> crate::security::auth::Claims {
 }
 
 #[tokio::test]
-async fn auth_defaults_stdio_denies_secret_tools() {
+async fn auth_defaults_network_denies_shell_and_secret_tools() {
+    crate::isolate_test_process!();
+    let (state, workspace) = test_state().await;
+    let network_claims = crate::security::auth::Claims::new(
+        "admin_user".into(),
+        "admin@example.com".into(),
+        crate::security::auth::UserRole::Admin,
+        jiff::Span::new().hours(1),
+    );
+    for name in ["xavier_run_command", "secret_lend", "secret_exec"] {
+        let err = super::server::handle_tool_call(
+            state.clone(),
+            workspace.clone(),
+            Some(&network_claims),
+            name,
+            json!({}),
+        )
+        .await
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("restricted to local Stdio IPC"),
+            "{name}: {err}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn auth_defaults_stdio_allows_shell_and_secret_tools() {
     crate::isolate_test_process!();
     let (state, workspace) = test_state().await;
     let claims = stdio_claims();
-    for name in ["secret_lend", "secret_exec"] {
-        let err = super::server::handle_tool_call(
+    for name in ["xavier_run_command", "secret_lend", "secret_exec"] {
+        let res = super::server::handle_tool_call(
             state.clone(),
             workspace.clone(),
             Some(&claims),
             name,
             json!({}),
         )
-        .await
-        .unwrap_err();
-        assert!(err.to_string().starts_with("Forbidden:"), "{name}: {err}");
-    }
-}
-
-#[tokio::test]
-async fn auth_defaults_stdio_run_command_not_gated() {
-    crate::isolate_test_process!();
-    let (state, workspace) = test_state().await;
-    let claims = stdio_claims();
-    let res = super::server::handle_tool_call(
-        state,
-        workspace,
-        Some(&claims),
-        "xavier_run_command",
-        json!({}),
-    )
-    .await;
-    if let Err(err) = res {
-        assert!(!err.to_string().starts_with("Forbidden:"), "{err}");
+        .await;
+        if let Err(err) = res {
+            assert!(
+                !err.to_string().contains("restricted to local Stdio IPC"),
+                "{name}: {err}"
+            );
+        }
     }
 }
 

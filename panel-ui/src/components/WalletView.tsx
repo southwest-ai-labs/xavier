@@ -128,13 +128,9 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
   };
 
   const handleSyncToPolygon = () => {
-    setIsSyncing(true);
+    // Polygon bridge is off-chain / in active development. No fake timeout simulation.
+    setIsSyncing(false);
     setSyncSuccess(false);
-    setTimeout(() => {
-      setIsSyncing(false);
-      setSyncSuccess(true);
-      setTimeout(() => setSyncSuccess(false), 3500);
-    }, 1600);
   };
 
   const recentEvents: KarmaEvent[] = [
@@ -229,7 +225,12 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
             {/* Card 2: On-Chain Allocation */}
             <div className="bg-gradient-to-br from-indigo-500/10 via-[#0f1218] to-transparent border border-indigo-500/30 rounded-xl p-4 flex flex-col justify-between shadow-lg">
               <div className="flex items-center justify-between text-indigo-400">
-                <span className="text-xs font-mono uppercase tracking-wider font-semibold">Capa 1 (Polygon PoS)</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono uppercase tracking-wider font-semibold">Capa 1 (Polygon PoS)</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-300 border border-amber-500/20">
+                    Polygon Bridge: In Development (Off-chain)
+                  </span>
+                </div>
                 <Coins className="w-4 h-4" />
               </div>
               <div className="my-3">
@@ -243,7 +244,7 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
               </div>
               <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px] font-mono text-slate-400 dark:text-white/40">
                 <span>Merkle Rollup</span>
-                <span className="text-indigo-400">Listo para Anclaje</span>
+                <span className="text-amber-400">Off-chain (En Desarrollo)</span>
               </div>
             </div>
 
@@ -357,6 +358,9 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   Retiro y Anclaje a Polygon PoS (Capa 1)
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-300 border border-amber-500/30">
+                    Polygon Bridge: In Development (Off-chain)
+                  </span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-white/60">
                   Vincula tu dirección pública de Polygon para recibir tokens SWAL al ejecutar el rollup.
@@ -384,31 +388,18 @@ export const WalletView = React.memo(function WalletView({ onClose }: WalletView
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
               <div className="text-xs text-slate-500 dark:text-white/50 font-mono">
-                Estado de Anclaje: <span className="text-emerald-400">Listo ({karma} Karma acumulados)</span>
+                Estado de Anclaje: <span className="text-amber-400 font-medium">Off-chain ({karma} Karma acumulados)</span>
               </div>
 
               <button
                 type="button"
                 onClick={handleSyncToPolygon}
-                disabled={isSyncing || karma <= 0}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 border border-indigo-500/50 hover:border-indigo-400 text-slate-900 dark:text-white rounded-lg text-xs font-mono font-bold transition-all shadow-lg cursor-pointer disabled:opacity-50"
+                disabled
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-slate-500 dark:text-white/40 rounded-lg text-xs font-mono font-bold cursor-not-allowed disabled:opacity-60"
+                title="Polygon Bridge is currently in development (off-chain)."
               >
-                {isSyncing ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-300" />
-                    Generando Merkle Proof...
-                  </>
-                ) : syncSuccess ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ¡Rollup Compilado con Éxito!
-                  </>
-                ) : (
-                  <>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                    Sincronizar Recompensas a Polygon
-                  </>
-                )}
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                Polygon Bridge: In Development (Off-chain)
               </button>
             </div>
           </div>

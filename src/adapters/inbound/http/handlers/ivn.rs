@@ -140,11 +140,17 @@ pub fn init_ivn_engine(store: IvnEngineStore) {
 }
 
 fn current_ivn_store() -> std::sync::RwLockReadGuard<'static, IvnEngineStore> {
-    IVN_STORE.read().expect("IVN_STORE lock poisoned")
+    IVN_STORE.read().unwrap_or_else(|poisoned| {
+        tracing::warn!("IVN_STORE read lock was poisoned; recovering inner state");
+        poisoned.into_inner()
+    })
 }
 
 fn current_ivn_store_mut() -> std::sync::RwLockWriteGuard<'static, IvnEngineStore> {
-    IVN_STORE.write().expect("IVN_STORE lock poisoned")
+    IVN_STORE.write().unwrap_or_else(|poisoned| {
+        tracing::warn!("IVN_STORE write lock was poisoned; recovering inner state");
+        poisoned.into_inner()
+    })
 }
 
 // ---------------------------------------------------------------------------

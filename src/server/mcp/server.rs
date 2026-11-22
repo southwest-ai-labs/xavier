@@ -77,13 +77,6 @@ pub async fn handle_tool_call(
     }
 
     if let Some(claims) = claims {
-        if claims.sub == crate::server::mcp_stdio::STDIO_LOCAL_SUBJECT
-            && matches!(name, "secret_lend" | "secret_exec")
-        {
-            return Err(anyhow::anyhow!(
-                "Forbidden: Insufficient permissions for local identity to execute tool '{name}'"
-            ));
-        }
         let role = &claims.role;
         use crate::security::auth::Permission;
         match name {
@@ -121,6 +114,16 @@ pub async fn handle_tool_call(
                 ));
             }
             _ => {}
+        }
+
+        // Shell execution and secret tools can ONLY be executed when claims.sub == STDIO_LOCAL_SUBJECT.
+        // Reject network HTTP/SSE callers even if they hold admin clearance.
+        if matches!(name, "xavier_run_command" | "secret_lend" | "secret_exec")
+            && claims.sub != crate::server::mcp_stdio::STDIO_LOCAL_SUBJECT
+        {
+            return Err(anyhow::anyhow!(
+                "Forbidden: Tool '{name}' is restricted to local Stdio IPC and cannot be invoked over network transports"
+            ));
         }
     }
 
