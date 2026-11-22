@@ -631,7 +631,7 @@ impl XavierBot {
                     return Ok(());
                 }
                 let path = login_auth_db_path();
-                let now = Utc::now().timestamp();
+                let now = Timestamp::now().as_second();
                 let res =
                     tokio::task::spawn_blocking(move || issue_admin_login_code(&path, now)).await;
                 let text = match res {
@@ -777,8 +777,8 @@ impl XavierBot {
                         workspace_id: "default".to_string(),
                         content: content.clone(),
                         metadata: json!({"source": "telegram"}),
-                        created_at: Utc::now(),
-                        updated_at: Utc::now(),
+                        created_at: Timestamp::now(),
+                        updated_at: Timestamp::now(),
                         ..Default::default()
                     };
 
