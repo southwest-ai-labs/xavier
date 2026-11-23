@@ -8,10 +8,12 @@ use xavier_embed_ort::OrtEmbedder;
 
 pub struct NativeGemmaEmbedder {
     #[cfg(feature = "embed-native")]
-    embedder: OrtEmbedder,
+    embedder: Option<OrtEmbedder>,
 }
 
 impl NativeGemmaEmbedder {
+    pub const DIMENSION: usize = 768;
+
     pub fn new() -> Result<Self, EmbeddingError> {
         #[cfg(feature = "embed-native")]
         {
@@ -28,7 +30,9 @@ impl NativeGemmaEmbedder {
                 }
             })?;
 
-            Ok(Self { embedder })
+            Ok(Self {
+                embedder: Some(embedder),
+            })
         }
         #[cfg(not(feature = "embed-native"))]
         {
@@ -45,6 +49,8 @@ impl Embedder for NativeGemmaEmbedder {
         #[cfg(feature = "embed-native")]
         {
             self.embedder
+                .as_ref()
+                .ok_or_else(|| EmbeddingError::Config("Native embedder uninitialized".to_string()))?
                 .embed_query(text)
                 .map_err(|e| EmbeddingError::Parse(e.to_string()))
         }
@@ -60,6 +66,8 @@ impl Embedder for NativeGemmaEmbedder {
         #[cfg(feature = "embed-native")]
         {
             self.embedder
+                .as_ref()
+                .ok_or_else(|| EmbeddingError::Config("Native embedder uninitialized".to_string()))?
                 .embed_document(None, text)
                 .map_err(|e| EmbeddingError::Parse(e.to_string()))
         }
@@ -72,7 +80,7 @@ impl Embedder for NativeGemmaEmbedder {
     }
 
     fn dimension(&self) -> usize {
-        768
+        Self::DIMENSION
     }
 }
 
@@ -82,10 +90,9 @@ mod tests {
 
     #[test]
     fn test_dimension() {
-        // Just verify the dimension method which doesn't require OrtEmbedder initialization
         let embedder = NativeGemmaEmbedder {
             #[cfg(feature = "embed-native")]
-            embedder: unsafe { std::mem::zeroed() }, // Using zeroed for mocking in test since we only test dimension
+            embedder: None,
         };
         assert_eq!(embedder.dimension(), 768);
     }

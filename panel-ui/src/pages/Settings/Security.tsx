@@ -291,9 +291,11 @@ function TokensSection() {
 							<div className="flex gap-2 pt-1">
 								<button
 									type="button"
-									className="flex-1 py-2 bg-[#39ff14]/10 border border-[#39ff14]/20 text-[#39ff14] text-xs rounded-lg hover:bg-[#39ff14]/15 transition-all"
+									disabled
+									title="Token creation via UI is pending backend endpoint. Use daemon CLI: `xavier tokens create`"
+									className="flex-1 py-2 bg-[#39ff14]/5 border border-[#39ff14]/10 text-[#39ff14]/30 text-xs rounded-lg cursor-not-allowed transition-all"
 								>
-									Generate Token (mock)
+									Create Token (CLI Only)
 								</button>
 								<button
 									type="button"
@@ -341,7 +343,7 @@ function TokensSection() {
 									<div className="flex items-center gap-1.5 mt-1">
 										<code className="text-[10px] font-mono text-[var(--foreground)]/40 dark:text-white/40">
 											{revealed.includes(token.id)
-												? "xav_revealed_mock_token_value_here"
+												? token.prefix.replace(/\*/g, "•")
 												: token.prefix}
 										</code>
 										<button
@@ -362,10 +364,13 @@ function TokensSection() {
 										</button>
 										<button
 											type="button"
-											onClick={() =>
-												navigator.clipboard.writeText("mock-token")
-											}
+											onClick={() => {
+												if (token.prefix) {
+													navigator.clipboard.writeText(token.prefix);
+												}
+											}}
 											aria-label="Copy token"
+											title="Copy token prefix (secret is not retained in browser)"
 											className="text-[var(--foreground)]/20 dark:text-white/20 hover:text-[var(--foreground)]/50 dark:text-white/50 transition-colors"
 										>
 											<Copy className="w-3 h-3" />
@@ -471,9 +476,10 @@ function ApiKeysSection() {
 								</span>
 								<button
 									type="button"
+									disabled
 									aria-label="Re-validate provider key"
-									className="p-1.5 text-[var(--foreground)]/20 dark:text-white/20 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-all"
-									title="Re-validate"
+									className="p-1.5 text-[var(--foreground)]/10 dark:text-white/10 rounded-lg cursor-not-allowed"
+									title="Key re-validation endpoint is in development"
 								>
 									<RefreshCw className="w-3 h-3" />
 								</button>
@@ -482,24 +488,23 @@ function ApiKeysSection() {
 						<div className="flex gap-2">
 							<input
 								type={revealed.includes(key.id) ? "text" : "password"}
-								defaultValue="mock-api-key-value"
-								className="flex-1 bg-[var(--surface-card)] dark:bg-black/30 border border-[var(--border-subtle)] dark:border-white/10 text-[var(--foreground)]/60 dark:text-white/60 text-xs px-3 py-2 rounded-lg outline-none font-mono focus:border-[#39ff14]/30 transition-all"
+								value=""
+								readOnly
+								disabled
+								placeholder="Managed via env / CLI (xavier config set-key)"
+								title="API key secret is managed by daemon environment variables and not exposed to the browser"
+								className="flex-1 bg-[var(--surface-card)] dark:bg-black/30 border border-[var(--border-subtle)] dark:border-white/10 text-[var(--foreground)]/40 dark:text-white/40 text-xs px-3 py-2 rounded-lg outline-none font-mono cursor-not-allowed"
 							/>
 							<button
 								type="button"
-								onClick={() =>
-									setRevealed((prev) =>
-										prev.includes(key.id)
-											? prev.filter((x) => x !== key.id)
-											: [...prev, key.id],
-									)
-								}
+								disabled
 								aria-label={
 									revealed.includes(key.id)
 										? "Hide provider key"
 										: "Reveal provider key"
 								}
-								className="px-2 text-[var(--foreground)]/30 dark:text-white/30 hover:text-[var(--foreground)]/60 dark:text-white/60 border border-[var(--border-subtle)] dark:border-white/10 rounded-lg transition-all"
+								title="Zero-trust: provider key secrets cannot be revealed in browser"
+								className="px-2 text-[var(--foreground)]/20 dark:text-white/20 border border-[var(--border-subtle)] dark:border-white/10 rounded-lg cursor-not-allowed"
 							>
 								{revealed.includes(key.id) ? (
 									<EyeOff className="w-3.5 h-3.5" />
@@ -509,8 +514,10 @@ function ApiKeysSection() {
 							</button>
 							<button
 								type="button"
+								disabled
 								aria-label="Save Provider Key"
-								className="px-3 py-1 text-xs text-[#39ff14]/70 border border-[#39ff14]/20 rounded-lg hover:bg-[#39ff14]/5 transition-all"
+								title="Provider keys must be configured via environment or daemon CLI (`xavier config set-key`)"
+								className="px-3 py-1 text-xs text-[#39ff14]/30 border border-[#39ff14]/10 rounded-lg cursor-not-allowed"
 							>
 								Save
 							</button>
@@ -549,8 +556,10 @@ function AuditLogSection() {
 				</div>
 				<button
 					type="button"
+					disabled
 					aria-label="Refresh Audit Log"
-					className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-[var(--foreground)]/30 dark:text-white/30 border border-[var(--border-subtle)] dark:border-white/10 rounded-lg hover:border-[var(--border-subtle)] dark:border-white/20 hover:text-[var(--foreground)]/60 dark:text-white/60 transition-all"
+					title="Audit log live stream API is pending backend integration"
+					className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-[var(--foreground)]/20 dark:text-white/20 border border-[var(--border-subtle)] dark:border-white/5 rounded-lg cursor-not-allowed transition-all"
 				>
 					<RefreshCw className="w-3 h-3" />
 					Refresh

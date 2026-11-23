@@ -3,14 +3,16 @@
  *
  * Proxies API requests (/panel/api, /health, /v1, /auth, /api, /notifications, /maloca)
  * to the backend Xavier Cloud Worker (https://xaviercloud.swal.network or fallback workers.dev).
- * Injects X-Xavier-Token server-side from environment variable XAVIER_API_TOKEN,
- * preventing any client-side bundle token leaks and eliminating CORS issues.
+ * Upstream calls must carry the caller's own token from the request.
  */
 
 interface Env {
+  XAVIER_CLOUD_ENDPOINT?: string;
   XAVIER_API_ORIGIN?: string;
   XAVIER_API_TOKEN?: string;
   TURNSTILE_SECRET_KEY?: string;
+  ENVIRONMENT?: string;
+  NODE_ENV?: string;
 }
 
 const API_PREFIXES = [
@@ -45,49 +47,90 @@ export const onRequest = async (context: {
     try {
       const cloned = context.request.clone();
       const body = (await cloned.json()) as { turnstile_token?: string };
-      if (body.turnstile_token) {
-        const secret =
-          context.env.TURNSTILE_SECRET_KEY || "1x0000000000000000000000000000000AA";
-        const verifyRes = await fetch(
-          "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+
+      const turnstileToken = body?.turnstile_token;
+      if (!turnstileToken || typeof turnstileToken !== "string" || turnstileToken.trim() === "") {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "CAPTCHA verification failed. Security challenge invalid.",
+          }),
           {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              secret,
-              response: body.turnstile_token,
-              remoteip: context.request.headers.get("CF-Connecting-IP") || "",
-            }),
+            status: 403,
+            headers: { "Content-Type": "application/json" },
           },
         );
-        const verifyData = (await verifyRes.json()) as { success: boolean };
-        if (!verifyData.success) {
-          return new Response(
-            JSON.stringify({
-              ok: false,
-              error: "CAPTCHA verification failed. Security challenge invalid.",
-            }),
-            {
-              status: 403,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-        }
       }
-    } catch {}
+
+      const isDev =
+        context.env.ENVIRONMENT === "development" ||
+        context.env.NODE_ENV === "development";
+      const secret =
+        context.env.TURNSTILE_SECRET_KEY ||
+        (isDev ? "1x0000000000000000000000000000000AA" : undefined);
+
+      if (!secret) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "CAPTCHA verification failed. Security challenge invalid.",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      const verifyRes = await fetch(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            secret,
+            response: turnstileToken,
+            remoteip: context.request.headers.get("CF-Connecting-IP") || "",
+          }),
+        },
+      );
+      const verifyData = (await verifyRes.json()) as { success: boolean };
+      if (!verifyData.success) {
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            error: "CAPTCHA verification failed. Security challenge invalid.",
+          }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    } catch {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "CAPTCHA verification failed. Security challenge invalid.",
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    }
   }
 
-  const primaryOrigin = (context.env.XAVIER_API_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, "");
+  const primaryOrigin = (
+    context.env.XAVIER_CLOUD_ENDPOINT ||
+    context.env.XAVIER_API_ORIGIN ||
+    DEFAULT_ORIGIN
+  ).replace(/\/+$/, "");
   const fallbackOrigin = FALLBACK_ORIGIN.replace(/\/+$/, "");
 
   // Prepare upstream request headers
   const reqHeaders = new Headers(context.request.headers);
   reqHeaders.delete("host");
-
-  // Server-side inject master token if configured and not present
-  if (context.env.XAVIER_API_TOKEN && !reqHeaders.has("X-Xavier-Token")) {
-    reqHeaders.set("X-Xavier-Token", context.env.XAVIER_API_TOKEN);
-  }
 
   // Helper to proxy to a specific origin
   const proxyTo = async (origin: string): Promise<Response> => {

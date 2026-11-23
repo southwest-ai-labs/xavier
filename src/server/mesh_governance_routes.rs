@@ -13,10 +13,12 @@ use std::sync::{Arc, RwLock};
 
 /// Ballot options for 1-node-1-vote governance.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "PascalCase")]
 pub enum VoteOption {
+    #[serde(alias = "for", alias = "FOR", alias = "For")]
     For,
+    #[serde(alias = "against", alias = "AGAINST", alias = "Against")]
     Against,
+    #[serde(alias = "abstain", alias = "ABSTAIN", alias = "Abstain")]
     Abstain,
 }
 
@@ -29,9 +31,14 @@ pub struct CreateProposalRequest {
     pub required_endorsement: String,
 }
 
+fn default_node_self() -> String {
+    "node-self".to_string()
+}
+
 /// Request payload for submitting a ballot on a proposal.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VoteRequest {
+    #[serde(default = "default_node_self")]
     pub node_id: String,
     pub ballot: VoteOption,
     pub endorsement_badge: Option<String>,
@@ -217,17 +224,11 @@ pub async fn cast_vote_handler(
     let mut store = state.inner.write().unwrap();
     let min_quorum = store.minimum_quorum;
 
-    let node_id = payload.node_id.trim().to_string();
-    if node_id.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "status": "error",
-                "message": "node_id cannot be empty"
-            })),
-        )
-            .into_response();
-    }
+    let node_id = if payload.node_id.trim().is_empty() {
+        "node-self".to_string()
+    } else {
+        payload.node_id.trim().to_string()
+    };
 
     // Endorsement lookup before mutable borrow of proposal
     let node_badges = store

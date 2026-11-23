@@ -39,11 +39,17 @@ pub fn init_marketplace(marketplace: DataMarketplace) {
 }
 
 fn current_marketplace() -> std::sync::RwLockReadGuard<'static, DataMarketplace> {
-    MARKETPLACE.read().expect("MARKETPLACE lock poisoned")
+    MARKETPLACE.read().unwrap_or_else(|poisoned| {
+        tracing::warn!("MARKETPLACE read lock was poisoned; recovering inner state");
+        poisoned.into_inner()
+    })
 }
 
 fn current_marketplace_mut() -> std::sync::RwLockWriteGuard<'static, DataMarketplace> {
-    MARKETPLACE.write().expect("MARKETPLACE lock poisoned")
+    MARKETPLACE.write().unwrap_or_else(|poisoned| {
+        tracing::warn!("MARKETPLACE write lock was poisoned; recovering inner state");
+        poisoned.into_inner()
+    })
 }
 
 // ---------------------------------------------------------------------------

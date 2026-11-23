@@ -1,1 +1,9 @@
-audit-warnings.toml
+# Advisory ignore list for cargo audit.
+# Canonical audit configuration for apps/xavier (SEC-02).
+
+[advisories]
+ignore = [
+    # rsa 0.9.10: Marvin Attack (timing sidechannel in PKCS#1 v1.5 decryption)
+    # Transitive dependency via jsonwebtoken 9.3.0. No semver-compatible patch available for 0.9.x.
+    "RUSTSEC-2023-0071",
+]

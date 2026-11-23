@@ -198,4 +198,73 @@ describe("DirectChatView", () => {
 
 		expect(handleBack).toHaveBeenCalledTimes(1);
 	});
+
+	it("opens FileSandboxModal when clicking on a message attachment", () => {
+		const messagesWithAttachment: DirectChatMessage[] = [
+			{
+				id: "msg-att-1",
+				roomId: "room-test",
+				senderId: "node-alpha-77",
+				senderAlias: "Peer Alpha",
+				content: "Sharing sensitive blueprint.",
+				timestamp: "11:05 AM",
+				clearanceLevel: "Secret",
+				status: "delivered",
+				isSelf: false,
+				attachment: {
+					name: "network_mesh_topology.png",
+					size: "256 KB",
+					type: "image/png",
+					url: "blob:http://localhost/topology",
+				},
+			},
+		];
+
+		render(
+			<DirectChatView peer={customPeer} messages={messagesWithAttachment} />,
+		);
+
+		expect(screen.getByText("network_mesh_topology.png")).toBeInTheDocument();
+		const sandboxBtn = screen.getByText("Abrir Sandbox");
+		fireEvent.click(sandboxBtn);
+
+		expect(
+			screen.getByText("Xavier Secure Sandbox Environment"),
+		).toBeInTheDocument();
+	});
+
+	it("opens ShareContextModal when clicking Xavier RAG context button", () => {
+		render(<DirectChatView peer={customPeer} messages={customMessages} />);
+
+		const attachContextBtn = screen.getByLabelText(
+			"Attach Xavier RAG context",
+		);
+		fireEvent.click(attachContextBtn);
+
+		expect(
+			screen.getByText("Compartir Contexto de Memoria Xavier"),
+		).toBeInTheDocument();
+	});
+
+	it("opens Bilateral Mesh Vault Governance modal when clicking the vault header pill", () => {
+		render(
+			<DirectChatView
+				roomId="room-beta-direct"
+				peer={customPeer}
+				messages={customMessages}
+			/>,
+		);
+
+		const vaultPill = screen.getByTitle(
+			"Ver Gobernanza de Bóveda P2P Mesh (espacio.sqlite)",
+		);
+		fireEvent.click(vaultPill);
+
+		expect(
+			screen.getByText("Gobernanza de Bóveda P2P Mesh"),
+		).toBeInTheDocument();
+		expect(
+			screen.getByText("data/db/spaces/room-beta-direct/espacio.sqlite"),
+		).toBeInTheDocument();
+	});
 });

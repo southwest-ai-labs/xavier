@@ -1,15 +1,20 @@
 import {
 	ArrowLeft,
+	Brain,
 	Check,
 	CheckCheck,
 	Clock,
+	Database,
+	ExternalLink,
 	FileText,
 	Flame,
+	Info,
 	Lock,
 	Paperclip,
 	Search,
 	Send,
 	ShieldCheck,
+	Sparkles,
 	User,
 	Wifi,
 	X,
@@ -23,6 +28,8 @@ import React, {
 	useState,
 } from "react";
 import FileTransferDrawer from "./FileTransferDrawer";
+import FileSandboxModal from "./FileSandboxModal";
+import ShareContextModal from "./ShareContextModal";
 import { useTelecomSocket, type TelecomFrame } from "../../hooks/useTelecomSocket";
 import { parseFileTransferFrame } from "./fileTransferUtils";
 
@@ -43,6 +50,15 @@ export interface ChatAttachment {
 	size?: string;
 	type?: string;
 	url?: string;
+	isContext?: boolean;
+	contextPayload?: {
+		kind: "rag" | "code" | "config" | "graphs";
+		title: string;
+		content: string;
+		tokens?: number;
+		score?: number;
+		hash?: string;
+	};
 }
 
 /** 1-to-1 Encrypted Direct Chat Message entity */
@@ -81,6 +97,7 @@ export interface DirectChatViewProps {
 			ephemeral?: boolean;
 			clearanceLevel?: ClearanceLevel;
 			attachment?: File | null;
+			contextAttachment?: ChatAttachment | null;
 		},
 	) => void;
 	onMarkRead?: (messageId: string) => void;
@@ -145,9 +162,11 @@ const DEFAULT_MESSAGES: DirectChatMessage[] = [
 export const MessageItem = React.memo(function MessageItem({
 	msg,
 	onMarkRead,
+	onOpenAttachment,
 }: {
 	msg: DirectChatMessage;
 	onMarkRead?: (id: string) => void;
+	onOpenAttachment?: (attachment: ChatAttachment) => void;
 }) {
 	useEffect(() => {
 		if (!msg.isSelf && msg.status !== "read" && onMarkRead) {
@@ -247,20 +266,36 @@ export const MessageItem = React.memo(function MessageItem({
 			>
 				<p className="whitespace-pre-wrap break-words">{msg.content}</p>
 
-				{/* Attachment Box */}
+				{/* Attachment Box with Sandbox trigger */}
 				{msg.attachment && (
-					<div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] flex items-center gap-2 text-[11px]">
-						<FileText className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-						<div className="truncate">
-							<span className="font-mono truncate block text-[var(--foreground)]">
-								{msg.attachment.name}
-							</span>
-							{msg.attachment.size && (
-								<span className="text-[9px] text-[var(--foreground)]/70 block font-mono">
-									{msg.attachment.size}
-								</span>
+					<div
+						onClick={() => onOpenAttachment?.(msg.attachment!)}
+						className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between gap-2 text-[11px] cursor-pointer hover:opacity-90 group transition-all"
+						title="Abrir en Sandbox Seguro de Xavier"
+					>
+						<div className="flex items-center gap-2 truncate">
+							{msg.attachment.isContext ? (
+								<Sparkles className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+							) : (
+								<FileText className="w-4 h-4 text-emerald-400 flex-shrink-0" />
 							)}
+							<div className="truncate">
+								<span className="font-mono truncate block text-[var(--foreground)] group-hover:text-emerald-400 transition-colors">
+									{msg.attachment.name}
+								</span>
+								<div className="flex items-center gap-2 text-[9px] text-[var(--foreground)]/70 font-mono">
+									{msg.attachment.size && <span>{msg.attachment.size}</span>}
+									{msg.attachment.isContext && (
+										<span className="text-cyan-400 uppercase font-semibold">
+											[Xavier Context]
+										</span>
+									)}
+								</div>
+							</div>
 						</div>
+						<span className="px-2 py-0.5 rounded text-[9px] font-mono bg-white/5 border border-white/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:border-emerald-500/40 flex-shrink-0">
+							Abrir Sandbox
+						</span>
 					</div>
 				)}
 
@@ -294,21 +329,35 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 	const [messageList, setMessageList] = useState<DirectChatMessage[]>(messages);
 	const [inputText, setInputText] = useState("");
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+	const [selectedContextAttachment, setSelectedContextAttachment] =
+		useState<ChatAttachment | null>(null);
 	const [isEphemeral, setIsEphemeral] = useState(false);
 	const [clearanceLevel, setClearanceLevel] =
 		useState<ClearanceLevel>("Secret");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+	// Modals & Drawers
+	const [sandboxAttachment, setSandboxAttachment] =
+		useState<ChatAttachment | null>(null);
+	const [isShareContextOpen, setIsShareContextOpen] = useState(false);
+	const [isVaultInfoOpen, setIsVaultInfoOpen] = useState(false);
+
 	// File Transfer Drawer State
 	const [isTransferDrawerOpen, setIsTransferDrawerOpen] = useState(false);
-	const [transferStatus, setTransferStatus] = useState<"idle" | "transferring" | "paused" | "verifying" | "completed" | "failed">("idle");
+	const [transferStatus, setTransferStatus] = useState<
+		"idle" | "transferring" | "paused" | "verifying" | "completed" | "failed"
+	>("idle");
 	const [transferProgress, setTransferProgress] = useState(0);
 	const [transferChunks, setTransferChunks] = useState({ received: 0, total: 0 });
 	const [transferFile, setTransferFile] = useState<File | null>(null);
 
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+	const sanitizedVaultName = useMemo(() => {
+		return `espacio_${roomId.replace(/[^a-zA-Z0-9_-]/g, "_")}.sqlite`;
+	}, [roomId]);
 
 	const handleTelecomFrame = useCallback((frame: TelecomFrame) => {
 		const update = parseFileTransferFrame(frame);
@@ -355,7 +404,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 
 	const handleSend = () => {
 		const trimmed = inputText.trim();
-		if (!trimmed && !selectedFile) return;
+		if (!trimmed && !selectedFile && !selectedContextAttachment) return;
 
 		if (selectedFile) {
 			setTransferFile(selectedFile);
@@ -363,6 +412,17 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 			setTransferStatus("transferring");
 			setTransferProgress(0);
 			setTransferChunks({ received: 0, total: 0 });
+		}
+
+		let activeAttachment: ChatAttachment | undefined;
+		if (selectedContextAttachment) {
+			activeAttachment = selectedContextAttachment;
+		} else if (selectedFile) {
+			activeAttachment = {
+				name: selectedFile.name,
+				size: `${(selectedFile.size / 1024).toFixed(1)} KB`,
+				type: selectedFile.type,
+			};
 		}
 
 		const newMsg: DirectChatMessage = {
@@ -379,13 +439,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 			ephemeral: isEphemeral,
 			status: "sent",
 			isSelf: true,
-			attachment: selectedFile
-				? {
-						name: selectedFile.name,
-						size: `${(selectedFile.size / 1024).toFixed(1)} KB`,
-						type: selectedFile.type,
-					}
-				: undefined,
+			attachment: activeAttachment,
 		};
 
 		// Optimistically update message stream
@@ -396,11 +450,13 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 				ephemeral: isEphemeral,
 				clearanceLevel,
 				attachment: selectedFile,
+				contextAttachment: selectedContextAttachment,
 			});
 		}
 
 		setInputText("");
 		setSelectedFile(null);
+		setSelectedContextAttachment(null);
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -413,6 +469,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files?.[0]) {
 			setSelectedFile(e.target.files[0]);
+			setSelectedContextAttachment(null);
 		}
 	};
 
@@ -466,8 +523,19 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 					</div>
 				</div>
 
-				{/* Security & Header Actions */}
+				{/* Security, Vault Pill & Header Actions */}
 				<div className="flex items-center gap-2 flex-shrink-0">
+					{/* P2P Bilateral Mesh Vault Pill */}
+					<button
+						type="button"
+						onClick={() => setIsVaultInfoOpen(true)}
+						title="Ver Gobernanza de Bóveda P2P Mesh (espacio.sqlite)"
+						className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-emerald-500/30 text-emerald-300 hover:border-emerald-500/60 text-[10px] font-mono transition-colors"
+					>
+						<Database className="w-3 h-3 text-emerald-400" />
+						<span className="truncate max-w-[140px]">{sanitizedVaultName}</span>
+					</button>
+
 					<button
 						type="button"
 						onClick={() => setIsSearchOpen((prev) => !prev)}
@@ -532,14 +600,19 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 						</motion.div>
 					) : (
 						filteredMessages.map((msg) => (
-							<MessageItem key={msg.id} msg={msg} onMarkRead={onMarkRead} />
+							<MessageItem
+								key={msg.id}
+								msg={msg}
+								onMarkRead={onMarkRead}
+								onOpenAttachment={(att) => setSandboxAttachment(att)}
+							/>
 						))
 					)}
 				</AnimatePresence>
 				<div ref={messagesEndRef} />
 			</div>
 
-			{/* Attachment Preview Container */}
+			{/* Attachment Preview Container (Files) */}
 			{selectedFile && (
 				<div className="px-4 py-2 bg-[var(--surface-card)] border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
 					<div className="flex items-center gap-2 text-[var(--foreground)]/90 truncate">
@@ -554,6 +627,29 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 						onClick={() => setSelectedFile(null)}
 						aria-label="Remove attached file"
 						className="text-[var(--foreground)]/50 hover:text-[var(--foreground)]/90 p-1"
+					>
+						<X className="w-4 h-4" aria-hidden="true" />
+					</button>
+				</div>
+			)}
+
+			{/* Attachment Preview Container (Xavier Context) */}
+			{selectedContextAttachment && (
+				<div className="px-4 py-2 bg-slate-900 border-t border-cyan-500/30 flex items-center justify-between text-xs">
+					<div className="flex items-center gap-2 text-cyan-300 truncate">
+						<Sparkles className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+						<span className="font-mono truncate font-semibold">
+							{selectedContextAttachment.name}
+						</span>
+						<span className="text-[10px] text-cyan-400/70 font-mono">
+							({selectedContextAttachment.size})
+						</span>
+					</div>
+					<button
+						type="button"
+						onClick={() => setSelectedContextAttachment(null)}
+						aria-label="Remove attached context"
+						className="text-white/50 hover:text-white p-1"
 					>
 						<X className="w-4 h-4" aria-hidden="true" />
 					</button>
@@ -607,7 +703,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 
 				{/* Input Bar */}
 				<div className="flex items-center gap-2">
-					{/* File Attachment Button */}
+					{/* File Attachment Button & Native Input */}
 					<input
 						type="file"
 						ref={fileInputRef}
@@ -618,6 +714,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 						type="button"
 						onClick={() => fileInputRef.current?.click()}
 						aria-label="Attach file to direct message"
+						title="Adjuntar archivo o media local"
 						className={`p-2.5 rounded-lg border transition-colors flex-shrink-0 ${
 							selectedFile
 								? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
@@ -625,6 +722,21 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 						}`}
 					>
 						<Paperclip className="w-4 h-4" aria-hidden="true" />
+					</button>
+
+					{/* Xavier Context Attachment Button */}
+					<button
+						type="button"
+						onClick={() => setIsShareContextOpen(true)}
+						aria-label="Attach Xavier RAG context"
+						title="Compartir contexto interno Xavier (RAG, AST, Grafos)"
+						className={`p-2.5 rounded-lg border transition-colors flex-shrink-0 ${
+							selectedContextAttachment
+								? "bg-cyan-500/20 border-cyan-500/40 text-cyan-400"
+								: "bg-[var(--surface-card)] border-[var(--border-subtle)] text-[var(--foreground)]/70 hover:text-cyan-400 hover:border-cyan-500/40"
+						}`}
+					>
+						<Sparkles className="w-4 h-4" aria-hidden="true" />
 					</button>
 
 					{/* Text Input */}
@@ -641,7 +753,7 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 					<button
 						type="button"
 						onClick={handleSend}
-						disabled={!inputText.trim() && !selectedFile}
+						disabled={!inputText.trim() && !selectedFile && !selectedContextAttachment}
 						aria-label="Send direct message"
 						className="p-2.5 rounded-lg bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-40 disabled:hover:bg-emerald-500 transition-colors flex-shrink-0"
 					>
@@ -669,6 +781,103 @@ export const DirectChatView: React.FC<DirectChatViewProps> = ({
 					setIsTransferDrawerOpen(false);
 				}}
 			/>
+
+			{/* File & Context Secure Sandbox Modal */}
+			<FileSandboxModal
+				isOpen={Boolean(sandboxAttachment)}
+				onClose={() => setSandboxAttachment(null)}
+				attachment={sandboxAttachment}
+				clearanceLevel={clearanceLevel}
+				onImportToVault={(att) => {
+					// Handled by local space vault
+				}}
+			/>
+
+			{/* Xavier Memory Context Selection Modal */}
+			<ShareContextModal
+				isOpen={isShareContextOpen}
+				onClose={() => setIsShareContextOpen(false)}
+				defaultClearance={clearanceLevel}
+				onSelectContext={(att) => {
+					setSelectedContextAttachment(att);
+					setSelectedFile(null);
+				}}
+			/>
+
+			{/* Bilateral Mesh Vault Governance Modal */}
+			{isVaultInfoOpen && (
+				<div
+					className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="vault-gov-title"
+				>
+					<div className="w-full max-w-lg bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
+						<div className="flex items-center justify-between pb-3 border-b border-white/10">
+							<div className="flex items-center gap-2.5 text-emerald-400">
+								<Database className="w-5 h-5" />
+								<h3
+									id="vault-gov-title"
+									className="text-sm font-semibold text-white"
+								>
+									Gobernanza de Bóveda P2P Mesh
+								</h3>
+							</div>
+							<button
+								type="button"
+								onClick={() => setIsVaultInfoOpen(false)}
+								className="text-white/50 hover:text-white p-1"
+							>
+								<X className="w-4 h-4" />
+							</button>
+						</div>
+
+						<div className="space-y-3 text-xs font-mono">
+							<div className="p-3 rounded-xl bg-slate-950 border border-white/10 space-y-1">
+								<span className="text-white/40 block">Archivo SQLite Dedicado:</span>
+								<span className="text-emerald-400 font-bold break-all">
+									data/db/spaces/{roomId}/espacio.sqlite
+								</span>
+							</div>
+
+							<div className="grid grid-cols-2 gap-2">
+								<div className="p-3 rounded-xl bg-slate-950 border border-white/10">
+									<span className="text-white/40 block text-[10px]">Cifrado Wire:</span>
+									<span className="text-emerald-300 font-semibold">ChaCha20-Poly1305</span>
+								</div>
+								<div className="p-3 rounded-xl bg-slate-950 border border-white/10">
+									<span className="text-white/40 block text-[10px]">Key Exchange:</span>
+									<span className="text-cyan-300 font-semibold">X25519 Ephemeral</span>
+								</div>
+								<div className="p-3 rounded-xl bg-slate-950 border border-white/10">
+									<span className="text-white/40 block text-[10px]">Rol Bilateral:</span>
+									<span className="text-purple-300 font-semibold">Member (Active)</span>
+								</div>
+								<div className="p-3 rounded-xl bg-slate-950 border border-white/10">
+									<span className="text-white/40 block text-[10px]">Clearance Ceiling:</span>
+									<span className="text-amber-300 font-semibold">{clearanceLevel}</span>
+								</div>
+							</div>
+
+							<div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] leading-relaxed">
+								Esta bóveda almacena exclusivamente el historial cifrado, gobernanza y
+								contextos compartidos entre los dos nodos enlazados. No se mezcla con el
+								workspace global ni replica fuera del canal bilateral.
+							</div>
+						</div>
+
+						<div className="pt-2 flex justify-end">
+							<button
+								type="button"
+								onClick={() => setIsVaultInfoOpen(false)}
+								className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs hover:bg-white/20 transition-colors font-mono"
+							>
+								Entendido
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };

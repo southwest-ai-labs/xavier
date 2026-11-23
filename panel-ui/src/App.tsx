@@ -296,9 +296,7 @@ function AppContent() {
 			const q = h.indexOf("?");
 			if (q >= 0) {
 				const params = new URLSearchParams(h.slice(q + 1));
-				const sessionToken =
-					params.get("token") ||
-					(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
+				const sessionToken = params.get("token");
 				const email = params.get("email") || undefined;
 				const tenant = params.get("tenant") || undefined;
 				if (sessionToken) {

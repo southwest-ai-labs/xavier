@@ -17,6 +17,7 @@ import type React from "react";
 import { createContext, useEffect } from "react";
 import { create } from "zustand";
 import { AuthApiError, authClient, type RefreshResponse } from "../api/authClient";
+import { getApiUrl } from "../api/client";
 import type { AuthState, User } from "../types";
 
 // SECURITY: the panel authenticates purely via the /auth/* session (cookie/token flow) —
@@ -78,18 +79,17 @@ function getInitialSession(): {
 		const q = h.indexOf("?");
 		if (q >= 0) {
 			const params = new URLSearchParams(h.slice(q + 1));
-			const sessionToken =
-				params.get("token") ||
-				(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
+			const sessionToken = params.get("token");
 			const email = params.get("email") || "operator@xavier.local";
 			const tenant = params.get("tenant") || "local";
 			if (sessionToken) {
 				const now = Math.floor(Date.now() / 1000);
+				// Non-admin default role to prevent privilege escalation (SEC-03)
 				const user: User = {
 					id: tenant,
 					email,
 					name: email.split("@")[0],
-					role: "admin",
+					role: "operator",
 					created_at: now,
 					updated_at: now,
 				};
@@ -148,6 +148,7 @@ const initialSession = getInitialSession();
 type AuthStore = AuthState & {
 	loginWithCode: (email: string, code: string) => Promise<void>;
 	setSession: (sessionToken: string, email?: string, tenant?: string) => void;
+	verifySessionToken: (sessionToken: string, email?: string) => Promise<boolean>;
 };
 
 const useAuthStore = create<AuthStore>((set, get) => ({
@@ -172,13 +173,81 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 		});
 	},
 
+	verifySessionToken: async (sessionToken: string, email?: string) => {
+		if (!sessionToken || sessionToken.trim() === "") {
+			return false;
+		}
+		try {
+			// 1. Verify with backend /auth/status using the token as Bearer
+			const res = await fetch(getApiUrl("/auth/status"), {
+				headers: {
+					Authorization: `Bearer ${sessionToken}`,
+					"X-Xavier-Token": sessionToken,
+				},
+			});
+			if (res.ok) {
+				const data = (await res.json().catch(() => null)) as {
+					status?: string;
+					user_id?: string;
+					email?: string;
+					role?: string;
+				} | null;
+				if (data && (data.status === "authenticated" || data.user_id || data.email)) {
+					const now = Math.floor(Date.now() / 1000);
+					const verifiedEmail = data.email || email || "operator@xavier.local";
+					const user: User = {
+						id: data.user_id || "operator",
+						email: verifiedEmail,
+						name: verifiedEmail.split("@")[0],
+						role: (data.role as any) || "operator",
+						created_at: now,
+						updated_at: now,
+					};
+					writeRt(sessionToken);
+					try {
+						localStorage.setItem("xavier_onboarding_completed", "true");
+						localStorage.setItem("xavier_security_onboarding_completed", "true");
+						localStorage.setItem("xavier_desktop_token", sessionToken);
+					} catch {}
+					set({
+						user,
+						token: sessionToken,
+						accessToken: sessionToken,
+						refreshToken: sessionToken,
+						isAuthenticated: true,
+						requires2FA: false,
+					});
+					return true;
+				}
+			}
+
+			// 2. Fallback: if sessionToken is an exchange code
+			if (email && sessionToken.length <= 32) {
+				try {
+					const loginRes = await authClient.exchange(email, sessionToken);
+					writeRt(loginRes.refresh_token);
+					set({
+						user: loginRes.user,
+						token: loginRes.access_token ?? null,
+						accessToken: loginRes.access_token ?? null,
+						refreshToken: loginRes.refresh_token,
+						isAuthenticated: true,
+						requires2FA: false,
+					});
+					return true;
+				} catch {}
+			}
+		} catch {}
+		return false;
+	},
+
 	setSession: (sessionToken, email, tenant) => {
 		const now = Math.floor(Date.now() / 1000);
-		const user = {
-			id: tenant || "local-user",
+		const user: User = {
+			id: tenant || "operator",
 			email: email || "operator@xavier.local",
 			name: email ? email.split("@")[0] : "Operator",
-			role: "admin" as const,
+			role: "operator",
 			created_at: now,
 			updated_at: now,
 		};
@@ -196,6 +265,7 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 			isAuthenticated: true,
 			requires2FA: false,
 		});
+		void get().verifySessionToken(sessionToken, email);
 	},
 
 	login: async (email, password, totpCode) => {
@@ -270,15 +340,10 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 		}
 		try {
 			const rt = get().refreshToken ?? readRt();
-			// Cloudflare mesh web session token
+			// Cloudflare mesh web session token - verify against backend status before accepting
 			if (rt && rt.startsWith("swal_sess_")) {
-				set({
-					token: rt,
-					accessToken: rt,
-					refreshToken: rt,
-					isAuthenticated: true,
-				});
-				return;
+				const ok = await get().verifySessionToken(rt);
+				if (ok) return;
 			}
 			// /auth/refresh returns { access_token, refresh_token } or { token } in test mocks
 			const response = (await authClient.refresh(rt)) as RefreshResponse & {
@@ -316,29 +381,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 	children,
 }) => {
 	const refreshSession = useAuthStore((state) => state.refreshSession);
-	const setSession = useAuthStore((state) => state.setSession);
+	const verifySessionToken = useAuthStore((state) => state.verifySessionToken);
 
 	useEffect(() => {
-		const handleHash = () => {
+		const handleHash = async () => {
 			const h = window.location.hash;
 			if (h.startsWith("#/session")) {
 				const q = h.indexOf("?");
 				if (q >= 0) {
 					const params = new URLSearchParams(h.slice(q + 1));
-					const sessionToken =
-						params.get("token") ||
-						(params.get("cloud_domain_test") ? "swal_sess_cloud_test" : null);
-					const email = params.get("email") || "operator@xavier.local";
-					const tenant = params.get("tenant") || "local";
+					const sessionToken = params.get("token");
+					const email = params.get("email") || undefined;
 					if (sessionToken) {
-						setSession(sessionToken, email, tenant);
+						await verifySessionToken(sessionToken, email);
 					}
 				}
 			}
 		};
+		void handleHash();
 		window.addEventListener("hashchange", handleHash);
 		return () => window.removeEventListener("hashchange", handleHash);
-	}, [setSession]);
+	}, [verifySessionToken]);
 
 	useEffect(() => {
 		// Attempt to refresh session on mount

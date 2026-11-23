@@ -831,6 +831,7 @@ impl MemoryStore for VecSqliteMemoryStore {
                     belief.provenance_id = sealed;
                 }
             }
+            conn.execute("SAVEPOINT batch_beliefs;", [])?;
             for belief in &beliefs {
                 super::graph::ensure_seed_entities(
                     conn,
@@ -838,10 +839,12 @@ impl MemoryStore for VecSqliteMemoryStore {
                     &[(&belief.source, "source"), (&belief.target, "target")],
                 )?;
             }
-            for belief in beliefs {
-                conn.execute(
+            {
+                let mut stmt = conn.prepare_cached(
                     "INSERT OR REPLACE INTO relations (id, source_id, target_id, relation_type, weight, confidence_score, provenance_id, contradicts_edge_id, is_inferred, source_language, target_language, created_at, updated_at, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    params![
+                )?;
+                for belief in beliefs {
+                    stmt.execute(params![
                         belief.id,
                         belief.source,
                         belief.target,
@@ -856,9 +859,10 @@ impl MemoryStore for VecSqliteMemoryStore {
                         belief.created_at.to_string(),
                         belief.updated_at.to_string(),
                         workspace_id,
-                    ],
-                )?;
+                    ])?;
+                }
             }
+            conn.execute("RELEASE SAVEPOINT batch_beliefs;", [])?;
             Ok(())
         }).await
     }

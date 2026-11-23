@@ -584,6 +584,14 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
             )
             .with_state(()),
         )
+        .merge(
+            xavier::server::mesh_network_routes::router(
+                xavier::server::mesh_network_routes::MeshNetworkState::new(
+                    state.workspace_dir.clone().join("data"),
+                ),
+            )
+            .with_state(()),
+        )
         // ── DocBot & Document Management API ────────────────────────────────
         .nest(
             "/api/docbot/v1",
@@ -641,7 +649,9 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
         )
         .route(
             "/v1/memory/pull",
-            post(crate::cli::handlers::memory::memory_pull_handler),
+            post(crate::cli::handlers::memory::memory_pull_handler).layer(middleware::from_fn(
+                require_permission(|r| r.can_add_memory()),
+            )),
         )
         .route(
             "/v1/memory/pull-since/{workspace_id}/{since}",
@@ -649,11 +659,15 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
         )
         .route(
             "/api/v1/memory/sync/push",
-            post(xavier::adapters::inbound::http::handlers::sync::sync_push_handler),
+            post(xavier::adapters::inbound::http::handlers::sync::sync_push_handler).layer(
+                middleware::from_fn(require_permission(|r| r.can_add_memory())),
+            ),
         )
         .route(
             "/api/v1/memory/sync/pull",
-            post(xavier::adapters::inbound::http::handlers::sync::sync_pull_handler),
+            post(xavier::adapters::inbound::http::handlers::sync::sync_pull_handler).layer(
+                middleware::from_fn(require_permission(|r| r.can_add_memory())),
+            ),
         )
         .route(
             "/api/v1/memory/sync/status",

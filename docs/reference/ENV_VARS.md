@@ -126,6 +126,12 @@
 |----------|------|---------|-------------|--------|
 | `XAVIER_CAPSULE_SECRET` | `string` | (unset) | Encryption passphrase/key used for sealing Zero-Handoff context capsules | ✅ |
 
+## Security / Sync
+
+| Variable | Type | Default | Description | Secret |
+|----------|------|---------|-------------|--------|
+| `XAVIER_ALLOWED_SYNC_PEERS` | `string` |  | Comma-separated list of allowed hostnames or IP addresses for P2P memory sync peers (SSRF defense) | ❌ |
+
 ## Server & Network
 
 | Variable | Type | Default | Description | Secret |

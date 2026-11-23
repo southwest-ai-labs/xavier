@@ -51,19 +51,12 @@ pub async fn mcp_auth_middleware(req: Request<Body>, next: Next) -> Response {
             return (StatusCode::FORBIDDEN, "Forbidden: Invalid Origin").into_response();
         }
     } else {
-        // Relax: Allow missing Origin header for local connections (localhost / loopback)
+        // Relax: Allow missing Origin header ONLY for local connections (verified loopback IP via ConnectInfo)
         let is_localhost = if let Some(axum::extract::ConnectInfo(addr)) =
             req.extensions()
                 .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
         {
             addr.ip().is_loopback()
-        } else if let Some(host) = req.headers().get("Host").and_then(|h| h.to_str().ok()) {
-            host.starts_with("localhost:")
-                || host.starts_with("127.0.0.1:")
-                || host == "localhost"
-                || host == "127.0.0.1"
-                || host.starts_with("[::1]:")
-                || host == "[::1]"
         } else {
             false
         };
