@@ -19,7 +19,19 @@ use xavier::secrets::vault::HardwareVault;
 use xavier::secrets::SecretError;
 use xavier::security::auth::{Claims, UserRole};
 
+fn sever_dbus() {
+    std::env::set_var(
+        "DBUS_SESSION_BUS_ADDRESS",
+        "unix:path=/nonexistent-xavier-test-secret-service",
+    );
+    std::env::set_var(
+        "DBUS_SYSTEM_BUS_ADDRESS",
+        "unix:path=/nonexistent-xavier-test-secret-service",
+    );
+}
+
 fn setup_isolated_vault(service_name: &str) -> (HardwareVault, tempfile::TempDir) {
+    sever_dbus();
     let dir = tempdir().expect("failed to create temp directory");
     std::env::set_var("HOME", dir.path());
     std::env::set_var("XAVIER_DATA_DIR", dir.path());
@@ -285,6 +297,7 @@ fn test_adversarial_concurrency_isolation_multi_vaults() {
         .map(|i| {
             let sc = Arc::clone(&success_count);
             thread::spawn(move || {
+                sever_dbus();
                 let dir = tempdir().expect("tempdir");
                 let nonce = rand::random::<u64>();
                 let vault = HardwareVault::new(&format!("concurrent-worker-{i}-{nonce:016x}"));

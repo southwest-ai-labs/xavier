@@ -180,8 +180,17 @@ pub fn isolate_user_dirs() -> PathBuf {
                 std::env::set_var("LOCALAPPDATA", &localappdata);
             }
 
-            // The OS keyring/secret-service is user-global: force the file fallback.
-            std::env::remove_var("DBUS_SESSION_BUS_ADDRESS");
+            // The OS keyring/secret-service is user-global: force the file fallback
+            // by setting dead D-Bus addresses so Secret Service fails immediately
+            // without waiting for 360s autolaunch timeout on headless/CI systems.
+            std::env::set_var(
+                "DBUS_SESSION_BUS_ADDRESS",
+                "unix:path=/nonexistent-xavier-test-secret-service",
+            );
+            std::env::set_var(
+                "DBUS_SYSTEM_BUS_ADDRESS",
+                "unix:path=/nonexistent-xavier-test-secret-service",
+            );
             root
         })
         .clone()

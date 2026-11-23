@@ -126,15 +126,11 @@ pub fn create_router_with_agent_registry(agent_registry: Arc<dyn AgentLifecycleP
         // ── Memory Sync (peer-to-peer memory synchronisation) ─────────────────
         .route(
             "/api/v1/memory/sync/push",
-            post(crate::adapters::inbound::http::handlers::sync::sync_push_handler).layer(
-                axum::middleware::from_fn(require_permission(|r| r.can_add_memory())),
-            ),
+            post(crate::adapters::inbound::http::handlers::sync::sync_push_handler),
         )
         .route(
             "/api/v1/memory/sync/pull",
-            post(crate::adapters::inbound::http::handlers::sync::sync_pull_handler).layer(
-                axum::middleware::from_fn(require_permission(|r| r.can_add_memory())),
-            ),
+            post(crate::adapters::inbound::http::handlers::sync::sync_pull_handler),
         )
         .route(
             "/api/v1/memory/sync/status",
@@ -153,15 +149,11 @@ pub fn create_router_with_agent_registry(agent_registry: Arc<dyn AgentLifecycleP
         )
         .route(
             "/v1/memory/push",
-            post(crate::adapters::inbound::http::handlers::sync::legacy_push_handler).layer(
-                axum::middleware::from_fn(require_permission(|r| r.can_add_memory())),
-            ),
+            post(crate::adapters::inbound::http::handlers::sync::legacy_push_handler),
         )
         .route(
             "/v1/memory/pull",
-            post(crate::adapters::inbound::http::handlers::sync::legacy_pull_handler).layer(
-                axum::middleware::from_fn(require_permission(|r| r.can_add_memory())),
-            ),
+            post(crate::adapters::inbound::http::handlers::sync::legacy_pull_handler),
         )
         .route(
             "/v1/memory/pull-since/{workspace_id}/{since}",

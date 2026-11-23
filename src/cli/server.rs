@@ -584,6 +584,14 @@ pub fn build_app(state: CliState, deps: AppDeps) -> axum::Router {
             )
             .with_state(()),
         )
+        .merge(
+            xavier::server::mesh_network_routes::router(
+                xavier::server::mesh_network_routes::MeshNetworkState::new(
+                    state.workspace_dir.clone().join("data"),
+                ),
+            )
+            .with_state(()),
+        )
         // ── DocBot & Document Management API ────────────────────────────────
         .nest(
             "/api/docbot/v1",
