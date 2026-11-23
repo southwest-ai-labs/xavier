@@ -18,6 +18,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { MeshClient } from "../../api/meshClient";
 import MeshConfig from "../MeshConfig";
 import TopStatusBar from "../TopStatusBar";
+import DaoGovernancePanel, {
+  type Proposal,
+  type VoteChoice,
+} from "./DaoGovernancePanel";
 
 export type MeshTab =
   | "networks"
@@ -32,16 +36,6 @@ interface MeshHubViewProps {
   initialTab?: MeshTab;
 }
 
-interface GovernanceProposal {
-  id: string;
-  title: string;
-  proposer: string;
-  votesFor: number;
-  votesAgainst: number;
-  status: "active" | "passed" | "rejected";
-  expiresAt: string;
-}
-
 interface PeerHealthInfo {
   nodeId: string;
   alias: string;
@@ -49,27 +43,6 @@ interface PeerHealthInfo {
   status: "Healthy" | "RetryImmediately" | "RetryWithBackoff" | "Stale";
   lastSeen: string;
 }
-
-const MOCK_PROPOSALS: GovernanceProposal[] = [
-  {
-    id: "prop-101",
-    title: "Upgrade Mesh Sync Protocol to v2.4 (Quorum Consensus)",
-    proposer: "node_alpha_8f",
-    votesFor: 14,
-    votesAgainst: 2,
-    status: "active",
-    expiresAt: "In 2 days",
-  },
-  {
-    id: "prop-102",
-    title: "Adjust Validator False-Positive Dampening Factor",
-    proposer: "node_beta_3a",
-    votesFor: 22,
-    votesAgainst: 0,
-    status: "passed",
-    expiresAt: "Closed",
-  },
-];
 
 const MOCK_PEER_HEALTH: PeerHealthInfo[] = [
   {
@@ -103,47 +76,6 @@ const MOCK_PEER_HEALTH: PeerHealthInfo[] = [
  *         and ALL message items because they were rendered inline inside a .map().
  * 📊 Impact: Prevents O(N) re-renders of all chat messages during typing interaction.
  */
-/**
- * ⚡ Bolt Performance Optimization
- *
- * 💡 What: Extracted proposal row into MeshHubProposalItem and wrapped in React.memo()
- * 🎯 Why: When user typed in the chat input, chatMessage changed causing full re-render of MeshHubView
- *         and ALL proposal items because they were rendered inline inside a .map().
- * 📊 Impact: Prevents O(N) re-renders of all proposal messages during typing interaction.
- */
-const MeshHubProposalItem = React.memo(function MeshHubProposalItem({
-  prop,
-}: {
-  prop: GovernanceProposal;
-}) {
-  return (
-    <div
-      className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4"
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono text-[#39ff14] uppercase tracking-wider">
-          {prop.id}
-        </span>
-        <span
-          className={`text-[10px] px-2 py-0.5 rounded-full font-mono uppercase ${
-            prop.status === "active"
-              ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-              : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-          }`}
-        >
-          {prop.status}
-        </span>
-      </div>
-      <h3 className="text-sm font-medium text-white">
-        {prop.title}
-      </h3>
-      <div className="flex items-center justify-between text-xs text-white/50 border-t border-white/5 pt-3">
-        <span>Proposer: {prop.proposer}</span>
-        <span>Votes: {prop.votesFor} For / {prop.votesAgainst} Against</span>
-      </div>
-    </div>
-  );
-});
 
 /**
  * ⚡ Bolt Performance Optimization
@@ -244,48 +176,71 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<MeshTab>(initialTab);
   const [chatMessage, setChatMessage] = useState("");
-  const [proposals, setProposals] = useState<GovernanceProposal[]>([]);
+  const [daoProposals, setDaoProposals] = useState<Proposal[]>([]);
   const [loadingProposals, setLoadingProposals] = useState(false);
+  const [daoError, setDaoError] = useState<string | null>(null);
   const meshClient = useMemo(() => new MeshClient(token), [token]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (activeTab === "governance") {
-      setLoadingProposals(true);
-      meshClient
-        .listDaoProposals()
-        .then((data) => {
-          if (!cancelled) {
-            if (Array.isArray(data) && data.length > 0) {
-              setProposals(
-                data.map((p) => ({
-                  id: p.id,
-                  title: p.title,
-                  proposer: (p as any).proposer || p.category || "mesh-node",
-                  votesFor: p.for_votes ?? (p as any).votes_for ?? 0,
-                  votesAgainst: p.against_votes ?? (p as any).votes_against ?? 0,
-                  status: (p.status as any) || "active",
-                  expiresAt: (p as any).expires_at ?? 0,
-                })),
-              );
-            } else {
-              setProposals([]);
-            }
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setProposals([]);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setLoadingProposals(false);
-        });
+  const fetchProposals = useCallback(async () => {
+    setLoadingProposals(true);
+    setDaoError(null);
+    try {
+      const data = await meshClient.listDaoProposals();
+      if (Array.isArray(data) && data.length > 0) {
+        setDaoProposals(
+          data.map((p) => ({
+            id: p.id,
+            title: p.title,
+            description:
+              p.description ||
+              "Proposal submitted to SWAL Mesh DAO consensus.",
+            status: (p.status as any) || "active",
+            authorNode:
+              (p as any).proposer || (p as any).author || "node-validator",
+            requiredEndorsement: p.category || "validator",
+            expiresAt:
+              (p as any).expires_at ||
+              new Date(Date.now() + 86400000 * 3).toISOString(),
+            votes: {
+              for: p.for_votes ?? 0,
+              against: p.against_votes ?? 0,
+              abstain: p.abstain_votes ?? 0,
+            },
+            quorum: {
+              current: Math.round(p.quorum_pct ?? 50),
+              required: 60,
+            },
+            userVote: null,
+          })),
+        );
+      } else {
+        setDaoProposals([]);
+      }
+    } catch (err: any) {
+      setDaoError(err?.message || "Failed to fetch DAO proposals");
+      setDaoProposals([]);
+    } finally {
+      setLoadingProposals(false);
     }
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, meshClient]);
+  }, [meshClient]);
+
+  useEffect(() => {
+    if (activeTab === "governance") {
+      fetchProposals();
+    }
+  }, [activeTab, fetchProposals]);
+
+  const handleDaoVote = useCallback(
+    async (proposalId: string, choice: VoteChoice) => {
+      try {
+        await meshClient.submitDaoVote(proposalId, choice);
+        await fetchProposals();
+      } catch (err: any) {
+        setDaoError(err?.message || "Failed to submit vote");
+      }
+    },
+    [meshClient, fetchProposals],
+  );
 
   const [chatLog, setChatLog] = useState<
     Array<{ sender: string; text: string; time: string }>
@@ -546,33 +501,17 @@ export const MeshHubView: React.FC<MeshHubViewProps> = ({
                   Decentralized voting proposals and validator penalty metrics.
                 </p>
               </div>
-              <button
-                type="button"
-                className="px-4 py-2 bg-[#39ff14]/10 border border-[#39ff14]/30 text-[#39ff14] text-xs font-medium rounded-xl hover:bg-[#39ff14]/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#39ff14]"
-              >
-                + New Proposal
-              </button>
             </div>
 
-            {loadingProposals ? (
-              <div className="flex items-center justify-center p-8 text-white/40 text-xs">
-                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                Loading DAO proposals from mesh consensus...
-              </div>
-            ) : proposals.length === 0 ? (
-              <div className="text-center py-12 bg-white/[0.01] border border-dashed border-white/10 rounded-2xl p-6">
-                <Vote className="w-8 h-8 text-white/20 mx-auto mb-2" />
-                <p className="text-sm text-white/50">
-                  No active DAO proposals found in mesh consensus.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {proposals.map((prop) => (
-                  <MeshHubProposalItem key={prop.id} prop={prop} />
-                ))}
-              </div>
-            )}
+            <DaoGovernancePanel
+              proposals={daoProposals}
+              currentNodeId="node-local"
+              currentNodeEndorsements={["validator", "core", "security-lead"]}
+              onVote={handleDaoVote}
+              onRefresh={fetchProposals}
+              isLoading={loadingProposals}
+              error={daoError}
+            />
           </div>
         )}
 
