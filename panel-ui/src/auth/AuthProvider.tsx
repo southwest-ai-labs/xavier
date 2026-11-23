@@ -74,6 +74,35 @@ function getInitialSession(): {
 			isAuthenticated: true,
 		};
 	}
+	const h = window.location.hash;
+	if (h.startsWith("#/session")) {
+		const q = h.indexOf("?");
+		if (q >= 0) {
+			const params = new URLSearchParams(h.slice(q + 1));
+			const sessionToken = params.get("token");
+			const email = params.get("email") || "operator@xavier.local";
+			const tenant = params.get("tenant") || "local";
+			if (sessionToken) {
+				const now = Math.floor(Date.now() / 1000);
+				// Non-admin default role to prevent privilege escalation (SEC-03)
+				const user: User = {
+					id: tenant,
+					email,
+					name: email.split("@")[0],
+					role: "operator",
+					created_at: now,
+					updated_at: now,
+				};
+				writeRt(sessionToken);
+				try {
+					localStorage.setItem("xavier_onboarding_completed", "true");
+					localStorage.setItem("xavier_security_onboarding_completed", "true");
+					localStorage.setItem("xavier_desktop_token", sessionToken);
+				} catch {}
+				return { token: sessionToken, user, isAuthenticated: true };
+			}
+		}
+	}
 	const rt = readRt();
 	if (rt) {
 		const now = Math.floor(Date.now() / 1000);
@@ -212,7 +241,30 @@ const useAuthStore = create<AuthStore>((set, get) => ({
 		return false;
 	},
 
-	setSession: (sessionToken, email, _tenant) => {
+	setSession: (sessionToken, email, tenant) => {
+		const now = Math.floor(Date.now() / 1000);
+		const user: User = {
+			id: tenant || "operator",
+			email: email || "operator@xavier.local",
+			name: email ? email.split("@")[0] : "Operator",
+			role: "operator",
+			created_at: now,
+			updated_at: now,
+		};
+		writeRt(sessionToken);
+		try {
+			localStorage.setItem("xavier_onboarding_completed", "true");
+			localStorage.setItem("xavier_security_onboarding_completed", "true");
+			localStorage.setItem("xavier_desktop_token", sessionToken);
+		} catch {}
+		set({
+			user,
+			token: sessionToken,
+			accessToken: sessionToken,
+			refreshToken: sessionToken,
+			isAuthenticated: true,
+			requires2FA: false,
+		});
 		void get().verifySessionToken(sessionToken, email);
 	},
 

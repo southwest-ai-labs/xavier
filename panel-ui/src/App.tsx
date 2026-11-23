@@ -298,20 +298,15 @@ function AppContent() {
 				const params = new URLSearchParams(h.slice(q + 1));
 				const sessionToken = params.get("token");
 				const email = params.get("email") || undefined;
+				const tenant = params.get("tenant") || undefined;
 				if (sessionToken) {
-					void useAuthStore
-						.getState()
-						.verifySessionToken(sessionToken, email)
-						.then((verified) => {
-							if (verified) {
-								localStorage.setItem("xavier_onboarding_completed", "true");
-								localStorage.setItem("xavier_security_onboarding_completed", "true");
-								setShowOnboarding(false);
-								setShowSecurityOnboarding(false);
-								window.history.replaceState(null, "", window.location.pathname);
-								setHash("");
-							}
-						});
+					useAuthStore.getState().setSession(sessionToken, email, tenant);
+					localStorage.setItem("xavier_onboarding_completed", "true");
+					localStorage.setItem("xavier_security_onboarding_completed", "true");
+					setShowOnboarding(false);
+					setShowSecurityOnboarding(false);
+					window.history.replaceState(null, "", window.location.pathname);
+					setHash("");
 				}
 			}
 		}
