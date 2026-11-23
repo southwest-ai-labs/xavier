@@ -2911,3 +2911,11 @@ default = "southwest-ai-labs/xavier"
 description = "GitHub repository slug for auto-updater checks"
 category = "Updater"
 secret = false
+
+[[variables]]
+name = "XAVIER_ALLOWED_SYNC_PEERS"
+type = "string"
+default = ""
+description = "Comma-separated list of allowed hostnames or IP addresses for P2P memory sync peers (SSRF defense)"
+category = "Security / Sync"
+secret = false
